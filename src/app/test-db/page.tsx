@@ -2,18 +2,30 @@ import { supabase } from '@/lib/supabase/client'
 import { Product } from '@/types/database'
 
 async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('active', true)
-    .order('sort_order')
+  console.log('Environment variables:', {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  })
   
-  if (error) {
-    console.error('Error fetching products:', error)
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order')
+    
+    console.log('Supabase response:', { data, error })
+    
+    if (error) {
+      console.error('Error fetching products:', error)
+      return []
+    }
+    
+    return data || []
+  } catch (err) {
+    console.error('Exception in getProducts:', err)
     return []
   }
-  
-  return data || []
 }
 
 export default async function TestDB() {
@@ -44,6 +56,13 @@ export default async function TestDB() {
           ⚠️ No products found. Check your database setup.
         </div>
       )}
+      
+      <div className="mt-6 p-4 bg-gray-100 rounded">
+        <h3 className="font-semibold mb-2">Debug Info:</h3>
+        <p>Products found: {products.length}</p>
+        <p>Environment URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Set' : 'Missing'}</p>
+        <p>Environment Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'Set' : 'Missing'}</p>
+      </div>
     </div>
   )
 }
