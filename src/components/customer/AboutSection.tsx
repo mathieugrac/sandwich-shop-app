@@ -5,7 +5,7 @@ export function AboutSection() {
     <section className="py-8">
       {/* Section Header */}
       <div className="text-center mb-8">
-        <h2 className="text-xl text-black mb-2">It's all about</h2>
+        <h2 className="text-xl text-black mb-2">It&apos;s all about</h2>
         <h3 className="text-2xl font-bold italic text-black">Cuisine</h3>
       </div>
 
