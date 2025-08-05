@@ -1,92 +1,97 @@
+'use client';
+
 import { MainLayout } from '@/components/shared/MainLayout';
-import { Container } from '@/components/shared/Container';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Utensils, Clock, MapPin, Phone } from 'lucide-react';
+import { SandwichItem } from '@/components/customer/SandwichItem';
+import { AboutSection } from '@/components/customer/AboutSection';
+import { useCart } from '@/lib/cart-context';
+
+// Mock data for demonstration
+const sandwiches = [
+  {
+    id: 1,
+    name: 'Umami Mush',
+    description:
+      'Marinated oyster mushrooms, crispy buckwheat, pickled apple, fresh coriander and miso butter',
+    price: 10.0,
+    availableStock: 20,
+    imageUrl: undefined,
+  },
+  {
+    id: 2,
+    name: 'Nutty Beet',
+    description:
+      'honey-roasted beetroot, creamy labneh, zaatar, crunchy hazelnuts, pickled oignons and fresh mint',
+    price: 9.0,
+    availableStock: 0,
+    imageUrl: undefined,
+  },
+  {
+    id: 3,
+    name: 'Bourgundy Beef',
+    description:
+      'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter',
+    price: 11.0,
+    availableStock: 3,
+    imageUrl: undefined,
+  },
+];
 
 export default function Home() {
+  const { addToCart } = useCart();
+
+  const handleAddToCart = (sandwichId: number) => {
+    const sandwich = sandwiches.find(s => s.id === sandwichId);
+    if (sandwich) {
+      addToCart({
+        id: sandwich.id,
+        name: sandwich.name,
+        price: sandwich.price,
+      });
+    }
+  };
+
+  const formatDate = () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      month: 'long',
+      day: 'numeric',
+    };
+
+    return tomorrow.toLocaleDateString('en-US', options);
+  };
+
   return (
     <MainLayout>
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/10 to-primary/5 py-16">
-        <Container>
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Fresh Sandwiches
-              <span className="text-primary block">Made to Order</span>
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Pre-order your favorite sandwiches and pick them up fresh. No
-              waiting, no hassle.
-            </p>
-            <Button size="lg" className="text-lg px-8 py-6">
-              View Today's Menu
-            </Button>
+      <div className="space-y-8">
+        {/* Menu Section */}
+        <section>
+          <div className="mb-6 text-center">
+            <h2 className="text-2xl font-bold text-black mb-2">Today's Menu</h2>
+            <p className="text-gray-600">{formatDate()}</p>
           </div>
-        </Container>
-      </section>
 
-      {/* Features Section */}
-      <section className="py-16">
-        <Container>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card>
-              <CardHeader>
-                <Utensils className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Fresh Ingredients</CardTitle>
-                <CardDescription>
-                  Made with locally sourced ingredients every morning
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <Clock className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Quick Pickup</CardTitle>
-                <CardDescription>
-                  Order ahead and skip the line. Ready when you arrive.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <MapPin className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Convenient Location</CardTitle>
-                <CardDescription>
-                  Located in the heart of downtown. Easy parking available.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+          <div className="space-y-5">
+            {sandwiches.map(sandwich => (
+              <SandwichItem
+                key={sandwich.id}
+                name={sandwich.name}
+                description={sandwich.description}
+                price={sandwich.price}
+                availableStock={sandwich.availableStock}
+                imageUrl={sandwich.imageUrl}
+                onAddToCart={() => handleAddToCart(sandwich.id)}
+              />
+            ))}
           </div>
-        </Container>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="bg-muted/50 py-16">
-        <Container>
-          <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold mb-4">Ready to Order?</h2>
-            <p className="text-muted-foreground mb-6">
-              Browse our daily menu and place your order for pickup.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg">View Menu</Button>
-              <Button variant="outline" size="lg">
-                <Phone className="h-4 w-4 mr-2" />
-                Call Us
-              </Button>
-            </div>
-          </div>
-        </Container>
-      </section>
+        {/* About Section */}
+        <AboutSection />
+      </div>
     </MainLayout>
   );
 }
