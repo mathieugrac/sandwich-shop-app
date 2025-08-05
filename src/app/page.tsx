@@ -70,7 +70,7 @@ export default function Home() {
         {/* Menu Section */}
         <section>
           <div className="mb-6 text-center">
-            <h2 className="text-2xl font-bold text-black mb-2">Today's Menu</h2>
+            <h2 className="text-2xl font-bold text-black mb-2">Today&apos;s Menu</h2>
             <p className="text-gray-600">{formatDate()}</p>
           </div>
 

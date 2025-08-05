@@ -1,10 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Plus } from 'lucide-react';
+import Image from 'next/image';
 
 interface SandwichItemProps {
   name: string;
-  description: string;
+  description?: string;
   price: number;
   availableStock: number;
   imageUrl?: string;
@@ -13,7 +14,6 @@ interface SandwichItemProps {
 
 export function SandwichItem({
   name,
-  description,
   price,
   availableStock,
   imageUrl,
@@ -28,9 +28,11 @@ export function SandwichItem({
       <div className="relative">
         <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
           {imageUrl ? (
-            <img
+            <Image
               src={imageUrl}
               alt={name}
+              width={400}
+              height={192}
               className="w-full h-full object-cover"
             />
           ) : (
