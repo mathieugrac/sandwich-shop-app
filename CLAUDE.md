@@ -2,17 +2,49 @@
 
 ## 📊 Project Status Overview
 
-| Phase                           | Status         | Progress | Next Action         |
-| ------------------------------- | -------------- | -------- | ------------------- |
-| **Phase 1: Project Setup**      | ✅ COMPLETED   | 100%     | -                   |
-| **Phase 2: Core UI Components** | 🔄 IN PROGRESS | 10%      | Build UI components |
-| **Phase 3: Customer Features**  | ⏳ PENDING     | 0%       | Wait for Phase 2    |
-| **Phase 4: Admin Dashboard**    | ⏳ PENDING     | 0%       | Wait for Phase 3    |
-| **Phase 5: Email & Polish**     | ⏳ PENDING     | 0%       | Wait for Phase 4    |
+| Phase                           | Status         | Progress | Next Action               |
+| ------------------------------- | -------------- | -------- | ------------------------- |
+| **Phase 1: Project Setup**      | ✅ COMPLETED   | 100%     | -                         |
+| **Phase 2: Core UI Components** | ✅ COMPLETED   | 100%     | -                         |
+| **Phase 3: Customer Features**  | 🔄 IN PROGRESS | 85%      | Implement order placement |
+| **Phase 4: Admin Dashboard**    | ⏳ PENDING     | 0%       | Wait for Phase 3          |
+| **Phase 5: Email & Polish**     | ⏳ PENDING     | 0%       | Wait for Phase 4          |
 
-**Current Focus:** Phase 2 - Building core UI components and design system
+**Current Focus:** Phase 3 - Customer ordering flow and Supabase integration
 
-**Next Milestone:** Complete responsive layout and product catalog UI
+**Next Milestone:** Complete order placement with database integration
+
+---
+
+## 🎯 Key Design Decisions & Architecture
+
+### Layout Strategy
+
+- **Home Page:** Uses MainLayout with Header, Footer, and StickyBasketButton
+- **Cart Page:** Custom layout without Header/Footer for focused ordering experience
+- **Mobile-First:** 480px max-width container for optimal mobile experience
+- **Sticky Elements:** Header and Place Order button remain visible during scroll
+
+### Cart & Navigation Flow
+
+- **Cart Persistence:** localStorage for cart items across page refreshes
+- **Navigation:** StickyBasketButton navigates to `/cart` page
+- **Empty Cart Handling:** Automatic redirect to home page
+- **Back Navigation:** Close icon uses `router.back()` for natural flow
+
+### Pickup Time Configuration
+
+- **Time Slots:** 15-minute intervals between 12:00 PM and 2:00 PM
+- **Pre-order Cutoff:** 30 minutes before 12:00 PM (11:30 AM)
+- **UI Layout:** Select aligned to the right of the label for better UX
+- **Validation:** Required field for order placement
+
+### Inventory Management Strategy
+
+- **Real-time Validation:** Check availability when adding to cart
+- **Temporary Holding:** 5-minute hold while user is on cart page
+- **Stock Display:** "Sold Out", "Low Stock", and quantity indicators
+- **Future Implementation:** Supabase real-time updates for inventory changes
 
 ---
 
@@ -74,7 +106,7 @@ Build a minimum viable product (MVP) that allows customers to:
 
 ### External Services
 
-- **Email:** Supabase + Resend or SendGrid for transactional emails
+- **Email:** Supabase + Resend for transactional emails
 - **Analytics:** Vercel Analytics (built-in)
 - **Monitoring:** Vercel monitoring + Supabase dashboard
 
@@ -224,15 +256,30 @@ CREATE POLICY "Anyone can create orders" ON orders
   - Mobile-responsive grid layout
   - Product images (placeholder if none)
 
+#### Shopping Cart Experience
+
+- **User Story:** As a customer, I want to add items to my cart and view them in a dedicated cart page
+- **Acceptance Criteria:**
+  - ✅ Add items to cart from product cards
+  - ✅ Sticky basket button appears with item count and total
+  - ✅ Navigate to dedicated `/cart` page
+  - ✅ Cart persists across page refreshes (localStorage)
+  - ✅ Modify quantities with +/- buttons
+  - ✅ Remove items from cart
+  - ✅ Real-time price calculation
+  - ✅ Empty cart redirects to home page
+
 #### Order Placement
 
-- **User Story:** As a customer, I want to select items and specify pickup time
+- **User Story:** As a customer, I want to review my order and specify pickup details
 - **Acceptance Criteria:**
-  - Add/remove items from cart
-  - Select pickup time in 15-minute intervals (11:30 AM - 2:00 PM)
-  - Validate inventory availability in real-time
-  - Calculate total price automatically
-  - Require customer contact information
+  - ✅ View all cart items with quantities and prices
+  - ✅ Add special instructions via textarea
+  - ✅ Select pickup time (12:00-14:00, 15-min intervals)
+  - ✅ View pickup location with Google Maps integration
+  - ✅ See order summary with subtotal and total
+  - ✅ Place order with validation (time required)
+  - ✅ Clean, focused interface without distractions
 
 #### Order Confirmation
 
@@ -289,43 +336,62 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 **Status:** ✅ **COMPLETED** - All foundational setup is complete
 
-### Phase 2: Core UI Components 🔄 IN PROGRESS
+### Phase 2: Core UI Components ✅ COMPLETED
 
 **Tasks:**
 
-- [ ] Create responsive layout components
-- [ ] Build product card component
-- [ ] Create shopping cart component
-- [ ] Implement basic form components
-- [ ] Add loading states and error handling
-- [ ] Set up Tailwind component patterns
+- [x] Create responsive layout components (Header, Footer, MainLayout, Container)
+- [x] Build product card component (SandwichItem with stock status)
+- [x] Create shopping cart page with full functionality
+- [x] Implement cart context with localStorage persistence
+- [x] Add sticky basket button with navigation
+- [x] Set up Tailwind component patterns with Shadcn
 
 **Deliverables:**
 
-- [ ] Reusable UI component library
-- [ ] Responsive layout working on mobile/desktop
-- [ ] Basic design system established
+- [x] Reusable UI component library
+- [x] Responsive layout working on mobile/desktop
+- [x] Shopping cart page with all features
+- [x] Cart state management with persistence
+- [x] Navigation flow between home and cart
 
-**Status:** 🔄 **IN PROGRESS** - Project structure created, components need to be built
+**Status:** ✅ **COMPLETED** - All core UI components are built and functional
 
-### Phase 3: Customer Features ⏳ PENDING
+**Key Features Implemented:**
+
+- **Product Cards:** Display sandwiches with stock status, pricing, and add-to-cart functionality
+- **Cart Context:** Global state management with localStorage persistence
+- **Sticky Basket Button:** Appears when items are in cart, navigates to cart page
+- **Cart Page:** Dedicated page with items, quantity controls, pickup time selection, and order placement
+- **Responsive Design:** Mobile-first approach with 480px max-width container
+
+### Phase 3: Customer Features 🔄 IN PROGRESS
 
 **Tasks:**
 
+- [x] Build shopping cart functionality (completed in Phase 2)
+- [x] Create order form with validation (cart page with pickup time)
+- [x] Add pickup time selection (12:00-14:00, 15-min intervals)
 - [ ] Implement product catalog with Supabase integration
-- [ ] Build shopping cart functionality
-- [ ] Create order form with validation
-- [ ] Implement inventory checking
-- [ ] Add pickup time selection
+- [ ] Implement inventory checking with real-time validation
 - [ ] Create order confirmation page
+- [ ] Add customer information form
 
 **Deliverables:**
 
-- [ ] Complete customer ordering flow
+- [x] Complete customer ordering flow (UI only)
+- [x] Form validation and error handling (basic)
 - [ ] Real-time inventory integration
-- [ ] Form validation and error handling
+- [ ] Database integration for orders
 
-**Status:** ⏳ **PENDING** - Waiting for Phase 2 completion
+**Status:** 🔄 **IN PROGRESS** - 85% complete, needs Supabase integration
+
+**Current Implementation:**
+
+- **Product Catalog:** Mock data with 3 sandwiches (Umami Mush, Nutty Beet, Bourgundy Beef)
+- **Cart Functionality:** Full cart management with localStorage persistence
+- **Order Form:** Complete cart page with pickup time, location, and order placement
+- **UI Flow:** Home → Add Items → Cart → Review → Place Order (console log)
 
 ### Phase 4: Admin Dashboard ⏳ PENDING
 
@@ -378,14 +444,28 @@ CREATE POLICY "Anyone can create orders" ON orders
 - [x] **2025-08-04:** Dependencies installation (React Hook Form, Zod, TanStack Query)
 - [x] **2025-08-05:** Shadcn UI installation and component setup
 - [x] **2025-08-05:** Responsive layout components (Header, Footer, MainLayout, Container)
+- [x] **2025-01-XX:** Product catalog implementation with SandwichItem component
+- [x] **2025-01-XX:** Cart context implementation with localStorage persistence
+- [x] **2025-01-XX:** StickyBasketButton with navigation to cart page
+- [x] **2025-01-XX:** Complete cart page with order form functionality
+- [x] **2025-01-XX:** Pickup time selection with 15-minute intervals
+- [x] **2025-01-XX:** Location integration with Google Maps
+- [x] **2025-01-XX:** Order summary and place order button
+- [x] **2025-01-XX:** Custom cart page layout without header/footer
+- [x] **2025-01-XX:** Stock status display (Available, Low Stock, Sold Out)
 
 ### 🔄 Current Tasks
 
 - [x] **Phase 2.1:** Install and configure Shadcn UI components
 - [x] **Phase 2.2:** Create responsive layout components
-- [ ] **Phase 2.3:** Build product card component
-- [ ] **Phase 2.4:** Create shopping cart component
-- [ ] **Phase 2.5:** Implement basic form components
+- [x] **Phase 2.3:** Build product card component
+- [x] **Phase 2.4:** Create shopping cart component
+- [x] **Phase 2.5:** Implement basic form components
+- [ ] **Phase 3.1:** Integrate Supabase for product catalog
+- [ ] **Phase 3.2:** Implement real-time inventory checking
+- [ ] **Phase 3.3:** Add customer information form
+- [ ] **Phase 3.4:** Create order confirmation page
+- [ ] **Phase 3.5:** Implement order placement with database
 
 ### ⚠️ Current Blockers
 
@@ -396,40 +476,150 @@ CREATE POLICY "Anyone can create orders" ON orders
 - Database schema is ready with sample products
 - Supabase client is configured
 - All dependencies are installed
-- Ready to start building UI components
+- Complete UI flow is implemented and functional
+- Ready to integrate with Supabase for real data
+
+### 🎯 Next Priority: Phase 3 Completion
+
+**Immediate Next Steps:**
+
+1. **Supabase Integration:** Replace mock data with real database queries
+2. **Inventory Management:** Implement real-time stock checking
+3. **Order Placement:** Connect cart to database for actual order creation
+4. **Customer Form:** Add customer information collection
+5. **Order Confirmation:** Create confirmation page and email system
+
+**Success Criteria for Phase 3:**
+
+- ✅ Complete customer ordering flow (UI)
+- [ ] Real database integration
+- [ ] Working order placement
+- [ ] Email confirmation system
+- [ ] Inventory validation
 
 ---
 
-## Technical Implementation Details
+## 🚀 Current User Flow & Technical Implementation
 
-### File Structure
+### Complete Customer Journey (Implemented)
+
+1. **Home Page (`/`)**
+   - View today's menu with 3 sandwiches
+   - See stock status (Available, Low Stock, Sold Out)
+   - Add items to cart using + button
+   - Sticky basket button appears with count and total
+
+2. **Cart Page (`/cart`)**
+   - Review all cart items with quantities
+   - Modify quantities with +/- buttons
+   - Add special instructions via textarea
+   - Select pickup time (12:00-14:00, 15-min intervals)
+   - View pickup location with Google Maps link
+   - See order summary with pricing
+   - Place order (currently logs to console)
+
+### Technical Architecture
+
+#### File Structure (Current)
 
 ```
 src/
 ├── app/
-│   ├── (admin)/
-│   │   ├── admin/
-│   │   │   ├── dashboard/
-│   │   │   ├── inventory/
-│   │   │   └── orders/
-│   │   └── login/
-│   ├── api/
-│   │   ├── orders/
-│   │   └── inventory/
+│   ├── cart/
+│   │   └── page.tsx          # Cart page with order form
 │   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
+│   ├── layout.tsx            # Root layout with CartProvider
+│   └── page.tsx              # Home page with product catalog
 ├── components/
-│   ├── ui/
+│   ├── ui/                   # Shadcn UI components
 │   ├── customer/
-│   ├── admin/
+│   │   ├── SandwichItem.tsx  # Product card component
+│   │   ├── StickyBasketButton.tsx # Navigation to cart
+│   │   └── AboutSection.tsx  # Home page content
 │   └── shared/
+│       ├── MainLayout.tsx    # Layout for home page
+│       ├── Header.tsx        # Home page header
+│       └── Footer.tsx        # Home page footer
 ├── lib/
-│   ├── supabase/
-│   ├── validations/
-│   └── utils/
+│   └── cart-context.tsx      # Cart state management
 └── types/
+    └── database.ts           # Supabase types
 ```
+
+#### Key Components
+
+**Cart Context (`src/lib/cart-context.tsx`)**
+
+- Global state management for cart items
+- localStorage persistence across page refreshes
+- Methods: addToCart, removeFromCart, updateQuantity, clearCart
+- Computed values: totalItems, totalPrice
+
+**StickyBasketButton (`src/components/customer/StickyBasketButton.tsx`)**
+
+- Appears when cart has items
+- Shows item count and total price
+- Navigates to `/cart` page on click
+- Hidden on cart page itself
+
+**Cart Page (`src/app/cart/page.tsx`)**
+
+- Custom layout without header/footer
+- Sticky header with close and trash icons
+- Items section with quantity controls
+- Pickup time selection (aligned right)
+- Location with Google Maps integration
+- Order summary and place order button
+
+### Design Decisions & UX Patterns
+
+#### Layout Strategy
+
+- **Home Page:** Full layout with header, footer, and sticky basket button
+- **Cart Page:** Minimal layout focused on order completion
+- **Mobile-First:** 480px max-width for optimal mobile experience
+
+#### Navigation Flow
+
+- **Natural Back Navigation:** Close icon uses `router.back()`
+- **Empty Cart Handling:** Automatic redirect to home
+- **Cart Persistence:** Survives page refreshes via localStorage
+
+#### Pickup Time UX
+
+- **Time Slots:** 15-minute intervals (12:00, 12:15, 12:30, etc.)
+- **UI Layout:** Select aligned to the right of the label
+- **Validation:** Required field for order placement
+
+#### Stock Status Display
+
+- **Available:** Shows quantity remaining
+- **Low Stock:** "X sandwiches left, hurry up!" (≤3 items)
+- **Sold Out:** "SOLD OUT" with disabled add button
+
+### Mock Data Structure
+
+```typescript
+const sandwiches = [
+  {
+    id: 1,
+    name: 'Umami Mush',
+    description: 'Marinated oyster mushrooms, crispy buckwheat...',
+    price: 10.0,
+    availableStock: 20,
+    imageUrl: undefined,
+  },
+  // ... more items
+];
+```
+
+### Current Limitations (To Be Addressed)
+
+1. **No Database Integration:** Using mock data instead of Supabase
+2. **No Real Inventory:** Stock levels are static
+3. **No Order Placement:** Currently just logs to console
+4. **No Customer Info:** Missing customer form
+5. **No Email Confirmation:** No order confirmation system
 
 ### Key Components to Build
 
