@@ -254,28 +254,40 @@ export default function OrderManagementPage() {
               Order Management - Next Active Sell
             </h1>
           </div>
-          <div className="flex items-center space-x-4">
-            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Orders</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="ready">Ready</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-4">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <Card
+            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+              selectedStatus === 'all' ? 'ring-2 ring-gray-400 bg-gray-50' : ''
+            }`}
+            onClick={() => setSelectedStatus('all')}
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    All Orders
+                  </p>
+                  <p className="text-2xl font-bold text-gray-600">
+                    {orders.length}
+                  </p>
+                </div>
+                <ShoppingCart className="h-8 w-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card
+            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+              selectedStatus === 'pending'
+                ? 'ring-2 ring-yellow-400 bg-yellow-50'
+                : ''
+            }`}
+            onClick={() => setSelectedStatus('pending')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -288,7 +300,14 @@ export default function OrderManagementPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+              selectedStatus === 'confirmed'
+                ? 'ring-2 ring-orange-400 bg-orange-50'
+                : ''
+            }`}
+            onClick={() => setSelectedStatus('confirmed')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -301,7 +320,14 @@ export default function OrderManagementPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+              selectedStatus === 'ready'
+                ? 'ring-2 ring-green-400 bg-green-50'
+                : ''
+            }`}
+            onClick={() => setSelectedStatus('ready')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -314,7 +340,14 @@ export default function OrderManagementPage() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card
+            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+              selectedStatus === 'completed'
+                ? 'ring-2 ring-blue-400 bg-blue-50'
+                : ''
+            }`}
+            onClick={() => setSelectedStatus('completed')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
