@@ -104,14 +104,14 @@ export default function Home() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     Something went wrong
                   </h3>
-                  <p className="text-gray-600 mb-4">
-                    Please try again later
-                  </p>
+                  <p className="text-gray-600 mb-4">Please try again later</p>
                 </div>
               </div>
             </div>
           </section>
-        ) : !sellData || !sellData.products || sellData.products.length === 0 ? (
+        ) : !sellData ||
+          !sellData.products ||
+          sellData.products.length === 0 ? (
           <section>
             <div className="text-center py-8">
               <div className="max-w-md mx-auto">
