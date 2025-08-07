@@ -6,13 +6,11 @@ import { SandwichItem } from '@/components/customer/SandwichItem';
 import { AboutSection } from '@/components/customer/AboutSection';
 import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 import { useCart } from '@/lib/cart-context';
-import { fetchProducts, Product } from '@/lib/api/products';
-import { fetchInventory, InventoryItem } from '@/lib/api/inventory';
+import { fetchNextActiveSell, NextActiveSell } from '@/lib/api/sells';
 
 export default function Home() {
   const { addToCart } = useCart();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [sellData, setSellData] = useState<NextActiveSell | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,15 +18,9 @@ export default function Home() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const today = new Date().toISOString().split('T')[0];
-        
-        const [productsData, inventoryData] = await Promise.all([
-          fetchProducts(),
-          fetchInventory(today),
-        ]);
-        
-        setProducts(productsData);
-        setInventory(inventoryData);
+
+        const nextActiveSell = await fetchNextActiveSell();
+        setSellData(nextActiveSell);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
@@ -40,7 +32,7 @@ export default function Home() {
   }, []);
 
   const handleAddToCart = (productId: string) => {
-    const product = products.find(p => p.id === productId);
+    const product = sellData?.products.find(p => p.id === productId);
     if (product) {
       addToCart({
         id: product.id,
@@ -51,8 +43,8 @@ export default function Home() {
   };
 
   const getAvailableStock = (productId: string) => {
-    const inventoryItem = inventory.find(item => item.product_id === productId);
-    return inventoryItem?.available_quantity || 0;
+    const product = sellData?.products.find(p => p.id === productId);
+    return product?.availableStock || 0;
   };
 
   const formatDate = () => {
@@ -91,7 +83,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-5">
-              {products.map(product => (
+              {sellData?.products.map(product => (
                 <SandwichItem
                   key={product.id}
                   name={product.name}
