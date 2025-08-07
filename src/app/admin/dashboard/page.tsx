@@ -3,17 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
-import { 
-  Package, 
-  ShoppingCart, 
-  Users, 
-  TrendingUp, 
+import {
+  Package,
+  ShoppingCart,
+  Users,
+  TrendingUp,
   LogOut,
   Settings,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -39,7 +45,9 @@ export default function AdminDashboardPage() {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       router.push('/admin');
     }
@@ -47,13 +55,21 @@ export default function AdminDashboardPage() {
 
   const loadDashboardStats = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Get today's orders
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('pickup_date', today);
+      // Get the next active sell
+      const { data: nextSell } = await supabase.rpc('get_next_active_sell');
+
+      let orders = [];
+      if (nextSell && nextSell.length > 0) {
+        const activeSell = nextSell[0];
+
+        // Get orders for the active sell
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('*')
+          .eq('sell_id', activeSell.id);
+
+        orders = ordersData || [];
+      }
 
       // Get products count
       const { data: products } = await supabase
@@ -61,9 +77,12 @@ export default function AdminDashboardPage() {
         .select('id')
         .eq('active', true);
 
-      const totalOrders = orders?.length || 0;
-      const pendingOrders = orders?.filter(o => o.status === 'pending').length || 0;
-      const totalRevenue = orders?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+      const totalOrders = orders.length;
+      const pendingOrders = orders.filter(o => o.status === 'pending').length;
+      const totalRevenue = orders.reduce(
+        (sum, order) => sum + parseFloat(order.total_amount),
+        0
+      );
 
       setStats({
         totalOrders,
@@ -118,7 +137,9 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Orders</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Next Sell Orders
+              </CardTitle>
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -135,43 +156,46 @@ export default function AdminDashboardPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                Today's total
-              </p>
+              <div className="text-2xl font-bold">
+                ${stats.totalRevenue.toFixed(2)}
+              </div>
+              <p className="text-xs text-muted-foreground">Today's total</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Products</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Products
+              </CardTitle>
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalProducts}</div>
-              <p className="text-xs text-muted-foreground">
-                Available items
-              </p>
+              <p className="text-xs text-muted-foreground">Available items</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Pending Orders
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.pendingOrders}</div>
-              <p className="text-xs text-muted-foreground">
-                Need attention
-              </p>
+              <p className="text-xs text-muted-foreground">Need attention</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/sells')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/sells')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
@@ -188,7 +212,10 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/inventory')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/inventory')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Package className="h-5 w-5 mr-2" />
@@ -205,14 +232,17 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/orders')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/orders')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center">
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 View Orders
               </CardTitle>
               <CardDescription>
-                Manage today's orders and update status
+                Manage next active sell orders and update status
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -227,7 +257,10 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/settings')}>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/settings')}
+          >
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Settings className="h-5 w-5 mr-2" />
@@ -250,15 +283,15 @@ export default function AdminDashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>
-                Latest orders and updates
-              </CardDescription>
+              <CardDescription>Latest orders and updates</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-gray-500">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p>No recent activity to display</p>
-                <p className="text-sm">Orders will appear here as they come in</p>
+                <p className="text-sm">
+                  Orders will appear here as they come in
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -266,4 +299,4 @@ export default function AdminDashboardPage() {
       </div>
     </div>
   );
-} 
+}
