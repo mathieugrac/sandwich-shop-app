@@ -33,6 +33,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get the next active sell
+    const { data: nextSell, error: sellError } = await supabase.rpc(
+      'get_next_active_sell'
+    );
+
+    if (sellError || !nextSell || nextSell.length === 0) {
+      console.error('API: Error getting next active sell:', sellError);
+      return NextResponse.json(
+        { error: 'No active sell available' },
+        { status: 400 }
+      );
+    }
+
+    const activeSell = nextSell[0];
+    console.log('API: Linking order to sell:', activeSell);
+
     // Generate simple order number
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 9999)
@@ -42,7 +58,7 @@ export async function POST(request: Request) {
 
     console.log('API: Attempting to create order with number:', orderNumber);
 
-    // Start a transaction to create order and reserve inventory
+    // Create order linked to the active sell
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -52,6 +68,7 @@ export async function POST(request: Request) {
         customer_phone: customerPhone,
         pickup_time: pickupTime,
         pickup_date: pickupDate,
+        sell_id: activeSell.id, // Link to the active sell
         total_amount: totalAmount,
         special_instructions: specialInstructions,
       })
@@ -68,13 +85,15 @@ export async function POST(request: Request) {
 
     console.log('API: Order created successfully:', order);
 
-    // Create order items and reserve inventory
-    const orderItems = items.map((item: { id: string; quantity: number; price: number }) => ({
-      order_id: order.id,
-      product_id: item.id,
-      quantity: item.quantity,
-      unit_price: item.price,
-    }));
+    // Create order items
+    const orderItems = items.map(
+      (item: { id: string; quantity: number; price: number }) => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+      })
+    );
 
     const { error: orderItemsError } = await supabase
       .from('order_items')
@@ -88,13 +107,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // Reserve inventory for each item
+    // Reserve inventory for each item using the new sell-based function
     for (const item of items) {
-      const { error: reserveError } = await supabase.rpc('reserve_inventory', {
-        p_product_id: item.id,
-        p_date: pickupDate,
-        p_quantity: item.quantity,
-      });
+      const { error: reserveError } = await supabase.rpc(
+        'reserve_sell_inventory',
+        {
+          p_sell_id: activeSell.id,
+          p_product_id: item.id,
+          p_quantity: item.quantity,
+        }
+      );
 
       if (reserveError) {
         console.error('Error reserving inventory:', reserveError);
