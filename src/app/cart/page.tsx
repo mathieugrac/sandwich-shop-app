@@ -39,7 +39,7 @@ export default function CartPage() {
     useCart();
   const [selectedTime, setSelectedTime] = useState('');
   const [comment, setComment] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   // Handle back navigation
   const handleBack = () => {

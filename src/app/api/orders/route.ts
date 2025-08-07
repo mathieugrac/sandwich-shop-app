@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     console.log('API: Order created successfully:', order);
 
     // Create order items and reserve inventory
-    const orderItems = items.map((item: any) => ({
+    const orderItems = items.map((item: { id: string; quantity: number; price: number }) => ({
       order_id: order.id,
       product_id: item.id,
       quantity: item.quantity,

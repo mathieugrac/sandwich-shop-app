@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { X, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface CustomerInfo {
   name: string;
@@ -353,7 +353,7 @@ export default function CheckoutPage() {
                     <p className="text-sm text-red-600">{errors.phone}</p>
                   )}
                   <p className="text-xs text-gray-500">
-                    We'll use this to contact you if there are any issues with
+                    We&apos;ll use this to contact you if there are any issues with
                     your order
                   </p>
                 </div>

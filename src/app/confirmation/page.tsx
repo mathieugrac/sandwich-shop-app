@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -19,7 +19,7 @@ interface OrderDetails {
   created_at: string;
 }
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
@@ -36,7 +36,11 @@ export default function ConfirmationPage() {
     // In a real app, you'd fetch the order details from the API
     const mockOrder: OrderDetails = {
       id: orderId,
-      order_number: `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`,
+      order_number: `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
+        Math.random() * 9999
+      )
+        .toString()
+        .padStart(4, '0')}`,
       customer_name: 'Your Name', // This would come from the actual order
       customer_email: 'your.email@example.com',
       pickup_time: localStorage.getItem('pickupTime') || '12:00',
@@ -101,7 +105,7 @@ export default function ConfirmationPage() {
                 Order Confirmed!
               </h2>
               <p className="text-gray-600">
-                Thank you for your order. We'll have it ready for pickup.
+                Thank you for your order. We&apos;ll have it ready for pickup.
               </p>
             </div>
 
@@ -149,7 +153,9 @@ export default function ConfirmationPage() {
                     <MapPin className="h-5 w-5 text-gray-600" />
                     <div>
                       <p className="text-sm text-gray-600">Pickup Location</p>
-                      <p className="font-medium">123 Sandwich Street, City, Country</p>
+                      <p className="font-medium">
+                        123 Sandwich Street, City, Country
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -159,7 +165,9 @@ export default function ConfirmationPage() {
             {/* Special Instructions */}
             {order.special_instructions && (
               <section>
-                <h3 className="text-xl font-semibold mb-4">Special Instructions</h3>
+                <h3 className="text-xl font-semibold mb-4">
+                  Special Instructions
+                </h3>
                 <Card className="p-4">
                   <p className="text-gray-700">{order.special_instructions}</p>
                 </Card>
@@ -175,7 +183,7 @@ export default function ConfirmationPage() {
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Please arrive within 15 minutes of your pickup time</li>
                   <li>• Bring your order number for pickup</li>
-                  <li>• We'll send you an email confirmation shortly</li>
+                  <li>• We&apos;ll send you an email confirmation shortly</li>
                   <li>• Call us if you need to make any changes</li>
                 </ul>
               </Card>
@@ -195,4 +203,21 @@ export default function ConfirmationPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <ConfirmationContent />
+    </Suspense>
+  );
+}
