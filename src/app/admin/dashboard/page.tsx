@@ -194,6 +194,31 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <Card
             className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/orders')}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                View Orders
+              </CardTitle>
+              <CardDescription>
+                Manage next active sell orders and update status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  {stats.pendingOrders} orders need attention
+                </p>
+                {stats.pendingOrders > 0 && (
+                  <Badge variant="destructive">{stats.pendingOrders}</Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigateTo('/admin/sells')}
           >
             <CardHeader>
@@ -229,31 +254,6 @@ export default function AdminDashboardPage() {
               <p className="text-sm text-gray-600">
                 Update stock levels for sell menu items
               </p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/orders')}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                View Orders
-              </CardTitle>
-              <CardDescription>
-                Manage next active sell orders and update status
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {stats.pendingOrders} orders need attention
-                </p>
-                {stats.pendingOrders > 0 && (
-                  <Badge variant="destructive">{stats.pendingOrders}</Badge>
-                )}
-              </div>
             </CardContent>
           </Card>
 
