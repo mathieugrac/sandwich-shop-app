@@ -3,14 +3,26 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/client';
-import { 
-  ArrowLeft, 
-  Clock, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  Clock,
+  CheckCircle,
   AlertCircle,
   ShoppingCart,
   User,
@@ -19,7 +31,7 @@ import {
   MapPin,
   Calendar,
   Loader2,
-  Eye
+  Eye,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -41,6 +53,7 @@ interface Order {
   customer_phone: string;
   pickup_time: string;
   pickup_date: string;
+  sell_id: string;
   status: 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
   total_amount: number;
   special_instructions: string;
@@ -61,7 +74,9 @@ export default function OrderManagementPage() {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       router.push('/admin');
     }
@@ -69,11 +84,21 @@ export default function OrderManagementPage() {
 
   const loadOrders = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      
+      // Get the next active sell
+      const { data: nextSell } = await supabase.rpc('get_next_active_sell');
+
+      if (!nextSell || nextSell.length === 0) {
+        setOrders([]);
+        return;
+      }
+
+      const activeSell = nextSell[0];
+
+      // Load orders for the active sell
       const { data: ordersData } = await supabase
         .from('orders')
-        .select(`
+        .select(
+          `
           *,
           order_items (
             *,
@@ -82,8 +107,9 @@ export default function OrderManagementPage() {
               description
             )
           )
-        `)
-        .eq('pickup_date', today)
+        `
+        )
+        .eq('sell_id', activeSell.id)
         .order('created_at', { ascending: false });
 
       setOrders(ordersData || []);
@@ -97,17 +123,54 @@ export default function OrderManagementPage() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     setUpdating(orderId);
     try {
+      // Get the order details first
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      // Update order status
       await supabase
         .from('orders')
         .update({ status: newStatus })
         .eq('id', orderId);
 
+      // If confirming an order, update inventory
+      if (newStatus === 'confirmed' && order.status === 'pending') {
+        console.log('Confirming order, updating inventory...');
+
+        // Update inventory for each item in the order
+        for (const item of order.order_items) {
+          try {
+            // Call the reserve_sell_inventory function
+            const { data, error } = await supabase.rpc(
+              'reserve_sell_inventory',
+              {
+                p_sell_id: order.sell_id, // Assuming sell_id is available
+                p_product_id: item.product_id,
+                p_quantity: item.quantity,
+              }
+            );
+
+            if (error) {
+              console.error('Error reserving inventory:', error);
+            } else {
+              console.log('Inventory reserved successfully:', data);
+            }
+          } catch (error) {
+            console.error('Error reserving inventory for item:', error);
+          }
+        }
+      }
+
       // Update local state
-      setOrders(orders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: newStatus as Order['status'] }
-          : order
-      ));
+      setOrders(
+        orders.map(order =>
+          order.id === orderId
+            ? { ...order, status: newStatus as Order['status'] }
+            : order
+        )
+      );
     } catch (error) {
       console.error('Error updating order status:', error);
     } finally {
@@ -157,9 +220,10 @@ export default function OrderManagementPage() {
     });
   };
 
-  const filteredOrders = selectedStatus === 'all' 
-    ? orders 
-    : orders.filter(order => order.status === selectedStatus);
+  const filteredOrders =
+    selectedStatus === 'all'
+      ? orders
+      : orders.filter(order => order.status === selectedStatus);
 
   if (loading) {
     return (
@@ -178,11 +242,17 @@ export default function OrderManagementPage() {
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/admin/dashboard')}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
-            <h1 className="text-xl font-semibold">Order Management</h1>
+            <h1 className="text-xl font-semibold">
+              Order Management - Next Active Sell
+            </h1>
           </div>
           <div className="flex items-center space-x-4">
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
@@ -209,7 +279,9 @@ export default function OrderManagementPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Orders
+                  </p>
                   <p className="text-2xl font-bold">{orders.length}</p>
                 </div>
                 <ShoppingCart className="h-8 w-8 text-gray-400" />
@@ -262,25 +334,31 @@ export default function OrderManagementPage() {
           <Card>
             <CardContent className="p-8 text-center">
               <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No orders found
+              </h3>
               <p className="text-gray-500">
-                {selectedStatus === 'all' 
-                  ? "No orders for today yet." 
-                  : `No ${selectedStatus} orders found.`
-                }
+                {selectedStatus === 'all'
+                  ? 'No orders for the next active sell yet.'
+                  : `No ${selectedStatus} orders found for the next active sell.`}
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
-            {filteredOrders.map((order) => (
-              <Card key={order.id} className="hover:shadow-md transition-shadow">
+            {filteredOrders.map(order => (
+              <Card
+                key={order.id}
+                className="hover:shadow-md transition-shadow"
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {getStatusIcon(order.status)}
                       <div>
-                        <CardTitle className="text-lg">Order #{order.order_number}</CardTitle>
+                        <CardTitle className="text-lg">
+                          Order #{order.order_number}
+                        </CardTitle>
                         <CardDescription>
                           {new Date(order.created_at).toLocaleString()}
                         </CardDescription>
@@ -289,7 +367,9 @@ export default function OrderManagementPage() {
                     <div className="flex items-center space-x-2">
                       {getStatusBadge(order.status)}
                       <div className="text-right">
-                        <div className="font-semibold">${order.total_amount}</div>
+                        <div className="font-semibold">
+                          ${order.total_amount}
+                        </div>
                         <div className="text-sm text-gray-500">
                           {order.order_items.length} items
                         </div>
@@ -334,17 +414,28 @@ export default function OrderManagementPage() {
                         Order Items
                       </h4>
                       <div className="space-y-2">
-                        {order.order_items.map((item) => (
-                          <div key={item.id} className="flex justify-between text-sm">
-                            <span>{item.quantity}x {item.products.name}</span>
-                            <span>${(item.quantity * item.unit_price).toFixed(2)}</span>
+                        {order.order_items.map(item => (
+                          <div
+                            key={item.id}
+                            className="flex justify-between text-sm"
+                          >
+                            <span>
+                              {item.quantity}x {item.products.name}
+                            </span>
+                            <span>
+                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            </span>
                           </div>
                         ))}
                       </div>
                       {order.special_instructions && (
                         <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                          <h5 className="font-medium text-sm mb-1">Special Instructions:</h5>
-                          <p className="text-sm text-gray-600">{order.special_instructions}</p>
+                          <h5 className="font-medium text-sm mb-1">
+                            Special Instructions:
+                          </h5>
+                          <p className="text-sm text-gray-600">
+                            {order.special_instructions}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -353,23 +444,32 @@ export default function OrderManagementPage() {
                   {/* Status Update */}
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Update Status:</span>
+                      <span className="text-sm font-medium">
+                        Update Status:
+                      </span>
                       <div className="flex space-x-2">
-                        {['pending', 'confirmed', 'ready', 'completed'].map((status) => (
-                          <Button
-                            key={status}
-                            variant={order.status === status ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateOrderStatus(order.id, status)}
-                            disabled={updating === order.id}
-                          >
-                            {updating === order.id && order.status === status ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              status.charAt(0).toUpperCase() + status.slice(1)
-                            )}
-                          </Button>
-                        ))}
+                        {['pending', 'confirmed', 'ready', 'completed'].map(
+                          status => (
+                            <Button
+                              key={status}
+                              variant={
+                                order.status === status ? 'default' : 'outline'
+                              }
+                              size="sm"
+                              onClick={() =>
+                                updateOrderStatus(order.id, status)
+                              }
+                              disabled={updating === order.id}
+                            >
+                              {updating === order.id &&
+                              order.status === status ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                status.charAt(0).toUpperCase() + status.slice(1)
+                              )}
+                            </Button>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
@@ -381,4 +481,4 @@ export default function OrderManagementPage() {
       </div>
     </div>
   );
-} 
+}
