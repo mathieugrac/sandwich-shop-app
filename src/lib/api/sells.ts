@@ -75,5 +75,8 @@ export async function fetchNextActiveSell(): Promise<NextActiveSell> {
     throw new Error('Failed to fetch next active sell');
   }
 
-  return response.json();
+  const data = await response.json();
+  
+  // Return the data even if it's empty (no active sell)
+  return data;
 } 

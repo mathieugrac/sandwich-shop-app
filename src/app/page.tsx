@@ -81,10 +81,37 @@ export default function Home() {
               <p className="text-gray-600">Loading menu...</p>
             </div>
           </section>
-        ) : error ||
-          !sellData ||
-          !sellData.products ||
-          sellData.products.length === 0 ? (
+        ) : error ? (
+          <section>
+            <div className="text-center py-8">
+              <div className="max-w-md mx-auto">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Something went wrong
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Please try again later
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : !sellData || !sellData.products || sellData.products.length === 0 ? (
           <section>
             <div className="text-center py-8">
               <div className="max-w-md mx-auto">
