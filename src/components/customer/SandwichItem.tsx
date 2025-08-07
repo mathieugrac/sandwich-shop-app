@@ -14,6 +14,7 @@ interface SandwichItemProps {
 
 export function SandwichItem({
   name,
+  description,
   price,
   availableStock,
   imageUrl,
@@ -59,7 +60,7 @@ export function SandwichItem({
         </div>
 
         {/* Stock Status */}
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-600 mb-2">
           {isSoldOut ? (
             <span className="italic text-gray-400">SOLD OUT</span>
           ) : isLowStock ? (
@@ -72,6 +73,13 @@ export function SandwichItem({
             </span>
           )}
         </div>
+
+        {/* Description */}
+        {description && (
+          <div className="text-sm text-gray-600 leading-relaxed">
+            {description}
+          </div>
+        )}
       </div>
     </Card>
   );
