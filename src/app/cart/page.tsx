@@ -53,16 +53,18 @@ export default function CartPage() {
   };
 
   // Handle place order
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = () => {
     if (!selectedTime) {
       alert('Please select a pickup time');
       return;
     }
 
-    setIsLoading(true);
-    // TODO: Implement order placement logic
-    console.log('Placing order:', { items, selectedTime, comment, totalPrice });
-    setIsLoading(false);
+    // Save pickup time and special instructions to localStorage for checkout
+    localStorage.setItem('pickupTime', selectedTime);
+    localStorage.setItem('specialInstructions', comment);
+    
+    // Navigate to checkout page
+    router.push('/checkout');
   };
 
   // If cart is empty, redirect to home

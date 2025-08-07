@@ -54,6 +54,8 @@
 
 We are developing a custom web application for a local sandwich shop to handle pre-orders during lunch rush hours. The shop has limited daily inventory and needs to prevent overselling while providing customers with a convenient ordering experience.
 
+**Target Audience:** International workers based in a coworking space, requiring support for international phone numbers and diverse customer base.
+
 ### Problem Statement
 
 - Manual phone orders create bottlenecks during lunch rush
@@ -470,6 +472,76 @@ CREATE POLICY "Anyone can create orders" ON orders
 ### ⚠️ Current Blockers
 
 - None currently
+
+### 📋 MVP Requirements (Phase 3 Remaining)
+
+#### Customer Information Form
+
+- **Required Fields:** Name (min 3 chars), Email, Phone (optional)
+- **Validation:** Email format validation, submit-only validation
+- **Phone Formatting:** International phone number support with formatting on submit
+- **Flow:** After cart review → new customer info page
+- **Storage:** Auto-save to localStorage for repeat customers
+- **Email Confirmation:** Send confirmation email to validate email address
+
+#### Order Placement
+
+- **Order Creation:** Connect to `/api/orders` endpoint
+- **Inventory Reservation:** Real-time inventory checking and reservation
+- **Error Handling:** Handle insufficient inventory, validation errors
+- **Order Number:** Generate unique order numbers
+
+#### Order Confirmation
+
+- **Confirmation Page:** Display order summary with pickup details
+- **Email System:** Send order confirmation emails
+- **Order Number:** Display generated order number
+
+### 🚀 Future Improvements (Post-MVP)
+
+#### Customer Experience
+
+- **Repeat Customer Tracking:** Customer accounts and order history
+- **Guest Checkout:** Option for one-time orders without account
+- **Auto-complete:** Common names/emails from localStorage
+- **Estimated Pickup Time:** Show based on current time + prep time
+- **Order Again Feature:** Quick reorder from previous orders
+
+#### Business Logic
+
+- **Inventory Limits:** Prevent ordering more than available stock
+- **Order Limits:** Maximum orders per customer per day
+- **High Order Warnings:** Alert for unusually large orders
+- **Order Modification:** Allow customers to modify/cancel orders
+- **Order Status Updates:** Real-time status (preparing, ready, etc.)
+
+#### Data & Security
+
+- **Data Encryption:** Encrypt sensitive customer data
+- **Privacy Compliance:** GDPR and other privacy regulations
+- **Data Retention:** Implement data retention policies
+- **Data Export/Deletion:** Customer data management options
+
+#### Communication
+
+- **SMS Notifications:** Order confirmations and status updates
+- **Email Validation:** Double-opt-in email confirmation
+- **Dietary Restrictions:** Collect and track dietary preferences
+- **Allergy Tracking:** Special handling for food allergies
+
+#### Accessibility & UX
+
+- **Voice Input:** Accessibility support for voice commands
+- **Keyboard Navigation:** Full keyboard support for all interactions
+- **Multi-step Forms:** Guided checkout process
+- **Mobile Optimization:** Enhanced mobile experience
+
+#### Technical Improvements
+
+- **Real-time Updates:** Live inventory and order status
+- **Offline Support:** Basic PWA features for offline viewing
+- **Performance:** Optimize loading times and responsiveness
+- **Analytics:** Customer behavior and order analytics
 
 ### 📝 Notes
 

@@ -116,4 +116,18 @@ CREATE POLICY "Anyone can create orders" ON orders
 INSERT INTO products (name, description, price, category, sort_order) VALUES
 ('Nutty Beet', 'honey-roasted beetroot, creamy labneh, zaatar, crunchy hazelnuts, pickled oignons and fresh mint', 9, 'sandwich', 1),
 ('Umami Mush', 'Marinated oyster mushrooms, crispy buckwheat, pickled apple, fresh coriander and miso butter', 10, 'sandwich', 2),
-('Burgundy Beef', 'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter', 11, 'sandwich', 3); 
+('Burgundy Beef', 'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter', 11, 'sandwich', 3);
+
+-- Sample inventory data for today (replace CURRENT_DATE with actual date if needed)
+INSERT INTO daily_inventory (product_id, date, total_quantity, reserved_quantity)
+SELECT 
+  p.id,
+  CURRENT_DATE,
+  CASE 
+    WHEN p.name = 'Nutty Beet' THEN 0
+    WHEN p.name = 'Umami Mush' THEN 20
+    WHEN p.name = 'Burgundy Beef' THEN 3
+    ELSE 10
+  END,
+  0
+FROM products p; 

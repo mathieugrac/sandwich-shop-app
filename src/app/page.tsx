@@ -1,54 +1,58 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { MainLayout } from '@/components/shared/MainLayout';
 import { SandwichItem } from '@/components/customer/SandwichItem';
 import { AboutSection } from '@/components/customer/AboutSection';
 import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 import { useCart } from '@/lib/cart-context';
-
-// Mock data for demonstration
-const sandwiches = [
-  {
-    id: 1,
-    name: 'Umami Mush',
-    description:
-      'Marinated oyster mushrooms, crispy buckwheat, pickled apple, fresh coriander and miso butter',
-    price: 10.0,
-    availableStock: 20,
-    imageUrl: undefined,
-  },
-  {
-    id: 2,
-    name: 'Nutty Beet',
-    description:
-      'honey-roasted beetroot, creamy labneh, zaatar, crunchy hazelnuts, pickled oignons and fresh mint',
-    price: 9.0,
-    availableStock: 0,
-    imageUrl: undefined,
-  },
-  {
-    id: 3,
-    name: 'Bourgundy Beef',
-    description:
-      'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter',
-    price: 11.0,
-    availableStock: 3,
-    imageUrl: undefined,
-  },
-];
+import { fetchProducts, Product } from '@/lib/api/products';
+import { fetchInventory, InventoryItem } from '@/lib/api/inventory';
 
 export default function Home() {
   const { addToCart } = useCart();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAddToCart = (sandwichId: number) => {
-    const sandwich = sandwiches.find(s => s.id === sandwichId);
-    if (sandwich) {
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [productsData, inventoryData] = await Promise.all([
+          fetchProducts(),
+          fetchInventory(today),
+        ]);
+        
+        setProducts(productsData);
+        setInventory(inventoryData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const handleAddToCart = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    if (product) {
       addToCart({
-        id: sandwich.id,
-        name: sandwich.name,
-        price: sandwich.price,
+        id: product.id,
+        name: product.name,
+        price: product.price,
       });
     }
+  };
+
+  const getAvailableStock = (productId: string) => {
+    const inventoryItem = inventory.find(item => item.product_id === productId);
+    return inventoryItem?.available_quantity || 0;
   };
 
   const formatDate = () => {
@@ -77,19 +81,29 @@ export default function Home() {
             <p className="text-gray-600">{formatDate()}</p>
           </div>
 
-          <div className="space-y-5">
-            {sandwiches.map(sandwich => (
-              <SandwichItem
-                key={sandwich.id}
-                name={sandwich.name}
-                description={sandwich.description}
-                price={sandwich.price}
-                availableStock={sandwich.availableStock}
-                imageUrl={sandwich.imageUrl}
-                onAddToCart={() => handleAddToCart(sandwich.id)}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Loading menu...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-600">Error: {error}</p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {products.map(product => (
+                <SandwichItem
+                  key={product.id}
+                  name={product.name}
+                  description={product.description}
+                  price={product.price}
+                  availableStock={getAvailableStock(product.id)}
+                  imageUrl={product.image_url}
+                  onAddToCart={() => handleAddToCart(product.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* About Section */}
