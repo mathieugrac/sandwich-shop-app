@@ -22,15 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/client';
-import {
-  ArrowLeft,
-  Save,
-  Package,
-  AlertTriangle,
-  CheckCircle,
-  Loader2,
-  Calendar,
-} from 'lucide-react';
+import { ArrowLeft, Save, Package, Loader2, Calendar } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -403,8 +395,8 @@ export default function InventoryManagementPage() {
                     ).toLocaleDateString()}
                 </CardTitle>
                 <CardDescription>
-                  Set quantities for this sell's menu items. Changes will be
-                  reflected immediately for customers.
+                  Set quantities for this sell&apos;s menu items. Changes will
+                  be reflected immediately for customers.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -510,8 +502,8 @@ export default function InventoryManagementPage() {
                     <div className="text-2xl font-bold text-red-600">
                       {
                         inventory.filter(
-                          item => 
-                            item.available_quantity === 0 && 
+                          item =>
+                            item.available_quantity === 0 &&
                             item.total_quantity > 0
                         ).length
                       }

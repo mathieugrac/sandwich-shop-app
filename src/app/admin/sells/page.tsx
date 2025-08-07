@@ -14,13 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeft,
@@ -31,8 +25,6 @@ import {
   Clock,
   AlertCircle,
   Loader2,
-  Edit,
-  Trash2,
 } from 'lucide-react';
 
 interface Sell {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 export default function TestFetch() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<object | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
