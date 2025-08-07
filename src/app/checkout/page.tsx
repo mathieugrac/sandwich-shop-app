@@ -169,6 +169,20 @@ export default function CheckoutPage() {
         phone: formattedPhone,
       });
 
+      // Save active order for banner display
+      const activeOrder = {
+        orderNumber: result.order.order_number,
+        pickupTime: pickupTime,
+        pickupDate: new Date().toISOString().split('T')[0], // Today's date
+        items: items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+        })),
+        totalAmount: totalPrice,
+      };
+      console.log('Checkout: Saving active order:', activeOrder);
+      localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
+
       // Clear cart and localStorage
       clearCart();
       localStorage.removeItem('pickupTime');
