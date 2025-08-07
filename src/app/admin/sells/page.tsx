@@ -5,14 +5,26 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/client';
-import { 
-  ArrowLeft, 
-  Plus, 
+import {
+  ArrowLeft,
+  Plus,
   Calendar,
   Settings,
   CheckCircle,
@@ -20,7 +32,7 @@ import {
   AlertCircle,
   Loader2,
   Edit,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 
 interface Sell {
@@ -46,7 +58,10 @@ export default function SellManagementPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newSellDate, setNewSellDate] = useState('');
   const [newSellNotes, setNewSellNotes] = useState('');
@@ -58,7 +73,9 @@ export default function SellManagementPage() {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) {
       router.push('/admin');
     }
@@ -70,7 +87,7 @@ export default function SellManagementPage() {
       const { data: sellsData } = await supabase
         .from('sells')
         .select('*')
-        .order('sell_date', { ascending: false });
+        .order('sell_date', { ascending: true });
 
       // Load products
       const { data: productsData } = await supabase
@@ -120,9 +137,7 @@ export default function SellManagementPage() {
         reserved_quantity: 0,
       }));
 
-      await supabase
-        .from('sell_inventory')
-        .insert(inventoryData);
+      await supabase.from('sell_inventory').insert(inventoryData);
 
       setMessage({ type: 'success', text: 'Sell created successfully!' });
       setShowCreateForm(false);
@@ -131,7 +146,10 @@ export default function SellManagementPage() {
       await loadSells();
     } catch (error) {
       console.error('Error creating sell:', error);
-      setMessage({ type: 'error', text: 'Failed to create sell. Please try again.' });
+      setMessage({
+        type: 'error',
+        text: 'Failed to create sell. Please try again.',
+      });
     } finally {
       setCreating(false);
     }
@@ -145,11 +163,13 @@ export default function SellManagementPage() {
         .eq('id', sellId);
 
       // Update local state
-      setSells(sells.map(sell => 
-        sell.id === sellId 
-          ? { ...sell, status: newStatus as Sell['status'] }
-          : sell
-      ));
+      setSells(
+        sells.map(sell =>
+          sell.id === sellId
+            ? { ...sell, status: newStatus as Sell['status'] }
+            : sell
+        )
+      );
     } catch (error) {
       console.error('Error updating sell status:', error);
     }
@@ -221,14 +241,18 @@ export default function SellManagementPage() {
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => router.push('/admin/dashboard')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/admin/dashboard')}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
             <h1 className="text-xl font-semibold">Sell Management</h1>
           </div>
           <div className="flex items-center space-x-2">
-            <Button 
+            <Button
               onClick={() => setShowCreateForm(true)}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -241,8 +265,14 @@ export default function SellManagementPage() {
 
       <div className="max-w-7xl mx-auto p-4">
         {message && (
-          <Alert className={`mb-4 ${message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+          <Alert
+            className={`mb-4 ${message.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}
+          >
+            <AlertDescription
+              className={
+                message.type === 'success' ? 'text-green-800' : 'text-red-800'
+              }
+            >
               {message.text}
             </AlertDescription>
           </Alert>
@@ -265,7 +295,7 @@ export default function SellManagementPage() {
                     id="sellDate"
                     type="date"
                     value={newSellDate}
-                    onChange={(e) => setNewSellDate(e.target.value)}
+                    onChange={e => setNewSellDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                     required
                   />
@@ -276,13 +306,13 @@ export default function SellManagementPage() {
                   <Input
                     id="sellNotes"
                     value={newSellNotes}
-                    onChange={(e) => setNewSellNotes(e.target.value)}
+                    onChange={e => setNewSellNotes(e.target.value)}
                     placeholder="Any notes about this sell..."
                   />
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button 
+                  <Button
                     onClick={createSell}
                     disabled={creating}
                     className="bg-green-600 hover:bg-green-700"
@@ -296,7 +326,7 @@ export default function SellManagementPage() {
                       'Create Sell'
                     )}
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => setShowCreateForm(false)}
                   >
@@ -314,14 +344,16 @@ export default function SellManagementPage() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No sells found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No sells found
+                </h3>
                 <p className="text-gray-500">
                   Create your first sell to get started
                 </p>
               </CardContent>
             </Card>
           ) : (
-            sells.map((sell) => (
+            sells.map(sell => (
               <Card key={sell.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
@@ -331,14 +363,19 @@ export default function SellManagementPage() {
                         <CardTitle className="text-lg">
                           {formatDate(sell.sell_date)}
                           {isToday(sell.sell_date) && (
-                            <Badge className="ml-2 bg-blue-100 text-blue-800">Today</Badge>
+                            <Badge className="ml-2 bg-blue-100 text-blue-800">
+                              Today
+                            </Badge>
                           )}
                           {isFuture(sell.sell_date) && (
-                            <Badge className="ml-2 bg-green-100 text-green-800">Future</Badge>
+                            <Badge className="ml-2 bg-green-100 text-green-800">
+                              Future
+                            </Badge>
                           )}
                         </CardTitle>
                         <CardDescription>
-                          Created {new Date(sell.created_at).toLocaleDateString()}
+                          Created{' '}
+                          {new Date(sell.created_at).toLocaleDateString()}
                         </CardDescription>
                       </div>
                     </div>
@@ -346,7 +383,9 @@ export default function SellManagementPage() {
                       {getStatusBadge(sell.status)}
                       <div className="text-right">
                         <div className="text-sm text-gray-500">
-                          {sell.announcement_sent ? 'Announced' : 'Not announced'}
+                          {sell.announcement_sent
+                            ? 'Announced'
+                            : 'Not announced'}
                         </div>
                       </div>
                     </div>
@@ -364,7 +403,9 @@ export default function SellManagementPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/admin/inventory?sell=${sell.id}`)}
+                        onClick={() =>
+                          router.push(`/admin/inventory?sell=${sell.id}`)
+                        }
                       >
                         <Settings className="h-4 w-4 mr-2" />
                         Manage Inventory
@@ -372,7 +413,9 @@ export default function SellManagementPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/admin/orders?sell=${sell.id}`)}
+                        onClick={() =>
+                          router.push(`/admin/orders?sell=${sell.id}`)
+                        }
                       >
                         <Calendar className="h-4 w-4 mr-2" />
                         View Orders
@@ -417,4 +460,4 @@ export default function SellManagementPage() {
       </div>
     </div>
   );
-} 
+}
