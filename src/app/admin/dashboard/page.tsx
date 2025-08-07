@@ -171,6 +171,23 @@ export default function AdminDashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/sells')}>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Manage Sells
+              </CardTitle>
+              <CardDescription>
+                Create and manage sells for specific dates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600">
+                Create sells in advance and manage their status
+              </p>
+            </CardContent>
+          </Card>
+
           <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigateTo('/admin/inventory')}>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -178,12 +195,12 @@ export default function AdminDashboardPage() {
                 Manage Inventory
               </CardTitle>
               <CardDescription>
-                Set daily inventory quantities for all products
+                Set inventory quantities for specific sells
               </CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-600">
-                Update stock levels for today's menu items
+                Update stock levels for sell menu items
               </p>
             </CardContent>
           </Card>
