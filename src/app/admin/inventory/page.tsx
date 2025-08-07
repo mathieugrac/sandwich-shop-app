@@ -103,7 +103,7 @@ export default function InventoryManagementPage() {
       const { data: sellsData } = await supabase
         .from('sells')
         .select('*')
-        .order('sell_date', { ascending: false });
+        .order('sell_date', { ascending: true });
 
       setProducts(productsData || []);
       setSells(sellsData || []);
