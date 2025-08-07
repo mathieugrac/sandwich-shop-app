@@ -8,6 +8,7 @@
 | **Phase 2: Core UI Components** | ✅ COMPLETED | 100%     | -                          |
 | **Phase 3: Customer Features**  | ✅ COMPLETED | 100%     | -                          |
 | **Phase 4: Admin Dashboard**    | ✅ COMPLETED | 100%     | -                          |
+| **Phase 4.5: Business Model Adaptation** | ✅ COMPLETED | 100% | - |
 | **Phase 5: Email & Polish**     | ⏳ PENDING   | 0%       | Start email implementation |
 
 **Current Focus:** Phase 5 - Email confirmations and final polish
@@ -17,6 +18,30 @@
 ---
 
 ## 🎯 Key Design Decisions & Architecture
+
+### Business Model & Operations
+
+#### Sell-Based System
+
+- **Sell Creation:** Create sells in advance for specific dates
+- **Inventory Management:** Each sell has its own inventory quantities
+- **Order Linking:** All orders are linked to specific sells
+- **Customer Access:** Customers only see the next active sell's menu
+- **Admin Focus:** Order management focuses on the next active sell
+
+#### Order Status Flow
+
+- **Pending:** Needs admin confirmation (default state)
+- **Confirmed:** Manually accepted, inventory updated
+- **Prepared:** Sandwich wrapped and ready
+- **Completed:** Delivered and payment received
+
+#### Admin Workflow
+
+- **Primary Task:** "Inbox 0" for pending orders
+- **Order Management:** Clickable status cards for quick filtering
+- **Dashboard Priority:** View Orders → Manage Sells → Manage Inventory
+- **Default Focus:** Pending orders when landing on Order Management
 
 ### Layout Strategy
 
@@ -44,9 +69,9 @@
 
 ### Inventory Management Strategy
 
+- **Sell-Based Inventory:** Each sell has specific inventory quantities
 - **Real-time Validation:** Check availability when adding to cart
-- **Temporary Holding:** 5-minute hold while user is on cart page
-- **Stock Display:** "Sold Out", "Low Stock", and quantity indicators
+- **Stock Display:** "Not Available", "Sold Out", "Low Stock", and "Available"
 - **Database Integration:** Supabase real-time updates for inventory changes
 
 ---
@@ -55,7 +80,7 @@
 
 ### Business Context
 
-We are developing a custom web application for a local sandwich shop to handle pre-orders during lunch rush hours. The shop has limited daily inventory and needs to prevent overselling while providing customers with a convenient ordering experience.
+We are developing a custom web application for a local sandwich shop to handle pre-orders during lunch rush hours. The shop operates on a "sell-based" system where inventory and orders are tied to specific "sells" (events) rather than just daily inventory.
 
 **Target Audience:** International workers based in a coworking space, requiring support for international phone numbers and diverse customer base.
 
@@ -104,7 +129,7 @@ We are developing a custom web application for a local sandwich shop to handle p
 
 Build a minimum viable product (MVP) that allows customers to:
 
-- View available sandwiches for the day
+- View available sandwiches for the next active sell
 - Place pre-orders with pickup times
 - Receive order confirmations via email
 - Enable shop owner to manage orders efficiently
@@ -170,7 +195,7 @@ CREATE TABLE products (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Sells table (replaces daily_inventory concept)
+-- Sells table (sell-based model)
 CREATE TABLE sells (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sell_date DATE NOT NULL UNIQUE,
@@ -219,15 +244,6 @@ CREATE TABLE order_items (
   unit_price DECIMAL(10,2) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Admin users (shop owner/staff)
-CREATE TABLE admin_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) UNIQUE NOT NULL,
-  name VARCHAR(100) NOT NULL,
-  role VARCHAR(20) DEFAULT 'admin',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
 ```
 
 ### Database Functions
@@ -241,21 +257,42 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to reserve inventory
-CREATE OR REPLACE FUNCTION reserve_inventory(p_product_id UUID, p_date DATE, p_quantity INTEGER)
+-- Function to get next active sell
+CREATE OR REPLACE FUNCTION get_next_active_sell()
+RETURNS TABLE (
+  id UUID,
+  sell_date DATE,
+  status VARCHAR(20)
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT s.id, s.sell_date, s.status
+  FROM sells s
+  WHERE s.status = 'active' AND s.sell_date >= CURRENT_DATE
+  ORDER BY s.sell_date ASC
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to reserve sell inventory
+CREATE OR REPLACE FUNCTION reserve_sell_inventory(
+  p_sell_id UUID,
+  p_product_id UUID,
+  p_quantity INTEGER
+)
 RETURNS BOOLEAN AS $$
 DECLARE
   available_qty INTEGER;
 BEGIN
   SELECT available_quantity INTO available_qty
-  FROM daily_inventory
-  WHERE product_id = p_product_id AND date = p_date;
+  FROM sell_inventory
+  WHERE sell_id = p_sell_id AND product_id = p_product_id;
 
   IF available_qty >= p_quantity THEN
-    UPDATE daily_inventory
+    UPDATE sell_inventory
     SET reserved_quantity = reserved_quantity + p_quantity,
         updated_at = NOW()
-    WHERE product_id = p_product_id AND date = p_date;
+    WHERE sell_id = p_sell_id AND product_id = p_product_id;
     RETURN TRUE;
   ELSE
     RETURN FALSE;
@@ -269,7 +306,8 @@ $$ LANGUAGE plpgsql;
 ```sql
 -- Enable RLS
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE daily_inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sells ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sell_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 
@@ -277,9 +315,13 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public can view active products" ON products
   FOR SELECT USING (active = true);
 
--- Public read access for current inventory
-CREATE POLICY "Public can view current inventory" ON daily_inventory
-  FOR SELECT USING (date >= CURRENT_DATE);
+-- Public read access for active sells
+CREATE POLICY "Public can view active sells" ON sells
+  FOR SELECT USING (status = 'active');
+
+-- Public read access for sell inventory
+CREATE POLICY "Public can view sell inventory" ON sell_inventory
+  FOR SELECT USING (true);
 
 -- Authenticated admin access for orders
 CREATE POLICY "Admin can manage orders" ON orders
@@ -296,15 +338,16 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 ### Customer-Facing Features
 
-#### Product Catalog
+#### Product Catalog (Sell-Based)
 
-- **User Story:** As a customer, I want to see today's available sandwiches with descriptions and prices
+- **User Story:** As a customer, I want to see the next active sell's available sandwiches
 - **Acceptance Criteria:**
-  - ✅ Display all active products for today
+  - ✅ Display only products from the next active sell
   - ✅ Show remaining quantity for each item
-  - ✅ Display "Sold Out" when quantity = 0
+  - ✅ Display "Not Available", "Sold Out", "Low Stock", or "Available"
   - ✅ Mobile-responsive grid layout
   - ✅ Product images (placeholder if none)
+  - ✅ Show "shop closed" message when no active sell
 
 #### Shopping Cart Experience
 
@@ -358,22 +401,42 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 - **User Story:** As a shop owner, I want to create sells in advance and manage them
 - **Acceptance Criteria:**
-  - Create sells for specific dates
-  - Set sell status (draft → active → completed)
-  - Manage inventory quantities per sell
-  - Track announcement status
-  - View sell overview with revenue and order counts
+  - ✅ Create sells for specific dates
+  - ✅ Set sell status (draft → active → completed)
+  - ✅ Manage inventory quantities per sell
+  - ✅ Track announcement status
+  - ✅ View sell overview with revenue and order counts
 
 #### Order Management
 
 - **User Story:** As a shop owner, I want to quickly process orders for the next sell
 - **Acceptance Criteria:**
-  - Show only orders for the next active sell
-  - Table view with status tabs (Pending, Confirmed, Prepared, Completed)
-  - Bulk actions for quick processing
-  - Order status flow: Pending → Confirmed → Prepared → Completed
-  - Revenue tracking per sell
-  - Quick "inbox 0" processing for pending orders
+  - ✅ Show only orders for the next active sell
+  - ✅ Clickable status cards for quick filtering
+  - ✅ Default to Pending tab when landing on page
+  - ✅ Order status flow: Pending → Confirmed → Prepared → Completed
+  - ✅ Revenue tracking per sell
+  - ✅ Quick "inbox 0" processing for pending orders
+
+#### Inventory Management
+
+- **User Story:** As a shop owner, I want to set inventory quantities for specific sells
+- **Acceptance Criteria:**
+  - ✅ Select sell from dropdown
+  - ✅ Set quantities for each product per sell
+  - ✅ Visual status indicators (Not Available, Sold Out, Low Stock, Available)
+  - ✅ Bulk quantity updates
+  - ✅ Real-time inventory tracking
+
+#### Dashboard Overview
+
+- **User Story:** As a shop owner, I want to see key metrics for the next sell
+- **Acceptance Criteria:**
+  - ✅ Next sell orders count
+  - ✅ Pending orders count
+  - ✅ Revenue for next sell
+  - ✅ Active products count
+  - ✅ Quick action cards in priority order
 
 ---
 
@@ -420,14 +483,6 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 **Status:** ✅ **COMPLETED** - All core UI components are built and functional
 
-**Key Features Implemented:**
-
-- **Product Cards:** Display sandwiches with stock status, pricing, and add-to-cart functionality
-- **Cart Context:** Global state management with localStorage persistence
-- **Sticky Basket Button:** Appears when items are in cart, navigates to cart page
-- **Cart Page:** Dedicated page with items, quantity controls, pickup time selection, and order placement
-- **Responsive Design:** Mobile-first approach with 480px max-width container
-
 ### Phase 3: Customer Features ✅ COMPLETED
 
 **Tasks:**
@@ -449,16 +504,6 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 **Status:** ✅ **COMPLETED** - 100% complete, full customer flow implemented
 
-**Current Implementation:**
-
-- **Product Catalog:** Real Supabase integration with 3 sandwiches (Umami Mush, Nutty Beet, Bourgundy Beef)
-- **Cart Functionality:** Full cart management with localStorage persistence
-- **Order Form:** Complete cart page with pickup time, location, and order placement
-- **Customer Form:** Dedicated checkout page with validation and localStorage persistence
-- **Order Confirmation:** Complete confirmation page with order details
-- **Database Integration:** Full Supabase integration with order creation and inventory reservation
-- **API Routes:** Complete API implementation for products, inventory, and orders
-
 ### Phase 4: Admin Dashboard ✅ COMPLETED
 
 **Tasks:**
@@ -478,60 +523,54 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 **Status:** ✅ **COMPLETED** - Full admin dashboard implemented
 
-**Key Features Implemented:**
-
-- **Admin Authentication:** Secure login with Supabase Auth
-- **Dashboard Overview:** Real-time stats with order counts, revenue, and product information
-- **Inventory Management:** Set daily inventory quantities with bulk operations
-- **Order Management:** View and update order statuses with filtering
-- **Settings Page:** Basic shop configuration interface
-- **Responsive Design:** Mobile-friendly admin interface
-
-### Phase 4.5: Business Model Adaptation 🔄 IN PROGRESS
+### Phase 4.5: Business Model Adaptation ✅ COMPLETED
 
 **Tasks:**
 
-- [ ] Update database schema for sell-based model
-- [ ] Create sell management interface
-- [ ] Update order management for sell-focused workflow
-- [ ] Modify customer interface for next sell only
-- [ ] Implement new order status flow
-- [ ] Add bulk order processing features
+- [x] Update database schema for sell-based model
+- [x] Create sell management interface
+- [x] Update order management for sell-focused workflow
+- [x] Modify customer interface for next sell only
+- [x] Implement new order status flow
+- [x] Add clickable status cards for filtering
 
 **Deliverables:**
 
-- [ ] Sell management system
-- [ ] Updated order processing workflow
-- [ ] Customer interface for next sell
-- [ ] Enhanced admin dashboard
+- [x] Sell management system
+- [x] Updated order processing workflow
+- [x] Customer interface for next sell
+- [x] Enhanced admin dashboard
 
-**Status:** 🔄 **IN PROGRESS** - Adapting to business model requirements
+**Status:** ✅ **COMPLETED** - Sell-based business model fully implemented
 
-**Required Modifications:**
+**Key Implementations:**
 
 #### Database Schema Changes
 
-- **New `sells` table:** Replace daily inventory concept with sell-based model
-- **New `sell_inventory` table:** Link inventory to specific sells
-- **Updated `orders` table:** Link orders to sells, update status flow
+- **✅ New `sells` table:** Replace daily inventory concept with sell-based model
+- **✅ New `sell_inventory` table:** Link inventory to specific sells
+- **✅ Updated `orders` table:** Link orders to sells, update status flow
+- **✅ PostgreSQL functions:** `get_next_active_sell()`, `reserve_sell_inventory()`
 
 #### Admin Interface Changes
 
-- **Sell Management:** Create and manage sells in advance
-- **Order Management:** Focus on next sell with table view and status tabs
-- **Dashboard:** Show next sell info and pending orders prominently
+- **✅ Sell Management:** Create and manage sells in advance
+- **✅ Order Management:** Focus on next sell with clickable status cards
+- **✅ Dashboard:** Show next sell info and pending orders prominently
+- **✅ Inventory Management:** Sell-specific inventory management
 
 #### Customer Interface Changes
 
-- **Home page:** Only show next active sell's menu
-- **Order flow:** Link orders to specific sells
+- **✅ Home page:** Only show next active sell's menu
+- **✅ Order flow:** Link orders to specific sells
+- **✅ Error handling:** Handle "no active sell" gracefully
 
 #### Order Status Flow
 
-- **Pending:** Needs admin confirmation
-- **Confirmed:** Manually accepted, stock updated
-- **Prepared:** Sandwich wrapped and ready
-- **Completed:** Delivered and payment received
+- **✅ Pending:** Needs admin confirmation (default state)
+- **✅ Confirmed:** Manually accepted, stock updated
+- **✅ Prepared:** Sandwich wrapped and ready
+- **✅ Completed:** Delivered and payment received
 
 ### Phase 5: Email & Polish ⏳ PENDING
 
@@ -558,47 +597,18 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 ### ✅ Recently Completed
 
-- [x] **2025-08-04:** Project initialization with Next.js 14 + TypeScript
-- [x] **2025-08-04:** Supabase project setup and database schema
-- [x] **2025-08-04:** Environment variables configuration
-- [x] **2025-08-04:** Vercel deployment pipeline setup
-- [x] **2025-08-04:** Dependencies installation (React Hook Form, Zod, TanStack Query)
-- [x] **2025-08-05:** Shadcn UI installation and component setup
-- [x] **2025-08-05:** Responsive layout components (Header, Footer, MainLayout, Container)
-- [x] **2025-01-XX:** Product catalog implementation with SandwichItem component
-- [x] **2025-01-XX:** Cart context implementation with localStorage persistence
-- [x] **2025-01-XX:** StickyBasketButton with navigation to cart page
-- [x] **2025-01-XX:** Complete cart page with order form functionality
-- [x] **2025-01-XX:** Pickup time selection with 15-minute intervals
-- [x] **2025-01-XX:** Location integration with Google Maps
-- [x] **2025-01-XX:** Order summary and place order button
-- [x] **2025-01-XX:** Custom cart page layout without header/footer
-- [x] **2025-01-XX:** Stock status display (Available, Low Stock, Sold Out)
-- [x] **2025-01-XX:** Supabase integration for products and inventory
-- [x] **2025-01-XX:** Complete API routes for products, inventory, and orders
-- [x] **2025-01-XX:** Customer information form with validation
-- [x] **2025-01-XX:** Order placement with database integration
-- [x] **2025-01-XX:** Order confirmation page with order details
-- [x] **2025-01-XX:** Inventory reservation system
-- [x] **2025-01-XX:** Multi-step customer flow (Home → Cart → Checkout → Confirmation)
+- [x] **Phase 4.5:** Sell-based business model implementation
+- [x] **Database Migration:** Updated schema for sell-based model
+- [x] **Admin Authentication:** Secure login with Supabase Auth
+- [x] **Sell Management:** Create and manage sells in advance
+- [x] **Order Management:** Clickable status cards with default to Pending
+- [x] **Inventory Management:** Sell-specific inventory management
+- [x] **Customer Interface:** Next active sell only display
+- [x] **Dashboard Reorganization:** View Orders → Manage Sells → Manage Inventory
+- [x] **Error Handling:** Graceful handling of "no active sell" state
 
 ### 🔄 Current Tasks
 
-- [x] **Phase 2.1:** Install and configure Shadcn UI components
-- [x] **Phase 2.2:** Create responsive layout components
-- [x] **Phase 2.3:** Build product card component
-- [x] **Phase 2.4:** Create shopping cart component
-- [x] **Phase 2.5:** Implement basic form components
-- [x] **Phase 3.1:** Integrate Supabase for product catalog
-- [x] **Phase 3.2:** Implement real-time inventory checking
-- [x] **Phase 3.3:** Add customer information form
-- [x] **Phase 3.4:** Create order confirmation page
-- [x] **Phase 3.5:** Implement order placement with database
-- [x] **Phase 4.1:** Set up Supabase authentication for admin
-- [x] **Phase 4.2:** Create admin login page
-- [x] **Phase 4.3:** Build inventory management interface
-- [x] **Phase 4.4:** Implement order management dashboard
-- [x] **Phase 4.5:** Add order status updates
 - [ ] **Phase 5.1:** Set up email service integration
 - [ ] **Phase 5.2:** Create order confirmation email template
 - [ ] **Phase 5.3:** Implement email sending functionality
@@ -635,7 +645,7 @@ CREATE POLICY "Anyone can create orders" ON orders
 - **Auto-complete:** Common names/emails from localStorage
 - **Estimated Pickup Time:** Show based on current time + prep time
 - **Order Again Feature:** Quick reorder from previous orders
-- **Order Banner:** Smart banner to remind users of active orders and prevent duplicate ordering (currently disabled for MVP)
+- **Order Banner:** Smart banner to remind users of active orders and prevent duplicate ordering
 
 #### Business Logic
 
@@ -675,12 +685,13 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 ### 📝 Notes
 
-- Database schema is ready with sample products
+- Database schema is ready with sell-based model
 - Supabase client is configured
 - All dependencies are installed
 - Complete UI flow is implemented and functional
 - Full customer ordering flow is working with database integration
-- Ready to implement admin dashboard
+- Admin dashboard is fully functional with sell-based workflow
+- Ready to implement email system
 
 ### 🎯 Next Priority: Phase 5 Completion
 
@@ -707,10 +718,11 @@ CREATE POLICY "Anyone can create orders" ON orders
 ### Complete Customer Journey (Implemented)
 
 1. **Home Page (`/`)**
-   - View today's menu with 3 sandwiches from Supabase
-   - See real-time stock status (Available, Low Stock, Sold Out)
+   - View next active sell's menu with sandwiches from Supabase
+   - See real-time stock status (Not Available, Sold Out, Low Stock, Available)
    - Add items to cart using + button
    - Sticky basket button appears with count and total
+   - Shows "shop closed" message when no active sell
 
 2. **Cart Page (`/cart`)**
    - Review all cart items with quantities
@@ -733,6 +745,34 @@ CREATE POLICY "Anyone can create orders" ON orders
    - Show order details and pickup information
    - Customer can return to home page
 
+### Complete Admin Journey (Implemented)
+
+1. **Admin Login (`/admin`)**
+   - Secure authentication with Supabase Auth
+   - Email/password login
+   - Redirect to dashboard on success
+
+2. **Dashboard (`/admin/dashboard`)**
+   - Overview of next sell orders and revenue
+   - Quick action cards: View Orders → Manage Sells → Manage Inventory
+   - Real-time stats for pending orders
+
+3. **Order Management (`/admin/orders`)**
+   - Default to Pending tab for quick processing
+   - Clickable status cards for filtering (Pending, Confirmed, Ready, Completed)
+   - Order status updates with inventory reservation
+   - Focus on next active sell only
+
+4. **Sell Management (`/admin/sells`)**
+   - Create sells in advance for specific dates
+   - Manage sell status (draft → active → completed)
+   - View sell overview with revenue and order counts
+
+5. **Inventory Management (`/admin/inventory`)**
+   - Select sell from dropdown
+   - Set quantities for each product per sell
+   - Visual status indicators for inventory levels
+
 ### Technical Architecture
 
 #### File Structure (Current)
@@ -740,42 +780,62 @@ CREATE POLICY "Anyone can create orders" ON orders
 ```
 src/
 ├── app/
+│   ├── admin/
+│   │   ├── page.tsx              # Admin login
+│   │   ├── dashboard/
+│   │   │   └── page.tsx          # Admin dashboard
+│   │   ├── orders/
+│   │   │   └── page.tsx          # Order management
+│   │   ├── sells/
+│   │   │   └── page.tsx          # Sell management
+│   │   └── inventory/
+│   │       └── page.tsx          # Inventory management
 │   ├── cart/
-│   │   └── page.tsx          # Cart page with order form
+│   │   └── page.tsx              # Cart page with order form
 │   ├── checkout/
-│   │   └── page.tsx          # Customer information form
+│   │   └── page.tsx              # Customer information form
 │   ├── confirmation/
-│   │   └── page.tsx          # Order confirmation page
+│   │   └── page.tsx              # Order confirmation page
 │   ├── api/
 │   │   ├── products/
-│   │   │   └── route.ts      # Products API
+│   │   │   └── route.ts          # Products API
 │   │   ├── inventory/
 │   │   │   └── [date]/
-│   │   │       └── route.ts  # Inventory API
-│   │   └── orders/
-│   │       └── route.ts      # Orders API
+│   │   │       └── route.ts      # Inventory API
+│   │   ├── orders/
+│   │   │   └── route.ts          # Orders API
+│   │   ├── sells/
+│   │   │   ├── route.ts          # Sells API
+│   │   │   ├── [id]/inventory/
+│   │   │   │   └── route.ts      # Sell inventory API
+│   │   │   └── next-active/
+│   │   │       └── route.ts      # Next active sell API
+│   │   └── test/
+│   │       └── route.ts          # Test API
 │   ├── globals.css
-│   ├── layout.tsx            # Root layout with CartProvider
-│   └── page.tsx              # Home page with product catalog
+│   ├── layout.tsx                # Root layout with CartProvider
+│   └── page.tsx                  # Home page with product catalog
 ├── components/
-│   ├── ui/                   # Shadcn UI components
+│   ├── ui/                       # Shadcn UI components
 │   ├── customer/
-│   │   ├── SandwichItem.tsx  # Product card component
+│   │   ├── SandwichItem.tsx      # Product card component
 │   │   ├── StickyBasketButton.tsx # Navigation to cart
-│   │   └── AboutSection.tsx  # Home page content
+│   │   └── AboutSection.tsx      # Home page content
+│   ├── admin/                    # Admin components
 │   └── shared/
-│       ├── MainLayout.tsx    # Layout for home page
-│       ├── Header.tsx        # Home page header
-│       └── Footer.tsx        # Home page footer
+│       ├── MainLayout.tsx        # Layout for home page
+│       ├── Header.tsx            # Home page header
+│       └── Footer.tsx            # Home page footer
 ├── lib/
-│   ├── cart-context.tsx      # Cart state management
+│   ├── cart-context.tsx          # Cart state management
 │   ├── api/
-│   │   ├── products.ts       # Products API client
-│   │   └── inventory.ts      # Inventory API client
+│   │   ├── products.ts           # Products API client
+│   │   ├── inventory.ts          # Inventory API client
+│   │   └── sells.ts              # Sells API client
 │   └── supabase/
-│       └── client.ts         # Supabase client
+│       └── client.ts             # Supabase client
 └── types/
-    └── database.ts           # Supabase types
+    └── database.ts               # Supabase types
 ```
 
 #### Key Components
@@ -816,6 +876,11 @@ src/
 - **GET /api/products:** Fetch active products from Supabase
 - **GET /api/inventory/[date]:** Fetch inventory for specific date
 - **POST /api/orders:** Create new order with inventory reservation
+- **GET /api/sells/next-active:** Get next active sell and its products
+- **GET /api/sells:** Get all sells
+- **POST /api/sells:** Create new sell
+- **GET /api/sells/[id]/inventory:** Get inventory for specific sell
+- **PUT /api/sells/[id]/inventory:** Update inventory for specific sell
 
 ### Design Decisions & UX Patterns
 
@@ -842,34 +907,35 @@ src/
 
 #### Stock Status Display
 
-- **Available:** Shows quantity remaining
-- **Low Stock:** "X sandwiches left, hurry up!" (≤3 items)
-- **Sold Out:** "SOLD OUT" with disabled add button
+- **Not Available:** Product not offered for this sell (gray)
+- **Sold Out:** Product offered but no stock left (red)
+- **Low Stock:** "X sandwiches left, hurry up!" (≤3 items, yellow)
+- **Available:** Shows quantity remaining (green)
 
 ### Database Integration
 
 #### Real-time Data
 
 - **Products:** Fetched from Supabase products table
-- **Inventory:** Real-time inventory checking from daily_inventory table
+- **Sells:** Sell-based inventory from sell_inventory table
 - **Orders:** Created in orders and order_items tables
 - **Inventory Reservation:** Automatic reservation when orders are placed
 
 #### API Implementation
 
 - **Products API:** Returns active products with proper error handling
-- **Inventory API:** Returns inventory for specific date with product details
+- **Next Active Sell API:** Returns next active sell with available products
 - **Orders API:** Creates orders with inventory reservation and validation
+- **Sells API:** Manage sells and their inventory
 
-### Current Limitations (To Be Addressed in Phase 4)
+### Current Limitations (To Be Addressed in Phase 5)
 
-1. **No Admin Dashboard:** Missing inventory management interface
-2. **No Admin Authentication:** No secure admin access
-3. **No Email Confirmation:** No order confirmation emails
-4. **No Order Management:** No way to view or update orders
-5. **No Inventory Management:** No interface to set daily inventory
+1. **No Email Confirmation:** No order confirmation emails
+2. **Limited Error Handling:** Basic error handling only
+3. **No Performance Optimization:** Basic performance
+4. **No Final Testing:** End-to-end testing needed
 
-### Key Components to Build (Phase 4)
+### Key Components Built
 
 #### Admin Components
 
@@ -877,6 +943,10 @@ src/
 // Authentication
 <AdminLogin />
 <ProtectedRoute />
+
+// Sell management
+<SellManager sells={sells} />
+<SellForm onSubmit={handleSellCreate} />
 
 // Inventory management
 <InventoryManager products={products} inventory={inventory} />
@@ -961,18 +1031,21 @@ const orderSchema = z.object({
 
 #### Admin Flow
 
-- [ ] Login to admin dashboard
-- [ ] Set daily inventory
-- [ ] View today's orders
-- [ ] Update order status
-- [ ] View order details
+- [x] Login to admin dashboard
+- [x] Create sells in advance
+- [x] Set sell-specific inventory
+- [x] View next sell's orders
+- [x] Update order status
+- [x] View order details
+- [x] Use clickable status cards for filtering
 
 #### Edge Cases
 
 - [x] Try to order more than available inventory
 - [x] Submit order with invalid email
 - [x] Try to select past pickup time
-- [x] Test with no inventory set
+- [x] Test with no active sell
+- [x] Test sell-based inventory management
 - [ ] Test email delivery failures
 
 ### Performance Requirements
@@ -1063,7 +1136,7 @@ INSERT INTO products (name, description, price, category, sort_order) VALUES
 - [x] All features tested and working
 - [ ] Email delivery tested
 - [x] Mobile responsiveness verified
-- [ ] Admin dashboard functional
+- [x] Admin dashboard functional
 - [x] Database backup configured
 - [ ] Error monitoring set up
 - [ ] Performance optimized
@@ -1072,9 +1145,9 @@ INSERT INTO products (name, description, price, category, sort_order) VALUES
 
 - [x] Deploy to production
 - [x] Test complete customer flow
-- [ ] Test admin dashboard
+- [x] Test admin dashboard
 - [ ] Monitor error logs
-- [ ] Set daily inventory
+- [x] Set daily inventory
 - [ ] Announce to customers
 
 ### Post-Launch (Week 1)
@@ -1091,7 +1164,8 @@ INSERT INTO products (name, description, price, category, sort_order) VALUES
 
 ### Daily Tasks
 
-- Set inventory quantities each morning
+- Create sells in advance
+- Set inventory quantities for sells
 - Monitor incoming orders
 - Update order statuses
 - Check email delivery
