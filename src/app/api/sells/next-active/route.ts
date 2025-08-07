@@ -17,14 +17,11 @@ export async function GET() {
     }
 
     if (!nextSell || nextSell.length === 0) {
-      return NextResponse.json(
-        {
-          error: 'No active sell found',
-          message:
-            'The shop is closed for now. Come back later for the next sell.',
-        },
-        { status: 404 }
-      );
+      // Return successful response with empty data instead of 404
+      return NextResponse.json({
+        sell: null,
+        products: [],
+      });
     }
 
     const sell = nextSell[0];
