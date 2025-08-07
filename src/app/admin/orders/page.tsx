@@ -279,12 +279,12 @@ export default function OrderManagementPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Total Orders
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {orders.filter(o => o.status === 'pending').length}
                   </p>
-                  <p className="text-2xl font-bold">{orders.length}</p>
                 </div>
-                <ShoppingCart className="h-8 w-8 text-gray-400" />
+                <Clock className="h-8 w-8 text-yellow-400" />
               </div>
             </CardContent>
           </Card>
@@ -292,12 +292,12 @@ export default function OrderManagementPage() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {orders.filter(o => o.status === 'pending').length}
+                  <p className="text-sm font-medium text-gray-600">Confirmed</p>
+                  <p className="text-2xl font-bold text-orange-600">
+                    {orders.filter(o => o.status === 'confirmed').length}
                   </p>
                 </div>
-                <Clock className="h-8 w-8 text-yellow-400" />
+                <AlertCircle className="h-8 w-8 text-orange-400" />
               </div>
             </CardContent>
           </Card>
