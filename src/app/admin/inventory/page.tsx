@@ -14,6 +14,13 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeft,
@@ -22,6 +29,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader2,
+  Calendar,
 } from 'lucide-react';
 
 interface Product {
@@ -32,10 +40,17 @@ interface Product {
   sort_order: number;
 }
 
-interface InventoryItem {
+interface Sell {
   id: string;
+  sell_date: string;
+  status: string;
+  notes: string;
+}
+
+interface SellInventoryItem {
+  id: string;
+  sell_id: string;
   product_id: string;
-  date: string;
   total_quantity: number;
   reserved_quantity: number;
   available_quantity: number;
@@ -44,7 +59,9 @@ interface InventoryItem {
 
 export default function InventoryManagementPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [sells, setSells] = useState<Sell[]>([]);
+  const [selectedSell, setSelectedSell] = useState<string>('');
+  const [inventory, setInventory] = useState<SellInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{
@@ -55,8 +72,14 @@ export default function InventoryManagementPage() {
 
   useEffect(() => {
     checkAuth();
-    loadInventoryData();
+    loadData();
   }, []);
+
+  useEffect(() => {
+    if (selectedSell) {
+      loadInventoryForSell(selectedSell);
+    }
+  }, [selectedSell]);
 
   const checkAuth = async () => {
     const {
@@ -67,10 +90,8 @@ export default function InventoryManagementPage() {
     }
   };
 
-  const loadInventoryData = async () => {
+  const loadData = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-
       // Load products
       const { data: productsData } = await supabase
         .from('products')
@@ -78,23 +99,41 @@ export default function InventoryManagementPage() {
         .eq('active', true)
         .order('sort_order');
 
-      // Load today's inventory
+      // Load sells
+      const { data: sellsData } = await supabase
+        .from('sells')
+        .select('*')
+        .order('sell_date', { ascending: false });
+
+      setProducts(productsData || []);
+      setSells(sellsData || []);
+
+      // Select the first sell by default
+      if (sellsData && sellsData.length > 0) {
+        setSelectedSell(sellsData[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInventoryForSell = async (sellId: string) => {
+    try {
       const { data: inventoryData } = await supabase
-        .from('daily_inventory')
+        .from('sell_inventory')
         .select(
           `
           *,
           products (*)
         `
         )
-        .eq('date', today);
+        .eq('sell_id', sellId);
 
-      setProducts(productsData || []);
       setInventory(inventoryData || []);
     } catch (error) {
-      console.error('Error loading inventory data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading inventory:', error);
     }
   };
 
@@ -116,8 +155,8 @@ export default function InventoryManagementPage() {
       const existing = getInventoryForProduct(product.id);
       return {
         id: existing?.id || '',
+        sell_id: selectedSell,
         product_id: product.id,
-        date: new Date().toISOString().split('T')[0],
         total_quantity: quantity,
         reserved_quantity: existing?.reserved_quantity || 0,
         available_quantity: quantity - (existing?.reserved_quantity || 0),
@@ -128,17 +167,23 @@ export default function InventoryManagementPage() {
   };
 
   const saveInventory = async () => {
+    if (!selectedSell) {
+      setMessage({
+        type: 'error',
+        text: 'Please select a sell first.',
+      });
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-
       for (const item of inventory) {
         if (item.id) {
           // Update existing inventory
           await supabase
-            .from('daily_inventory')
+            .from('sell_inventory')
             .update({
               total_quantity: item.total_quantity,
               updated_at: new Date().toISOString(),
@@ -146,9 +191,9 @@ export default function InventoryManagementPage() {
             .eq('id', item.id);
         } else {
           // Create new inventory
-          await supabase.from('daily_inventory').insert({
+          await supabase.from('sell_inventory').insert({
+            sell_id: selectedSell,
             product_id: item.product_id,
-            date: today,
             total_quantity: item.total_quantity,
             reserved_quantity: 0,
           });
@@ -156,7 +201,7 @@ export default function InventoryManagementPage() {
       }
 
       setMessage({ type: 'success', text: 'Inventory updated successfully!' });
-      await loadInventoryData(); // Reload to get updated data
+      await loadInventoryForSell(selectedSell); // Reload to get updated data
     } catch (error) {
       console.error('Error saving inventory:', error);
       setMessage({
@@ -168,7 +213,7 @@ export default function InventoryManagementPage() {
     }
   };
 
-  const getStockStatus = (item: InventoryItem) => {
+  const getStockStatus = (item: SellInventoryItem) => {
     if (item.available_quantity === 0) {
       return {
         status: 'sold-out',
@@ -188,6 +233,10 @@ export default function InventoryManagementPage() {
         color: 'bg-green-100 text-green-800',
       };
     }
+  };
+
+  const getSelectedSellInfo = () => {
+    return sells.find(sell => sell.id === selectedSell);
   };
 
   if (loading) {
@@ -215,12 +264,12 @@ export default function InventoryManagementPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
             </Button>
-            <h1 className="text-xl font-semibold">Inventory Management</h1>
+            <h1 className="text-xl font-semibold">Sell Inventory Management</h1>
           </div>
           <div className="flex items-center space-x-2">
             <Button
               onClick={saveInventory}
-              disabled={saving}
+              disabled={saving || !selectedSell}
               className="bg-green-600 hover:bg-green-700"
             >
               {saving ? (
@@ -254,145 +303,217 @@ export default function InventoryManagementPage() {
           </Alert>
         )}
 
-        {/* Quick Actions */}
+        {/* Sell Selection */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <Package className="h-5 w-5 mr-2" />
-              Quick Actions
+              <Calendar className="h-5 w-5 mr-2" />
+              Select Sell
             </CardTitle>
             <CardDescription>
-              Set inventory for all products at once
+              Choose which sell to manage inventory for
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setAllToQuantity(10)}>
-                Set All to 10
-              </Button>
-              <Button variant="outline" onClick={() => setAllToQuantity(20)}>
-                Set All to 20
-              </Button>
-              <Button variant="outline" onClick={() => setAllToQuantity(0)}>
-                Set All to 0
-              </Button>
+            <div className="flex items-center space-x-4">
+              <Label htmlFor="sell-select" className="text-sm font-medium">
+                Sell:
+              </Label>
+              <Select value={selectedSell} onValueChange={setSelectedSell}>
+                <SelectTrigger className="w-80">
+                  <SelectValue placeholder="Select a sell" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sells.map(sell => (
+                    <SelectItem key={sell.id} value={sell.id}>
+                      {new Date(sell.sell_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}{' '}
+                      - {sell.status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {getSelectedSellInfo() && (
+                <Badge
+                  variant={
+                    getSelectedSellInfo()?.status === 'active'
+                      ? 'default'
+                      : 'secondary'
+                  }
+                >
+                  {getSelectedSellInfo()?.status}
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Inventory Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Daily Inventory</CardTitle>
-            <CardDescription>
-              Set quantities for today's menu items. Changes will be reflected
-              immediately for customers.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {products.map(product => {
-                const inventoryItem = getInventoryForProduct(product.id);
-                const stockStatus = inventoryItem
-                  ? getStockStatus(inventoryItem)
-                  : null;
-
-                return (
-                  <div
-                    key={product.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
+        {selectedSell && (
+          <>
+            {/* Quick Actions */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Quick Actions
+                </CardTitle>
+                <CardDescription>
+                  Set inventory for all products at once
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setAllToQuantity(10)}
                   >
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium">{product.name}</h3>
-                        {stockStatus && (
-                          <Badge className={stockStatus.color}>
-                            {stockStatus.text}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {product.description}
-                      </p>
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span>Price: ${product.price}</span>
-                        {inventoryItem && (
-                          <>
-                            <span>
-                              Reserved: {inventoryItem.reserved_quantity}
-                            </span>
-                            <span>
-                              Available: {inventoryItem.available_quantity}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Label
-                        htmlFor={`quantity-${product.id}`}
-                        className="text-sm font-medium"
+                    Set All to 10
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setAllToQuantity(20)}
+                  >
+                    Set All to 20
+                  </Button>
+                  <Button variant="outline" onClick={() => setAllToQuantity(0)}>
+                    Set All to 0
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Inventory Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  Inventory for{' '}
+                  {getSelectedSellInfo()?.sell_date &&
+                    new Date(
+                      getSelectedSellInfo()!.sell_date
+                    ).toLocaleDateString()}
+                </CardTitle>
+                <CardDescription>
+                  Set quantities for this sell's menu items. Changes will be
+                  reflected immediately for customers.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {products.map(product => {
+                    const inventoryItem = getInventoryForProduct(product.id);
+                    const stockStatus = inventoryItem
+                      ? getStockStatus(inventoryItem)
+                      : null;
+
+                    return (
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
                       >
-                        Quantity:
-                      </Label>
-                      <Input
-                        id={`quantity-${product.id}`}
-                        type="number"
-                        min="0"
-                        value={inventoryItem?.total_quantity || 0}
-                        onChange={e =>
-                          updateInventoryQuantity(
-                            product.id,
-                            parseInt(e.target.value) || 0
-                          )
-                        }
-                        className="w-20"
-                      />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-medium">{product.name}</h3>
+                            {stockStatus && (
+                              <Badge className={stockStatus.color}>
+                                {stockStatus.text}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">
+                            {product.description}
+                          </p>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500">
+                            <span>Price: ${product.price}</span>
+                            {inventoryItem && (
+                              <>
+                                <span>
+                                  Reserved: {inventoryItem.reserved_quantity}
+                                </span>
+                                <span>
+                                  Available: {inventoryItem.available_quantity}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Label
+                            htmlFor={`quantity-${product.id}`}
+                            className="text-sm font-medium"
+                          >
+                            Quantity:
+                          </Label>
+                          <Input
+                            id={`quantity-${product.id}`}
+                            type="number"
+                            min="0"
+                            value={inventoryItem?.total_quantity || 0}
+                            onChange={e =>
+                              updateInventoryQuantity(
+                                product.id,
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                            className="w-20"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Inventory Summary */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Inventory Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {
+                        inventory.filter(item => item.available_quantity > 3)
+                          .length
+                      }
+                    </div>
+                    <div className="text-sm text-green-600">
+                      Available Items
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Inventory Summary */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Inventory Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
-                  {inventory.filter(item => item.available_quantity > 3).length}
+                  <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {
+                        inventory.filter(
+                          item =>
+                            item.available_quantity > 0 &&
+                            item.available_quantity <= 3
+                        ).length
+                      }
+                    </div>
+                    <div className="text-sm text-yellow-600">
+                      Low Stock Items
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">
+                      {
+                        inventory.filter(item => item.available_quantity === 0)
+                          .length
+                      }
+                    </div>
+                    <div className="text-sm text-red-600">Sold Out Items</div>
+                  </div>
                 </div>
-                <div className="text-sm text-green-600">Available Items</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">
-                  {
-                    inventory.filter(
-                      item =>
-                        item.available_quantity > 0 &&
-                        item.available_quantity <= 3
-                    ).length
-                  }
-                </div>
-                <div className="text-sm text-yellow-600">Low Stock Items</div>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
-                  {
-                    inventory.filter(item => item.available_quantity === 0)
-                      .length
-                  }
-                </div>
-                <div className="text-sm text-red-600">Sold Out Items</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
     </div>
   );
