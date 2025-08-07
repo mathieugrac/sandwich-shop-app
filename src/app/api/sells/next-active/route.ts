@@ -43,15 +43,11 @@ export async function GET() {
         )
       `
       )
-      .eq('sell_id', sell.id)
-      .order('products.sort_order');
+      .eq('sell_id', sell.id);
 
     if (inventoryError) {
       console.error('Error fetching sell inventory:', inventoryError);
-      return NextResponse.json(
-        { error: 'Failed to fetch sell inventory' },
-        { status: 500 }
-      );
+      // Don't fail completely, just return empty products
     }
 
     // Filter only active products with inventory

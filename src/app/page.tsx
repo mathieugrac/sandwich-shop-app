@@ -18,10 +18,13 @@ export default function Home() {
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log('🔄 Loading sell data...');
 
         const nextActiveSell = await fetchNextActiveSell();
+        console.log('✅ Sell data loaded:', nextActiveSell);
         setSellData(nextActiveSell);
       } catch (err) {
+        console.error('❌ Error loading sell data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
       } finally {
         setLoading(false);
