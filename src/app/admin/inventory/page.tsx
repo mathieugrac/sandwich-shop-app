@@ -214,7 +214,13 @@ export default function InventoryManagementPage() {
   };
 
   const getStockStatus = (item: SellInventoryItem) => {
-    if (item.available_quantity === 0) {
+    if (item.total_quantity === 0) {
+      return {
+        status: 'not-available',
+        text: 'Not Available',
+        color: 'bg-gray-100 text-gray-600',
+      };
+    } else if (item.available_quantity === 0) {
       return {
         status: 'sold-out',
         text: 'Sold Out',
@@ -474,7 +480,7 @@ export default function InventoryManagementPage() {
                 <CardTitle>Inventory Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
                       {
@@ -503,11 +509,23 @@ export default function InventoryManagementPage() {
                   <div className="text-center p-4 bg-red-50 rounded-lg">
                     <div className="text-2xl font-bold text-red-600">
                       {
-                        inventory.filter(item => item.available_quantity === 0)
-                          .length
+                        inventory.filter(
+                          item => 
+                            item.available_quantity === 0 && 
+                            item.total_quantity > 0
+                        ).length
                       }
                     </div>
                     <div className="text-sm text-red-600">Sold Out Items</div>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <div className="text-2xl font-bold text-gray-600">
+                      {
+                        inventory.filter(item => item.total_quantity === 0)
+                          .length
+                      }
+                    </div>
+                    <div className="text-sm text-gray-600">Not Available</div>
                   </div>
                 </div>
               </CardContent>
