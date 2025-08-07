@@ -259,27 +259,7 @@ export default function OrderManagementPage() {
 
       <div className="max-w-7xl mx-auto p-4">
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <Card
-            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedStatus === 'all' ? 'ring-2 ring-gray-400 bg-gray-50' : ''
-            }`}
-            onClick={() => setSelectedStatus('all')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    All Orders
-                  </p>
-                  <p className="text-2xl font-bold text-gray-600">
-                    {orders.length}
-                  </p>
-                </div>
-                <ShoppingCart className="h-8 w-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card
             className={`cursor-pointer transition-colors hover:bg-gray-50 ${
               selectedStatus === 'pending'
