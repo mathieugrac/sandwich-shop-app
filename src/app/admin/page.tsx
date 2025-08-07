@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
         // Redirect to admin dashboard
         router.push('/admin/dashboard');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);

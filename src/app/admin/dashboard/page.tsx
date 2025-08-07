@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,21 +39,16 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    checkAuth();
-    loadDashboardStats();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
       router.push('/admin');
     }
-  };
+  }, [router]);
 
-  const loadDashboardStats = async () => {
+  const loadDashboardStats = useCallback(async () => {
     try {
       // Get the next active sell
       const { data: nextSell } = await supabase.rpc('get_next_active_sell');
@@ -95,7 +90,12 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+    loadDashboardStats();
+  }, [checkAuth, loadDashboardStats]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -159,7 +159,9 @@ export default function AdminDashboardPage() {
               <div className="text-2xl font-bold">
                 ${stats.totalRevenue.toFixed(2)}
               </div>
-              <p className="text-xs text-muted-foreground">Today's total</p>
+              <p className="text-xs text-muted-foreground">
+                Today&apos;s total
+              </p>
             </CardContent>
           </Card>
 

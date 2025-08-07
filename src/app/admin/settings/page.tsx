@@ -19,9 +19,6 @@ import {
   Save,
   Settings,
   Clock,
-  MapPin,
-  Phone,
-  Mail,
   Loader2,
 } from 'lucide-react';
 
@@ -233,7 +230,7 @@ export default function SettingsPage() {
                 Operating Hours
               </CardTitle>
               <CardDescription>
-                Set your shop's operating hours and pickup times
+                Set your shop&apos;s operating hours and pickup times
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
