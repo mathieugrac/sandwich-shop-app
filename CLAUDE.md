@@ -59,6 +59,40 @@ We are developing a custom web application for a local sandwich shop to handle p
 
 **Target Audience:** International workers based in a coworking space, requiring support for international phone numbers and diverse customer base.
 
+### Business Model & Operations
+
+#### Testing Phase Strategy
+
+- **Initial Phase:** Testing concept with Impact Hub coworking space (Lisbon, Portugal)
+- **Location:** 10 minutes from production site
+- **Frequency:** 2 sells per week during testing phase
+- **Goal:** Validate concept, improve logistics, and grow brand
+
+#### Sell Creation Process
+
+1. **Day Before:** Create a "sell" (inventory) for specific date
+2. **Announcement:** Make announcement to coworking community
+3. **Morning of Sell:** Define quantities based on available ingredients
+4. **Customer Access:** Only see next sell's menu (not future sells)
+
+#### Order Management Workflow
+
+- **Order Placement:** Customers order at night/morning
+- **Manual Validation:** Admin manually validates orders to update stocks
+- **Order Status Flow:**
+  - **Pending:** Needs admin confirmation
+  - **Confirmed:** Manually accepted, stock updated
+  - **Prepared:** Sandwich wrapped and ready
+  - **Completed:** Delivered and cash payment received at pickup
+
+#### Key Admin Requirements
+
+1. **Create sells in advance** for specific dates
+2. **Track orders, status, and revenue per sell**
+3. **Order Management:** Show only next sell's orders
+4. **Table view with status tabs** for quick order processing
+5. **Main Goal:** Quickly process pending orders (inbox 0)
+
 ### Problem Statement
 
 - Manual phone orders create bottlenecks during lunch rush
@@ -136,29 +170,40 @@ CREATE TABLE products (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Daily inventory (manually set each morning)
-CREATE TABLE daily_inventory (
+-- Sells table (replaces daily_inventory concept)
+CREATE TABLE sells (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sell_date DATE NOT NULL UNIQUE,
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'completed', 'cancelled')),
+  announcement_sent BOOLEAN DEFAULT false,
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Sell inventory (quantities for each product per sell)
+CREATE TABLE sell_inventory (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sell_id UUID REFERENCES sells(id) ON DELETE CASCADE,
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
   total_quantity INTEGER NOT NULL,
   reserved_quantity INTEGER DEFAULT 0,
   available_quantity INTEGER GENERATED ALWAYS AS (total_quantity - reserved_quantity) STORED,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(product_id, date)
+  UNIQUE(sell_id, product_id)
 );
 
 -- Orders table
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number VARCHAR(20) UNIQUE NOT NULL,
+  sell_id UUID REFERENCES sells(id) ON DELETE CASCADE,
   customer_name VARCHAR(100) NOT NULL,
   customer_email VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(20),
   pickup_time TIME NOT NULL,
-  pickup_date DATE NOT NULL,
-  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'ready', 'completed', 'cancelled')),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled')),
   total_amount DECIMAL(10,2) NOT NULL,
   special_instructions TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -309,24 +354,26 @@ CREATE POLICY "Anyone can create orders" ON orders
 
 ### Admin Features
 
-#### Inventory Management
+#### Sell Management
 
-- **User Story:** As a shop owner, I want to set daily inventory each morning
+- **User Story:** As a shop owner, I want to create sells in advance and manage them
 - **Acceptance Criteria:**
-  - Simple form to set quantities for each product
-  - Default to previous day's quantities
-  - One-click "Set All to 10" option
-  - Save and immediately update customer-facing inventory
+  - Create sells for specific dates
+  - Set sell status (draft → active → completed)
+  - Manage inventory quantities per sell
+  - Track announcement status
+  - View sell overview with revenue and order counts
 
 #### Order Management
 
-- **User Story:** As a shop owner, I want to view and manage today's orders
+- **User Story:** As a shop owner, I want to quickly process orders for the next sell
 - **Acceptance Criteria:**
-  - List all orders for today
-  - Filter by status (pending, confirmed, ready, completed)
-  - Update order status
-  - View customer contact information
-  - Print order details
+  - Show only orders for the next active sell
+  - Table view with status tabs (Pending, Confirmed, Prepared, Completed)
+  - Bulk actions for quick processing
+  - Order status flow: Pending → Confirmed → Prepared → Completed
+  - Revenue tracking per sell
+  - Quick "inbox 0" processing for pending orders
 
 ---
 
@@ -439,6 +486,52 @@ CREATE POLICY "Anyone can create orders" ON orders
 - **Order Management:** View and update order statuses with filtering
 - **Settings Page:** Basic shop configuration interface
 - **Responsive Design:** Mobile-friendly admin interface
+
+### Phase 4.5: Business Model Adaptation 🔄 IN PROGRESS
+
+**Tasks:**
+
+- [ ] Update database schema for sell-based model
+- [ ] Create sell management interface
+- [ ] Update order management for sell-focused workflow
+- [ ] Modify customer interface for next sell only
+- [ ] Implement new order status flow
+- [ ] Add bulk order processing features
+
+**Deliverables:**
+
+- [ ] Sell management system
+- [ ] Updated order processing workflow
+- [ ] Customer interface for next sell
+- [ ] Enhanced admin dashboard
+
+**Status:** 🔄 **IN PROGRESS** - Adapting to business model requirements
+
+**Required Modifications:**
+
+#### Database Schema Changes
+
+- **New `sells` table:** Replace daily inventory concept with sell-based model
+- **New `sell_inventory` table:** Link inventory to specific sells
+- **Updated `orders` table:** Link orders to sells, update status flow
+
+#### Admin Interface Changes
+
+- **Sell Management:** Create and manage sells in advance
+- **Order Management:** Focus on next sell with table view and status tabs
+- **Dashboard:** Show next sell info and pending orders prominently
+
+#### Customer Interface Changes
+
+- **Home page:** Only show next active sell's menu
+- **Order flow:** Link orders to specific sells
+
+#### Order Status Flow
+
+- **Pending:** Needs admin confirmation
+- **Confirmed:** Manually accepted, stock updated
+- **Prepared:** Sandwich wrapped and ready
+- **Completed:** Delivered and payment received
 
 ### Phase 5: Email & Polish ⏳ PENDING
 
