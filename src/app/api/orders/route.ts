@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/client';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -125,6 +126,42 @@ export async function POST(request: Request) {
           { status: 500 }
         );
       }
+    }
+
+    // Send order confirmation email
+    try {
+      // Get product names for email
+      const productIds = items.map((item: { id: string }) => item.id);
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name')
+        .in('id', productIds);
+
+      const productMap = new Map(
+        products?.map((product) => [product.id, product.name]) || []
+      );
+
+      const emailData = {
+        orderNumber,
+        customerName,
+        customerEmail,
+        pickupDate,
+        pickupTime,
+        items: items.map((item: { id: string; quantity: number; price: number }) => ({
+          productName: productMap.get(item.id) || 'Unknown Product',
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.quantity * item.price,
+        })),
+        totalAmount,
+        specialInstructions,
+      };
+
+      await sendOrderConfirmationEmail(emailData);
+      console.log('API: Order confirmation email sent successfully');
+    } catch (emailError) {
+      console.error('API: Failed to send order confirmation email:', emailError);
+      // Don't fail the order if email fails, but log the error
     }
 
     return NextResponse.json({
