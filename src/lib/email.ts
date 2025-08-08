@@ -23,6 +23,19 @@ export async function sendOrderConfirmationEmail(
   data: OrderConfirmationEmailData
 ) {
   try {
+    // Validate required data
+    if (!data.customerEmail || !data.orderNumber) {
+      throw new Error(
+        'Missing required email data: customerEmail or orderNumber'
+      );
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.customerEmail)) {
+      throw new Error(`Invalid email format: ${data.customerEmail}`);
+    }
+
     console.log(
       'Email service: Attempting to send email to:',
       data.customerEmail
@@ -30,10 +43,6 @@ export async function sendOrderConfirmationEmail(
     console.log(
       'Email service: Using API key:',
       process.env.RESEND_API_KEY ? 'Present' : 'Missing'
-    );
-    console.log(
-      'Email service: From address:',
-      process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@yourdomain.com'
     );
 
     const { data: emailData, error } = await resend.emails.send({
@@ -45,14 +54,18 @@ export async function sendOrderConfirmationEmail(
 
     if (error) {
       console.error('Failed to send email:', error);
-      throw new Error(`Failed to send email: ${error.message}`);
+      // Don't throw error, just log it and return null
+      // This prevents order creation from failing due to email issues
+      return null;
     }
 
     console.log('Email service: Email sent successfully:', emailData);
     return emailData;
   } catch (error) {
     console.error('Email sending error:', error);
-    throw error;
+    // Don't throw error, just log it and return null
+    // This prevents order creation from failing due to email issues
+    return null;
   }
 }
 
@@ -233,9 +246,20 @@ export async function sendOrderStatusUpdateEmail(
   status: string
 ) {
   try {
+    // Validate required data
+    if (!customerEmail || !orderNumber || !status) {
+      throw new Error('Missing required data for status update email');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail)) {
+      throw new Error(`Invalid email format: ${customerEmail}`);
+    }
+
     const statusMessages = {
       confirmed: 'Your order has been confirmed and is being prepared!',
-      prepared: 'Your order is ready for pickup!',
+      ready: 'Your order is ready for pickup!',
       completed: 'Thank you for your order!',
     };
 
@@ -296,12 +320,17 @@ export async function sendOrderStatusUpdateEmail(
 
     if (error) {
       console.error('Failed to send status update email:', error);
-      throw new Error(`Failed to send email: ${error.message}`);
+      // Don't throw error, just log it and return null
+      // This prevents status update from failing due to email issues
+      return null;
     }
 
+    console.log('Status update email sent successfully:', emailData);
     return emailData;
   } catch (error) {
     console.error('Status update email sending error:', error);
-    throw error;
+    // Don't throw error, just log it and return null
+    // This prevents status update from failing due to email issues
+    return null;
   }
 }

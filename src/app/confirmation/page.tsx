@@ -7,16 +7,28 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Clock, MapPin, ArrowLeft } from 'lucide-react';
 
+interface OrderItem {
+  id: string;
+  quantity: number;
+  unit_price: number;
+  products: {
+    name: string;
+    description: string;
+  };
+}
+
 interface OrderDetails {
   id: string;
   order_number: string;
   customer_name: string;
   customer_email: string;
+  customer_phone: string;
   pickup_time: string;
   pickup_date: string;
   total_amount: number;
   special_instructions?: string;
   created_at: string;
+  order_items: OrderItem[];
 }
 
 function ConfirmationContent() {
@@ -32,26 +44,44 @@ function ConfirmationContent() {
       return;
     }
 
-    // For now, we'll show a mock confirmation since we don't have the order details
-    // In a real app, you'd fetch the order details from the API
-    const mockOrder: OrderDetails = {
-      id: orderId,
-      order_number: `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
-        Math.random() * 9999
-      )
-        .toString()
-        .padStart(4, '0')}`,
-      customer_name: 'Your Name', // This would come from the actual order
-      customer_email: 'your.email@example.com',
-      pickup_time: localStorage.getItem('pickupTime') || '12:00',
-      pickup_date: new Date().toISOString().split('T')[0],
-      total_amount: 0, // This would come from the actual order
-      special_instructions: localStorage.getItem('specialInstructions') || '',
-      created_at: new Date().toISOString(),
+    const fetchOrderDetails = async () => {
+      try {
+        const response = await fetch(`/api/orders/${orderId}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch order details');
+        }
+
+        const data = await response.json();
+        setOrder(data.order);
+      } catch (error) {
+        console.error('Error fetching order details:', error);
+        // Fallback to localStorage data if API fails
+        const fallbackOrder: OrderDetails = {
+          id: orderId,
+          order_number: `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
+            Math.random() * 9999
+          )
+            .toString()
+            .padStart(4, '0')}`,
+          customer_name: 'Your Name',
+          customer_email: 'your.email@example.com',
+          customer_phone: '',
+          pickup_time: localStorage.getItem('pickupTime') || '12:00',
+          pickup_date: new Date().toISOString().split('T')[0],
+          total_amount: 0,
+          special_instructions:
+            localStorage.getItem('specialInstructions') || '',
+          created_at: new Date().toISOString(),
+          order_items: [],
+        };
+        setOrder(fallbackOrder);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setOrder(mockOrder);
-    setLoading(false);
+    fetchOrderDetails();
   }, [orderId, router]);
 
   const handleBackToHome = () => {
@@ -126,6 +156,14 @@ function ConfirmationContent() {
                     <span className="text-gray-600">Email:</span>
                     <span className="font-medium">{order.customer_email}</span>
                   </div>
+                  {order.customer_phone && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Phone:</span>
+                      <span className="font-medium">
+                        {order.customer_phone}
+                      </span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total Amount:</span>
@@ -137,6 +175,35 @@ function ConfirmationContent() {
               </Card>
             </section>
 
+            {/* Order Items */}
+            {order.order_items && order.order_items.length > 0 && (
+              <section>
+                <h3 className="text-xl font-semibold mb-4">Order Items</h3>
+                <Card className="p-4">
+                  <div className="space-y-3">
+                    {order.order_items.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center"
+                      >
+                        <div>
+                          <span className="font-medium">
+                            {item.products.name}
+                          </span>
+                          <span className="text-gray-600 ml-2">
+                            x{item.quantity}
+                          </span>
+                        </div>
+                        <span className="font-medium">
+                          €{(item.unit_price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </section>
+            )}
+
             {/* Pickup Information */}
             <section>
               <h3 className="text-xl font-semibold mb-4">Pickup Information</h3>
@@ -146,7 +213,17 @@ function ConfirmationContent() {
                     <Clock className="h-5 w-5 text-gray-600" />
                     <div>
                       <p className="text-sm text-gray-600">Pickup Time</p>
-                      <p className="font-medium">{order.pickup_time}</p>
+                      <p className="font-medium">
+                        {order.pickup_time
+                          ? new Date(
+                              `2000-01-01T${order.pickup_time}`
+                            ).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : 'Not specified'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">

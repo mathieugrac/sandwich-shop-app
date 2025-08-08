@@ -425,7 +425,7 @@ export default function InventoryManagementPage() {
                             {product.description}
                           </p>
                           <div className="flex items-center space-x-4 text-sm text-gray-500">
-                            <span>Price: ${product.price}</span>
+                            <span>Price: €{product.price.toFixed(2)}</span>
                             {inventoryItem && (
                               <>
                                 <span>

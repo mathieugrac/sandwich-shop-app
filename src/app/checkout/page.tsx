@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ArrowLeft } from 'lucide-react';
 
 interface CustomerInfo {
@@ -208,7 +209,24 @@ export default function CheckoutPage() {
       }
     } catch (error) {
       console.error('Order placement failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to place order');
+
+      // More user-friendly error message
+      let errorMessage = 'Failed to place order. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('No active sell available')) {
+          errorMessage =
+            'Sorry, there are no active orders at the moment. Please try again later.';
+        } else if (error.message.includes('Failed to reserve inventory')) {
+          errorMessage =
+            'Sorry, some items are no longer available. Please refresh and try again.';
+        } else if (error.message.includes('Missing required fields')) {
+          errorMessage = 'Please check your order details and try again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -353,8 +371,8 @@ export default function CheckoutPage() {
                     <p className="text-sm text-red-600">{errors.phone}</p>
                   )}
                   <p className="text-xs text-gray-500">
-                    We&apos;ll use this to contact you if there are any issues with
-                    your order
+                    We&apos;ll use this to contact you if there are any issues
+                    with your order
                   </p>
                 </div>
               </form>
@@ -369,7 +387,11 @@ export default function CheckoutPage() {
             disabled={isLoading}
             className="w-full bg-black text-white py-4 text-lg font-medium"
           >
-            {isLoading ? 'Processing...' : 'Place Order'}
+            {isLoading ? (
+              <LoadingSpinner size={20} text="Processing your order..." />
+            ) : (
+              'Place Order'
+            )}
           </Button>
         </div>
       </div>

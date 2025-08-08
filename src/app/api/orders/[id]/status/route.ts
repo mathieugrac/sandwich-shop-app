@@ -4,11 +4,11 @@ import { sendOrderStatusUpdateEmail } from '@/lib/email';
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { status } = await request.json();
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     console.log(`API: Updating order ${orderId} status to ${status}`);
 
@@ -29,15 +29,21 @@ export async function PUT(
     }
 
     // Send status update email for certain statuses
-    if (['confirmed', 'prepared', 'completed'].includes(status)) {
+    if (['confirmed', 'ready', 'completed'].includes(status)) {
       try {
-        await sendOrderStatusUpdateEmail(
+        const emailResult = await sendOrderStatusUpdateEmail(
           order.customer_email,
           order.customer_name,
           order.order_number,
           status
         );
-        console.log(`API: Status update email sent for order ${orderId}`);
+        if (emailResult) {
+          console.log(`API: Status update email sent for order ${orderId}`);
+        } else {
+          console.log(
+            `API: Status update email failed for order ${orderId}, but status was updated successfully`
+          );
+        }
       } catch (emailError) {
         console.error('API: Failed to send status update email:', emailError);
         // Don't fail the status update if email fails
