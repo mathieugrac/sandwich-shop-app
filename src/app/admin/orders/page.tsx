@@ -121,11 +121,18 @@ export default function OrderManagementPage() {
         throw new Error('Order not found');
       }
 
-      // Update order status
-      await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
+      // Update order status using the new API endpoint
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status');
+      }
 
       // If confirming an order, update inventory
       if (newStatus === 'confirmed' && order.status === 'pending') {
