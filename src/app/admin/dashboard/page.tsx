@@ -135,7 +135,26 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto p-4">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card>
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/orders?status=pending')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Pending Orders
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+              <p className="text-xs text-muted-foreground">Need attention</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => navigateTo('/admin/orders')}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Next Sell Orders
@@ -157,7 +176,7 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${stats.totalRevenue.toFixed(2)}
+                €{stats.totalRevenue.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Today&apos;s total
@@ -175,19 +194,6 @@ export default function AdminDashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalProducts}</div>
               <p className="text-xs text-muted-foreground">Available items</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pending Orders
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingOrders}</div>
-              <p className="text-xs text-muted-foreground">Need attention</p>
             </CardContent>
           </Card>
         </div>

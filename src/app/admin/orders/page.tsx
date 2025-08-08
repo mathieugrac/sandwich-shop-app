@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -59,11 +59,24 @@ export default function OrderManagementPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('pending');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     checkAuth();
     loadOrders();
   }, []);
+
+  useEffect(() => {
+    const statusFromUrl = searchParams.get('status');
+    if (
+      statusFromUrl &&
+      ['pending', 'confirmed', 'ready', 'completed', 'all'].includes(
+        statusFromUrl
+      )
+    ) {
+      setSelectedStatus(statusFromUrl);
+    }
+  }, [searchParams]);
 
   const checkAuth = async () => {
     const {
@@ -102,7 +115,7 @@ export default function OrderManagementPage() {
         `
         )
         .eq('sell_id', activeSell.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       setOrders(ordersData || []);
     } catch (error) {
@@ -180,9 +193,11 @@ export default function OrderManagementPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800">Pending</Badge>;
       case 'confirmed':
-        return <Badge className="bg-blue-100 text-blue-800">Confirmed</Badge>;
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">Confirmed</Badge>
+        );
       case 'ready':
         return <Badge className="bg-green-100 text-green-800">Ready</Badge>;
       case 'completed':
@@ -238,7 +253,7 @@ export default function OrderManagementPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Button
@@ -262,7 +277,7 @@ export default function OrderManagementPage() {
           <Card
             className={`cursor-pointer transition-colors hover:bg-gray-50 ${
               selectedStatus === 'pending'
-                ? 'ring-2 ring-yellow-400 bg-yellow-50'
+                ? 'ring-2 ring-orange-400 bg-orange-50'
                 : ''
             }`}
             onClick={() => setSelectedStatus('pending')}
@@ -271,18 +286,18 @@ export default function OrderManagementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-yellow-600">
+                  <p className="text-2xl font-bold text-orange-600">
                     {orders.filter(o => o.status === 'pending').length}
                   </p>
                 </div>
-                <Clock className="h-8 w-8 text-yellow-400" />
+                <Clock className="h-8 w-8 text-orange-400" />
               </div>
             </CardContent>
           </Card>
           <Card
             className={`cursor-pointer transition-colors hover:bg-gray-50 ${
               selectedStatus === 'confirmed'
-                ? 'ring-2 ring-orange-400 bg-orange-50'
+                ? 'ring-2 ring-yellow-400 bg-yellow-50'
                 : ''
             }`}
             onClick={() => setSelectedStatus('confirmed')}
@@ -291,11 +306,11 @@ export default function OrderManagementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Confirmed</p>
-                  <p className="text-2xl font-bold text-orange-600">
+                  <p className="text-2xl font-bold text-yellow-600">
                     {orders.filter(o => o.status === 'confirmed').length}
                   </p>
                 </div>
-                <AlertCircle className="h-8 w-8 text-orange-400" />
+                <AlertCircle className="h-8 w-8 text-yellow-400" />
               </div>
             </CardContent>
           </Card>
@@ -322,7 +337,7 @@ export default function OrderManagementPage() {
           <Card
             className={`cursor-pointer transition-colors hover:bg-gray-50 ${
               selectedStatus === 'completed'
-                ? 'ring-2 ring-blue-400 bg-blue-50'
+                ? 'ring-2 ring-gray-400 bg-gray-50'
                 : ''
             }`}
             onClick={() => setSelectedStatus('completed')}
@@ -331,11 +346,11 @@ export default function OrderManagementPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-gray-600">
                     {orders.filter(o => o.status === 'completed').length}
                   </p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-400" />
+                <CheckCircle className="h-8 w-8 text-gray-400" />
               </div>
             </CardContent>
           </Card>
@@ -380,7 +395,7 @@ export default function OrderManagementPage() {
                       {getStatusBadge(order.status)}
                       <div className="text-right">
                         <div className="font-semibold">
-                          ${order.total_amount}
+                          €{order.total_amount.toFixed(2)}
                         </div>
                         <div className="text-sm text-gray-500">
                           {order.order_items.length} items
@@ -435,7 +450,7 @@ export default function OrderManagementPage() {
                               {item.quantity}x {item.products.name}
                             </span>
                             <span>
-                              ${(item.quantity * item.unit_price).toFixed(2)}
+                              €{(item.quantity * item.unit_price).toFixed(2)}
                             </span>
                           </div>
                         ))}

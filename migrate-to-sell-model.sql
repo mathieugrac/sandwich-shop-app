@@ -31,7 +31,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS sell_id UUID REFERENCES sells(id) ON
 -- Step 4: Update order status constraint
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
 ALTER TABLE orders ADD CONSTRAINT orders_status_check 
-  CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled'));
+  CHECK (status IN ('pending', 'confirmed', 'ready', 'completed', 'cancelled'));
 
 -- Step 5: Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_sells_date ON sells(sell_date);

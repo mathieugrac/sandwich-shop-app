@@ -157,8 +157,12 @@ export async function POST(request: Request) {
         specialInstructions,
       };
 
-      await sendOrderConfirmationEmail(emailData);
-      console.log('API: Order confirmation email sent successfully');
+      const emailResult = await sendOrderConfirmationEmail(emailData);
+      if (emailResult) {
+        console.log('API: Order confirmation email sent successfully');
+      } else {
+        console.log('API: Order confirmation email failed, but order was created successfully');
+      }
     } catch (emailError) {
       console.error('API: Failed to send order confirmation email:', emailError);
       // Don't fail the order if email fails, but log the error
