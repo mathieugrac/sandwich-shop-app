@@ -304,11 +304,11 @@ export default function SettingsPage() {
 
                 <div className="p-4 bg-green-50 rounded-lg">
                   <h4 className="font-medium text-green-900 mb-2">
-                    Inventory Management
+                    Menu Management
                   </h4>
                   <p className="text-sm text-green-700">
-                    Set daily inventory quantities each morning to control stock
-                    levels.
+                    Create sells with custom menus by adding products and
+                    setting quantities for each event.
                   </p>
                 </div>
 

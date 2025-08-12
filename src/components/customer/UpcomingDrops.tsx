@@ -21,11 +21,14 @@ export function UpcomingDrops() {
   useEffect(() => {
     const loadFutureSells = async () => {
       try {
+        console.log('🔄 UpcomingDrops: Starting to load future sells...');
         const futureSells = await fetchFutureSells();
+        console.log('✅ UpcomingDrops: Future sells loaded:', futureSells);
         setSells(futureSells);
       } catch (error) {
-        console.error('Error loading future sells:', error);
+        console.error('❌ UpcomingDrops: Error loading future sells:', error);
       } finally {
+        console.log('🏁 UpcomingDrops: Setting loading to false');
         setLoading(false);
       }
     };
@@ -51,6 +54,13 @@ export function UpcomingDrops() {
     // TODO: Implement notification system
     console.log('Notify me clicked for sell:', sell.id);
   };
+
+  console.log(
+    '🔄 UpcomingDrops: Render state - loading:',
+    loading,
+    'sells count:',
+    sells.length
+  );
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
@@ -11,7 +11,7 @@ export async function GET() {
       .select(
         `
         *,
-        locations (
+        location:locations (
           id,
           name,
           district,
