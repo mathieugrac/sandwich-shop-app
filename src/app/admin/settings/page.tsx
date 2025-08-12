@@ -14,13 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase/client';
-import {
-  ArrowLeft,
-  Save,
-  Settings,
-  Clock,
-  Loader2,
-} from 'lucide-react';
+import { ArrowLeft, Save, Settings, Clock, Loader2 } from 'lucide-react';
 
 interface ShopSettings {
   shopName: string;
@@ -122,8 +116,7 @@ export default function SettingsPage() {
               size="sm"
               onClick={() => router.push('/admin/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-xl font-semibold">Settings</h1>
           </div>

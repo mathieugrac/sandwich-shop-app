@@ -25,6 +25,77 @@
 
 ---
 
+## 🚧 Phase 6: Update Logic & Database - Detailed Plan
+
+### **Phase 6A: Database Schema & Core Logic (Week 1)**
+
+1. **Create Locations table** and update Sells table with location relationship
+   - Locations: name, district, address, google_maps_link, delivery_timeframe
+   - Update sells table to reference location_id
+   - Remove unique constraint on sell_date (multiple sells per date possible)
+2. **Update sell status logic** with auto-completion based on delivery timeframe
+   - Auto-complete sells 30 minutes after delivery timeframe ends
+   - Update database functions for new logic
+3. **Fix the sell-inventory relationship** - integrate inventory management into sell editing
+   - Remove separate inventory management page
+   - Add inventory modal within sell editing
+4. **Update database functions** for the new logic
+
+### **Phase 6B: New Home Page & Calendar (Week 2)**
+
+1. **Redesign home page** with project description and upcoming drops calendar
+   - Show all future sells (not just next active)
+   - Display location info and available quantities
+   - "18 left 🥪" shows total available sandwiches
+2. **Create Menu page** (`/menu`) for active sells
+   - Unique URL for each sell (e.g., `/menu/[sell-id]`)
+   - Product catalog with real-time inventory
+3. **Update navigation flow** (Home → Menu → Cart → Checkout → Confirmation)
+4. **Implement location display** in calendar and sell details
+
+### **Phase 6C: Admin Platform Updates (Week 3) ✅ COMPLETED**
+
+1. **✅ Simplified Admin Dashboard** - Clean navigation with 5 management sections
+2. **✅ Enhanced Product Management** - Full CRUD operations with categories (sandwich, drink, dessert)
+3. **✅ Enhanced Location Management** - Full CRUD operations for delivery locations
+4. **✅ Enhanced Sell Management** - Location selection and integrated inventory modal
+5. **✅ New Clients Management** - Customer info, order history, and revenue tracking
+6. **✅ New Orders Management** - All orders grouped by sell date with filtering and search
+
+### **Phase 6D: Client Management & Polish (Week 4) ✅ COMPLETED**
+
+1. **✅ Clients table and management system** - Full CRUD operations
+2. **✅ Client analytics** - Order count and total revenue per client
+3. **✅ Order history modal** - View all orders for each client
+4. **✅ Admin platform polish** - Consistent design, clean navigation, proper error handling
+5. **✅ Database integration** - All tables properly connected and functional
+
+### **Key Business Logic Changes**
+
+- **Multiple sells per date** possible (different locations)
+- **Location-based delivery timeframes** (moved from global to location-specific)
+- **Auto-completion** 30 minutes after delivery timeframe ends
+- **Cart persistence** across page refreshes maintained
+- **Admin access** to all sells regardless of status
+- **Inventory management** integrated into sell editing (not separate page)
+
+### **Phase 6 Summary - COMPLETED ✅**
+
+**Phase 6 has been successfully completed!** We have successfully:
+
+- **✅ Built a complete admin platform** with 5 management sections
+- **✅ Created all necessary database tables** (locations, clients, product_images)
+- **✅ Implemented full CRUD operations** for Products, Locations, Sells, Clients, and Orders
+- **✅ Fixed database compatibility issues** and ensured all queries work properly
+- **✅ Created a clean, professional UI** with consistent design patterns
+- **✅ Integrated inventory management** directly into sell editing
+- **✅ Added comprehensive order management** with filtering and search
+- **✅ Implemented client analytics** with order history and revenue tracking
+
+**The admin platform is now production-ready** and provides a complete solution for managing a sandwich shop business.
+
+---
+
 ## 🏗️ Business Model & Architecture
 
 ### Sell-Based System

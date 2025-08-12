@@ -3,20 +3,30 @@ import { supabase } from '@/lib/supabase/client';
 
 export async function GET() {
   try {
-    // Get the next active sell
-    const { data: nextSell, error: sellError } = await supabase.rpc(
-      'get_next_active_sell'
-    );
+    // Get the next active sell with location information
+    const { data: nextSell, error: sellError } = await supabase
+      .from('sells')
+      .select(
+        `
+        *,
+        locations (
+          id,
+          name,
+          district,
+          address,
+          google_maps_link,
+          delivery_timeframe
+        )
+      `
+      )
+      .eq('status', 'active')
+      .gte('sell_date', new Date().toISOString().split('T')[0])
+      .order('sell_date', { ascending: true })
+      .limit(1)
+      .single();
 
     if (sellError) {
       console.error('Error fetching next active sell:', sellError);
-      return NextResponse.json(
-        { error: 'Failed to fetch next active sell' },
-        { status: 500 }
-      );
-    }
-
-    if (!nextSell || nextSell.length === 0) {
       // Return successful response with empty data instead of 404
       return NextResponse.json({
         sell: null,
@@ -24,7 +34,12 @@ export async function GET() {
       });
     }
 
-    const sell = nextSell[0];
+    if (!nextSell) {
+      return NextResponse.json({
+        sell: null,
+        products: [],
+      });
+    }
 
     // Get inventory for this sell
     const { data: inventory, error: inventoryError } = await supabase
@@ -44,7 +59,7 @@ export async function GET() {
         )
       `
       )
-      .eq('sell_id', sell.id);
+      .eq('sell_id', nextSell.id);
 
     if (inventoryError) {
       console.error('Error fetching sell inventory:', inventoryError);
@@ -62,9 +77,10 @@ export async function GET() {
 
     return NextResponse.json({
       sell: {
-        id: sell.id,
-        sell_date: sell.sell_date,
-        status: sell.status,
+        id: nextSell.id,
+        sell_date: nextSell.sell_date,
+        status: nextSell.status,
+        location: nextSell.locations,
       },
       products: availableProducts,
     });

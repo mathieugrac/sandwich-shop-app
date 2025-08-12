@@ -3,12 +3,35 @@ import { supabase } from '@/lib/supabase/client';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    // Get the sell with location information
+    const { data: sell, error: sellError } = await supabase
+      .from('sells')
+      .select(
+        `
+        *,
+        locations (
+          id,
+          name,
+          district,
+          address,
+          google_maps_link,
+          delivery_timeframe
+        )
+      `
+      )
+      .eq('id', params.id)
+      .single();
 
-    const { data: inventory, error } = await supabase
+    if (sellError || !sell) {
+      console.error('Error fetching sell:', sellError);
+      return NextResponse.json({ error: 'Sell not found' }, { status: 404 });
+    }
+
+    // Get inventory for this sell
+    const { data: inventory, error: inventoryError } = await supabase
       .from('sell_inventory')
       .select(
         `
@@ -18,21 +41,27 @@ export async function GET(
           name,
           description,
           price,
-          image_url
+          image_url,
+          category,
+          active,
+          sort_order
         )
       `
       )
-      .eq('sell_id', id);
+      .eq('sell_id', params.id);
 
-    if (error) {
-      console.error('Error fetching sell inventory:', error);
+    if (inventoryError) {
+      console.error('Error fetching sell inventory:', inventoryError);
       return NextResponse.json(
         { error: 'Failed to fetch sell inventory' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(inventory);
+    return NextResponse.json({
+      ...sell,
+      inventory: inventory || [],
+    });
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
