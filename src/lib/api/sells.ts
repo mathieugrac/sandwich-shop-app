@@ -5,43 +5,6 @@ import {
   Location,
 } from '@/types/database';
 
-export interface Sell {
-  id: string;
-  sell_date: string;
-  location_id: string;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
-  announcement_sent: boolean;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface SellWithLocation extends Sell {
-  location: Location;
-}
-
-export interface SellWithInventory extends Sell {
-  location: Location;
-  inventory: Array<{
-    id: string;
-    sell_id: string;
-    product_id: string;
-    total_quantity: number;
-    reserved_quantity: number;
-    available_quantity: number;
-    product: {
-      id: string;
-      name: string;
-      description: string | null;
-      price: number;
-      image_url: string | null;
-      category: string;
-      active: boolean;
-      sort_order: number;
-    };
-  }>;
-}
-
 export interface NextActiveSell {
   sell: {
     id: string;
