@@ -1,82 +1,91 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-
 import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeft,
-  Clock,
+  Search,
+  Filter,
+  Eye,
   CheckCircle,
+  Clock,
   AlertCircle,
-  ShoppingCart,
-  User,
-  Phone,
-  Mail,
+  XCircle,
+  Euro,
   Calendar,
-  Loader2,
+  MapPin,
 } from 'lucide-react';
-
-interface OrderItem {
-  id: string;
-  product_id: string;
-  quantity: number;
-  unit_price: number;
-  products: {
-    name: string;
-    description: string;
-  };
-}
 
 interface Order {
   id: string;
   order_number: string;
   customer_name: string;
   customer_email: string;
-  customer_phone: string;
+  customer_phone: string | null;
   pickup_time: string;
-  pickup_date: string;
-  sell_id: string;
-  status: 'pending' | 'confirmed' | 'ready' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'prepared' | 'completed' | 'cancelled';
   total_amount: number;
-  special_instructions: string;
+  special_instructions: string | null;
   created_at: string;
-  order_items: OrderItem[];
+  sell_id: string | null;
+  client_id: string | null;
 }
 
-function OrderManagementContent() {
-  const [orders, setOrders] = useState<Order[]>([]);
+interface Sell {
+  id: string;
+  sell_date: string;
+  status: string;
+  locations?: {
+    name: string;
+    district: string;
+    address: string;
+    delivery_timeframe: string;
+  };
+}
+
+interface OrderWithSell extends Order {
+  sell?: Sell;
+}
+
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<OrderWithSell[]>([]);
+  const [sells, setSells] = useState<Sell[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>('pending');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sellFilter, setSellFilter] = useState<string>('all');
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     checkAuth();
-    loadOrders();
+    loadData();
   }, []);
-
-  useEffect(() => {
-    const statusFromUrl = searchParams.get('status');
-    if (
-      statusFromUrl &&
-      ['pending', 'confirmed', 'ready', 'completed', 'all'].includes(
-        statusFromUrl
-      )
-    ) {
-      setSelectedStatus(statusFromUrl);
-    }
-  }, [searchParams]);
 
   const checkAuth = async () => {
     const {
@@ -87,157 +96,132 @@ function OrderManagementContent() {
     }
   };
 
-  const loadOrders = async () => {
+  const loadData = async () => {
     try {
-      // Get the next active sell
-      const { data: nextSell } = await supabase.rpc('get_next_active_sell');
+      console.log('🔄 Loading orders and sells...');
 
-      if (!nextSell || nextSell.length === 0) {
-        setOrders([]);
-        return;
+      // Load sells first
+      const { data: sellsData, error: sellsError } = await supabase
+        .from('sells')
+        .select(`
+          id,
+          sell_date,
+          status,
+          locations (
+            name,
+            district,
+            address,
+            delivery_timeframe
+          )
+        `)
+        .order('sell_date', { ascending: false });
+
+      if (sellsError) {
+        console.error('❌ Error loading sells:', sellsError);
+      } else {
+        console.log('✅ Sells loaded:', sellsData);
+        setSells(sellsData || []);
       }
 
-      const activeSell = nextSell[0];
-
-      // Load orders for the active sell
-      const { data: ordersData } = await supabase
+      // Load all orders
+      const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(
-          `
-          *,
-          order_items (
-            *,
-            products (
-              name,
-              description
-            )
-          )
-        `
-        )
-        .eq('sell_id', activeSell.id)
-        .order('created_at', { ascending: true });
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      setOrders(ordersData || []);
+      if (ordersError) {
+        console.error('❌ Error loading orders:', ordersError);
+      } else {
+        console.log('✅ Orders loaded:', ordersData);
+        
+        // Combine orders with sell information
+        const ordersWithSells = (ordersData || []).map(order => {
+          const sell = sellsData?.find(s => s.id === order.sell_id);
+          return {
+            ...order,
+            sell: sell || undefined
+          };
+        });
+        
+        setOrders(ordersWithSells);
+      }
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('❌ Unexpected error in loadData:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    setUpdating(orderId);
     try {
-      // Get the order details first
-      const order = orders.find(o => o.id === orderId);
-      if (!order) {
-        throw new Error('Order not found');
-      }
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
 
-      // Update order status using the new API endpoint
-      const response = await fetch(`/api/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      if (error) throw error;
 
-      if (!response.ok) {
-        throw new Error('Failed to update order status');
-      }
-
-      // If confirming an order, update inventory
-      if (newStatus === 'confirmed' && order.status === 'pending') {
-        console.log('Confirming order, updating inventory...');
-
-        // Update inventory for each item in the order
-        for (const item of order.order_items) {
-          try {
-            // Call the reserve_sell_inventory function
-            const { data, error } = await supabase.rpc(
-              'reserve_sell_inventory',
-              {
-                p_sell_id: order.sell_id, // Assuming sell_id is available
-                p_product_id: item.product_id,
-                p_quantity: item.quantity,
-              }
-            );
-
-            if (error) {
-              console.error('Error reserving inventory:', error);
-            } else {
-              console.log('Inventory reserved successfully:', data);
-            }
-          } catch (error) {
-            console.error('Error reserving inventory for item:', error);
-          }
-        }
-      }
-
-      // Update local state
-      setOrders(
-        orders.map(order =>
-          order.id === orderId
-            ? { ...order, status: newStatus as Order['status'] }
-            : order
-        )
-      );
+      // Reload data to reflect changes
+      await loadData();
     } catch (error) {
       console.error('Error updating order status:', error);
-    } finally {
-      setUpdating(null);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge className="bg-orange-100 text-orange-800">Pending</Badge>;
-      case 'confirmed':
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800">Confirmed</Badge>
-        );
-      case 'ready':
-        return <Badge className="bg-green-100 text-green-800">Ready</Badge>;
-      case 'completed':
-        return <Badge className="bg-gray-100 text-gray-800">Completed</Badge>;
-      case 'cancelled':
-        return <Badge variant="destructive">Cancelled</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="w-4 h-4 text-orange-500" />;
       case 'confirmed':
-        return <AlertCircle className="h-4 w-4" />;
-      case 'ready':
-        return <CheckCircle className="h-4 w-4" />;
+        return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+      case 'prepared':
+        return <CheckCircle className="w-4 h-4 text-blue-500" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4" />;
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'cancelled':
-        return <AlertCircle className="h-4 w-4" />;
+        return <XCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  const formatTime = (time: string) => {
-    return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'confirmed':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'prepared':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
-  const filteredOrders =
-    selectedStatus === 'all'
-      ? orders
-      : orders.filter(order => order.status === selectedStatus);
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = 
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const matchesSell = sellFilter === 'all' || order.sell_id === sellFilter;
+
+    return matchesSearch && matchesStatus && matchesSell;
+  });
+
+  const groupedOrders = filteredOrders.reduce((groups, order) => {
+    const sellDate = order.sell?.sell_date || 'No Sell Date';
+    if (!groups[sellDate]) {
+      groups[sellDate] = [];
+    }
+    groups[sellDate].push(order);
+    return groups;
+  }, {} as Record<string, OrderWithSell[]>);
 
   if (loading) {
     return (
@@ -252,275 +236,183 @@ function OrderManagementContent() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <Button
+              onClick={() => router.push('/admin/dashboard')}
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/admin/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <ArrowLeft className="w-5 h-5" />
             </Button>
-            <h1 className="text-xl font-semibold">
-              Order Management - Next Active Sell
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Orders</h1>
+              <p className="text-gray-600">Track and manage customer orders</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto p-4">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card
-            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedStatus === 'pending'
-                ? 'ring-2 ring-orange-400 bg-orange-50'
-                : ''
-            }`}
-            onClick={() => setSelectedStatus('pending')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Pending</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {orders.filter(o => o.status === 'pending').length}
-                  </p>
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Filter className="w-5 h-5 mr-2" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="search">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="search"
+                    placeholder="Search orders..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <Clock className="h-8 w-8 text-orange-400" />
               </div>
-            </CardContent>
-          </Card>
-          <Card
-            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedStatus === 'confirmed'
-                ? 'ring-2 ring-yellow-400 bg-yellow-50'
-                : ''
-            }`}
-            onClick={() => setSelectedStatus('confirmed')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Confirmed</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {orders.filter(o => o.status === 'confirmed').length}
-                  </p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-yellow-400" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card
-            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedStatus === 'ready'
-                ? 'ring-2 ring-green-400 bg-green-50'
-                : ''
-            }`}
-            onClick={() => setSelectedStatus('ready')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Ready</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {orders.filter(o => o.status === 'ready').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card
-            className={`cursor-pointer transition-colors hover:bg-gray-50 ${
-              selectedStatus === 'completed'
-                ? 'ring-2 ring-gray-400 bg-gray-50'
-                : ''
-            }`}
-            onClick={() => setSelectedStatus('completed')}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-600">
-                    {orders.filter(o => o.status === 'completed').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-gray-400" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Orders List */}
-        {filteredOrders.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No orders found
-              </h3>
-              <p className="text-gray-500">
-                {selectedStatus === 'all'
-                  ? 'No orders for the next active sell yet.'
-                  : `No ${selectedStatus} orders found for the next active sell.`}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {filteredOrders.map(order => (
-              <Card
-                key={order.id}
-                className="hover:shadow-md transition-shadow"
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(order.status)}
-                      <div>
-                        <CardTitle className="text-lg">
-                          Order #{order.order_number}
-                        </CardTitle>
-                        <CardDescription>
-                          {new Date(order.created_at).toLocaleString()}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(order.status)}
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          €{order.total_amount.toFixed(2)}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {order.order_items.length} items
-                        </div>
-                      </div>
-                    </div>
+              <div>
+                <Label htmlFor="status-filter">Status</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="prepared">Prepared</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="sell-filter">Sell Date</Label>
+                <Select value={sellFilter} onValueChange={setSellFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sells</SelectItem>
+                    {sells.map((sell) => (
+                      <SelectItem key={sell.id} value={sell.id}>
+                        {new Date(sell.sell_date).toLocaleDateString()} - {sell.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Orders by Sell Date */}
+        {Object.entries(groupedOrders).map(([sellDate, ordersForDate]) => (
+          <Card key={sellDate} className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                {sellDate === 'No Sell Date' ? 'Orders Without Sell Date' : `Sell Date: ${new Date(sellDate).toLocaleDateString()}`}
+                {sellDate !== 'No Sell Date' && ordersForDate[0]?.sell?.locations && (
+                  <div className="ml-4 flex items-center text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    {ordersForDate[0].sell.locations.name} - {ordersForDate[0].sell.locations.delivery_timeframe}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Customer Info */}
-                    <div>
-                      <h4 className="font-medium mb-3 flex items-center">
-                        <User className="h-4 w-4 mr-2" />
-                        Customer Information
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center">
-                          <User className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>{order.customer_name}</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Order #</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Pickup Time</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ordersForDate.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium">{order.order_number}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{order.customer_name}</div>
+                          <div className="text-sm text-gray-500">{order.customer_email}</div>
+                          {order.customer_phone && (
+                            <div className="text-sm text-gray-500">{order.customer_phone}</div>
+                          )}
                         </div>
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>{order.customer_email}</span>
-                        </div>
-                        {order.customer_phone && (
-                          <div className="flex items-center">
-                            <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                            <span>{order.customer_phone}</span>
+                      </TableCell>
+                      <TableCell>{order.pickup_time}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(order.status)}>
+                          <div className="flex items-center space-x-1">
+                            {getStatusIcon(order.status)}
+                            <span className="capitalize">{order.status}</span>
                           </div>
-                        )}
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                          <span>Pickup: {formatTime(order.pickup_time)}</span>
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-1">
+                          <Euro className="w-4 h-4 text-gray-400" />
+                          <span className="font-medium">{order.total_amount}</span>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Order Items */}
-                    <div>
-                      <h4 className="font-medium mb-3 flex items-center">
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Order Items
-                      </h4>
-                      <div className="space-y-2">
-                        {order.order_items.map(item => (
-                          <div
-                            key={item.id}
-                            className="flex justify-between text-sm"
+                      </TableCell>
+                      <TableCell>
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Select
+                            value={order.status}
+                            onValueChange={(value) => updateOrderStatus(order.id, value)}
                           >
-                            <span>
-                              {item.quantity}x {item.products.name}
-                            </span>
-                            <span>
-                              €{(item.quantity * item.unit_price).toFixed(2)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                      {order.special_instructions && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                          <h5 className="font-medium text-sm mb-1">
-                            Special Instructions:
-                          </h5>
-                          <p className="text-sm text-gray-600">
-                            {order.special_instructions}
-                          </p>
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="prepared">Prepared</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ))}
 
-                  {/* Status Update */}
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        Update Status:
-                      </span>
-                      <div className="flex space-x-2">
-                        {['pending', 'confirmed', 'ready', 'completed'].map(
-                          status => (
-                            <Button
-                              key={status}
-                              variant={
-                                order.status === status ? 'default' : 'outline'
-                              }
-                              size="sm"
-                              onClick={() =>
-                                updateOrderStatus(order.id, status)
-                              }
-                              disabled={updating === order.id}
-                            >
-                              {updating === order.id &&
-                              order.status === status ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                status.charAt(0).toUpperCase() + status.slice(1)
-                              )}
-                            </Button>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {Object.keys(groupedOrders).length === 0 && (
+          <Card>
+            <CardContent className="text-center py-8">
+              <div className="text-gray-500">
+                <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No orders found matching your filters</p>
+                <p className="text-sm">Try adjusting your search or filter criteria</p>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
-  );
-}
-
-export default function OrderManagementPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading orders...</p>
-        </div>
-      </div>
-    }>
-      <OrderManagementContent />
-    </Suspense>
   );
 }

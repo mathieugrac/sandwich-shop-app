@@ -259,8 +259,7 @@ export default function InventoryManagementPage() {
               size="sm"
               onClick={() => router.push('/admin/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-xl font-semibold">Sell Inventory Management</h1>
           </div>

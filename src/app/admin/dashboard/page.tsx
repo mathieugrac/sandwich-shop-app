@@ -1,101 +1,37 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/client';
 import {
   Package,
-  ShoppingCart,
-  Users,
-  TrendingUp,
-  LogOut,
-  Settings,
+  MapPin,
   Calendar,
+  Users,
+  ShoppingCart,
+  LogOut,
 } from 'lucide-react';
 
-interface DashboardStats {
-  totalOrders: number;
-  pendingOrders: number;
-  totalProducts: number;
-  totalRevenue: number;
-}
-
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalOrders: 0,
-    pendingOrders: 0,
-    totalProducts: 0,
-    totalRevenue: 0,
-  });
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const checkAuth = useCallback(async () => {
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
       router.push('/admin');
-    }
-  }, [router]);
-
-  const loadDashboardStats = useCallback(async () => {
-    try {
-      // Get the next active sell
-      const { data: nextSell } = await supabase.rpc('get_next_active_sell');
-
-      let orders = [];
-      if (nextSell && nextSell.length > 0) {
-        const activeSell = nextSell[0];
-
-        // Get orders for the active sell
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('sell_id', activeSell.id);
-
-        orders = ordersData || [];
-      }
-
-      // Get products count
-      const { data: products } = await supabase
-        .from('products')
-        .select('id')
-        .eq('active', true);
-
-      const totalOrders = orders.length;
-      const pendingOrders = orders.filter(o => o.status === 'pending').length;
-      const totalRevenue = orders.reduce(
-        (sum, order) => sum + parseFloat(order.total_amount),
-        0
-      );
-
-      setStats({
-        totalOrders,
-        pendingOrders,
-        totalProducts: products?.length || 0,
-        totalRevenue,
-      });
-    } catch (error) {
-      console.error('Error loading dashboard stats:', error);
-    } finally {
+    } else {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    checkAuth();
-    loadDashboardStats();
-  }, [checkAuth, loadDashboardStats]);
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -119,188 +55,95 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600">
+              Manage your sandwich shop operations
+            </p>
           </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto p-4">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/orders?status=pending')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pending Orders
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingOrders}</div>
-              <p className="text-xs text-muted-foreground">Need attention</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/orders')}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Next Sell Orders
-              </CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.pendingOrders} pending
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                €{stats.totalRevenue.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Today&apos;s total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Products
-              </CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProducts}</div>
-              <p className="text-xs text-muted-foreground">Available items</p>
-            </CardContent>
-          </Card>
+          <Button onClick={handleLogout} variant="outline">
+            <LogOut className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Quick Actions */}
+        {/* Navigation Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Products */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/orders')}
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/products')}
           >
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                View Orders
-              </CardTitle>
-              <CardDescription>
-                Manage next active sell orders and update status
-              </CardDescription>
+            <CardHeader className="text-center">
+              <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+              <CardTitle>Products</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {stats.pendingOrders} orders need attention
-                </p>
-                {stats.pendingOrders > 0 && (
-                  <Badge variant="destructive">{stats.pendingOrders}</Badge>
-                )}
-              </div>
+            <CardContent className="text-center">
+              <p className="text-gray-600">Manage sandwich menu and pricing</p>
             </CardContent>
           </Card>
 
+          {/* Locations */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/locations')}
+          >
+            <CardHeader className="text-center">
+              <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
+              <CardTitle>Locations</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-gray-600">
+                Manage delivery locations and timeframes
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Sells */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => navigateTo('/admin/sells')}
           >
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Calendar className="h-5 w-5 mr-2" />
-                Manage Sells
-              </CardTitle>
-              <CardDescription>
-                Create and manage sells for specific dates
-              </CardDescription>
+            <CardHeader className="text-center">
+              <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
+              <CardTitle>Sells</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                Create sells in advance and manage their status
-              </p>
+            <CardContent className="text-center">
+              <p className="text-gray-600">Create and manage sandwich sells</p>
             </CardContent>
           </Card>
 
+          {/* Clients */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/inventory')}
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/clients')}
           >
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Package className="h-5 w-5 mr-2" />
-                Manage Inventory
-              </CardTitle>
-              <CardDescription>
-                Set inventory quantities for specific sells
-              </CardDescription>
+            <CardHeader className="text-center">
+              <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
+              <CardTitle>Clients</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                Update stock levels for sell menu items
+            <CardContent className="text-center">
+              <p className="text-gray-600">
+                View customer information and history
               </p>
             </CardContent>
           </Card>
 
+          {/* Orders */}
           <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => navigateTo('/admin/settings')}
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/orders')}
           >
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Settings className="h-5 w-5 mr-2" />
-                Settings
-              </CardTitle>
-              <CardDescription>
-                Manage shop settings and preferences
-              </CardDescription>
+            <CardHeader className="text-center">
+              <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-red-600" />
+              <CardTitle>Orders</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600">
-                Configure shop hours, pickup times, and more
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest orders and updates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No recent activity to display</p>
-                <p className="text-sm">
-                  Orders will appear here as they come in
-                </p>
-              </div>
+            <CardContent className="text-center">
+              <p className="text-gray-600">Track and manage customer orders</p>
             </CardContent>
           </Card>
         </div>
