@@ -12,6 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -42,6 +50,8 @@ import {
   Loader2,
   MapPin,
   Package,
+  Trash2,
+  Edit,
 } from 'lucide-react';
 
 interface Location {
@@ -62,6 +72,8 @@ interface Sell {
   created_at: string;
   updated_at: string;
   locations?: Location;
+  inventory_count?: number;
+  inventory_total?: number;
 }
 
 interface Product {
@@ -94,11 +106,19 @@ export default function SellManagementPage() {
   } | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedSell, setSelectedSell] = useState<Sell | null>(null);
+  const [editingSell, setEditingSell] = useState<Sell | null>(null);
   const [newSellDate, setNewSellDate] = useState('');
   const [newSellLocation, setNewSellLocation] = useState('');
   const [newSellNotes, setNewSellNotes] = useState('');
+  const [editSellDate, setEditSellDate] = useState('');
+  const [editSellLocation, setEditSellLocation] = useState('');
+  const [editSellNotes, setEditSellNotes] = useState('');
   const [inventory, setInventory] = useState<{ [key: string]: number }>({});
+  const [sellInventoryCache, setSellInventoryCache] = useState<{
+    [sellId: string]: { [productId: string]: number };
+  }>({});
   const router = useRouter();
 
   useEffect(() => {
@@ -147,6 +167,36 @@ export default function SellManagementPage() {
         .from('sells')
         .select('*')
         .order('sell_date', { ascending: true });
+
+      // Load inventory counts and totals for each sell
+      let sellsWithInventoryCount = sellsData || [];
+      if (sellsData && sellsData.length > 0) {
+        const { data: inventoryData } = await supabase
+          .from('sell_inventory')
+          .select('sell_id, total_quantity');
+
+        if (inventoryData) {
+          const countMap: { [key: string]: number } = {};
+          const totalMap: { [key: string]: number } = {};
+
+          inventoryData.forEach(item => {
+            if (!countMap[item.sell_id]) {
+              countMap[item.sell_id] = 0;
+              totalMap[item.sell_id] = 0;
+            }
+            if (item.total_quantity > 0) {
+              countMap[item.sell_id]++;
+            }
+            totalMap[item.sell_id] += item.total_quantity;
+          });
+
+          sellsWithInventoryCount = sellsData.map(sell => ({
+            ...sell,
+            inventory_count: countMap[sell.id] || 0,
+            inventory_total: totalMap[sell.id] || 0,
+          }));
+        }
+      }
 
       if (sellsError) {
         console.error('❌ Error loading sells:', sellsError);
@@ -201,8 +251,8 @@ export default function SellManagementPage() {
       }
 
       // Combine sells with location information
-      if (sellsData && locationsData) {
-        const sellsWithLocations = sellsData.map(sell => {
+      if (sellsWithInventoryCount && locationsData) {
+        const sellsWithLocations = sellsWithInventoryCount.map(sell => {
           const location = locationsData.find(
             loc => loc.id === sell.location_id
           );
@@ -211,10 +261,13 @@ export default function SellManagementPage() {
             locations: location || null,
           };
         });
-        console.log('✅ Combined sells with locations:', sellsWithLocations);
+        console.log(
+          '✅ Combined sells with locations and inventory counts:',
+          sellsWithLocations
+        );
         setSells(sellsWithLocations);
       } else {
-        setSells(sellsData || []);
+        setSells(sellsWithInventoryCount || []);
       }
 
       setLocations(locationsData || []);
@@ -302,7 +355,14 @@ export default function SellManagementPage() {
   const openInventoryModal = async (sell: Sell) => {
     setSelectedSell(sell);
 
-    // Load current inventory for this sell
+    // Check if we have cached inventory for this sell
+    if (sellInventoryCache[sell.id]) {
+      setInventory(sellInventoryCache[sell.id]);
+      setShowInventoryModal(true);
+      return;
+    }
+
+    // Load current inventory for this sell from database
     const { data: inventoryData } = await supabase
       .from('sell_inventory')
       .select(
@@ -318,41 +378,137 @@ export default function SellManagementPage() {
       )
       .eq('sell_id', sell.id);
 
-    if (inventoryData) {
+    if (inventoryData && inventoryData.length > 0) {
       const inventoryMap: { [key: string]: number } = {};
       inventoryData.forEach(item => {
         inventoryMap[item.product_id] = item.total_quantity;
       });
       setInventory(inventoryMap);
+      // Cache this inventory data
+      setSellInventoryCache(prev => ({
+        ...prev,
+        [sell.id]: inventoryMap,
+      }));
+    } else {
+      // Initialize with all products at 0
+      const inventoryMap: { [key: string]: number } = {};
+      products.forEach(product => {
+        inventoryMap[product.id] = 0;
+      });
+      setInventory(inventoryMap);
+      // Cache this inventory data
+      setSellInventoryCache(prev => ({
+        ...prev,
+        [sell.id]: inventoryMap,
+      }));
     }
 
     setShowInventoryModal(true);
+  };
+
+  const openEditModal = (sell: Sell) => {
+    setEditingSell(sell);
+    setEditSellDate(sell.sell_date);
+    setEditSellLocation(sell.location_id);
+    setEditSellNotes(sell.notes || '');
+    setShowEditModal(true);
   };
 
   const saveInventory = async () => {
     if (!selectedSell) return;
 
     try {
-      // Update inventory for each product
-      for (const [productId, quantity] of Object.entries(inventory)) {
-        await supabase.from('sell_inventory').upsert({
+      // Prepare all inventory updates
+      const inventoryUpdates = Object.entries(inventory).map(
+        ([productId, quantity]) => ({
           sell_id: selectedSell.id,
           product_id: productId,
           total_quantity: quantity,
           reserved_quantity: 0,
+        })
+      );
+
+      // Use upsert with proper conflict resolution
+      const { error: upsertError } = await supabase
+        .from('sell_inventory')
+        .upsert(inventoryUpdates, {
+          onConflict: 'sell_id,product_id',
         });
+
+      if (upsertError) {
+        console.error('Upsert error:', upsertError);
+        throw upsertError;
       }
 
-      setMessage({ type: 'success', text: 'Inventory updated successfully!' });
+      // Update the cache with the new inventory data
+      setSellInventoryCache(prev => ({
+        ...prev,
+        [selectedSell.id]: inventory,
+      }));
+
+      setMessage({ type: 'success', text: 'Menu updated successfully!' });
       setShowInventoryModal(false);
-      setSelectedSell(null);
-      setInventory({});
       await loadData();
     } catch (error) {
-      console.error('Error updating inventory:', error);
+      console.error('Error updating menu:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to update inventory. Please try again.',
+        text: 'Failed to update menu. Please try again.',
+      });
+    }
+  };
+
+  const saveEditSell = async () => {
+    if (!editingSell) return;
+
+    try {
+      const { error } = await supabase
+        .from('sells')
+        .update({
+          sell_date: editSellDate,
+          location_id: editSellLocation,
+          notes: editSellNotes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingSell.id);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Sell updated successfully!' });
+      setShowEditModal(false);
+      setEditingSell(null);
+      await loadData();
+    } catch (error) {
+      console.error('Error updating sell:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to update sell. Please try again.',
+      });
+    }
+  };
+
+  const deleteSell = async (sellId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to delete this sell? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Delete the sell (this will cascade delete related inventory and orders)
+      const { error } = await supabase.from('sells').delete().eq('id', sellId);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Sell deleted successfully!' });
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting sell:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to delete sell. Please try again.',
       });
     }
   };
@@ -552,164 +708,294 @@ export default function SellManagementPage() {
           </Card>
         )}
 
-        {/* Sells List */}
-        <div className="grid gap-6">
-          {sells.map(sell => (
-            <Card key={sell.id} className="shadow-sm">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4 mb-2">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(sell.status)}
-                        {getStatusBadge(sell.status)}
-                      </div>
-                      <div className="flex items-center space-x-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
+        {/* Sells Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Sells</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Products</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sells.map(sell => (
+                  <TableRow key={sell.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
                         <span
                           className={
-                            isToday(sell.sell_date)
-                              ? 'font-semibold text-black'
-                              : ''
+                            isToday(sell.sell_date) ? 'font-semibold' : ''
                           }
                         >
                           {formatDate(sell.sell_date)}
                         </span>
                         {isToday(sell.sell_date) && (
-                          <Badge variant="outline" className="ml-2">
+                          <Badge variant="outline" className="mt-1 w-fit">
                             Today
                           </Badge>
                         )}
                       </div>
-                    </div>
-
-                    {/* Location Information */}
-                    {sell.locations && (
-                      <div className="flex items-center space-x-2 text-gray-600 mb-2">
-                        <MapPin className="w-4 h-4" />
-                        <span className="font-medium">
-                          {sell.locations.name}
-                        </span>
-                        <span className="text-sm">
-                          ({sell.locations.district})
-                        </span>
-                        <span className="text-sm">
-                          • {sell.locations.delivery_timeframe}
-                        </span>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {sell.locations?.name || 'No location'}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(sell.status)}</TableCell>
+                    <TableCell>
+                      <span className="text-gray-600">
+                        {sell.inventory_total || 0} items
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openInventoryModal(sell)}
+                          className="flex items-center space-x-2"
+                        >
+                          <span>Manage Menu</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            router.push(`/admin/orders?sell=${sell.id}`)
+                          }
+                          className="flex items-center space-x-2"
+                        >
+                          <span>View Orders</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditModal(sell)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteSell(sell.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                    )}
-
-                    {sell.notes && (
-                      <p className="text-gray-600 text-sm mb-3">{sell.notes}</p>
-                    )}
-                  </div>
-
-                  <div className="flex space-x-2">
-                    {/* Inventory Management Button */}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openInventoryModal(sell)}
-                      className="flex items-center space-x-2"
-                    >
-                      <Package className="w-4 h-4" />
-                      <span>Inventory</span>
-                    </Button>
-
-                    {/* Status Update Buttons */}
-                    {sell.status === 'draft' && (
-                      <Button
-                        size="sm"
-                        onClick={() => updateSellStatus(sell.id, 'active')}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Activate
-                      </Button>
-                    )}
-                    {sell.status === 'active' && (
-                      <Button
-                        size="sm"
-                        onClick={() => updateSellStatus(sell.id, 'completed')}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Complete
-                      </Button>
-                    )}
-                    {sell.status === 'draft' && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => updateSellStatus(sell.id, 'cancelled')}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
         {/* Inventory Management Modal */}
         <Dialog open={showInventoryModal} onOpenChange={setShowInventoryModal}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="w-[800px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Manage Inventory - {selectedSell?.locations?.name}
+                Manage Menu - {selectedSell?.locations?.name}
               </DialogTitle>
               <DialogDescription>
-                Set quantities for each product in this sell
+                Add products to this sell's menu and set quantities for each
+                item
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
-              {products.map(product => (
-                <div
-                  key={product.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <h4 className="font-medium text-black">{product.name}</h4>
-                    <p className="text-sm text-gray-600">
-                      {product.description}
-                    </p>
-                    <p className="text-sm text-gray-600">€{product.price}</p>
+              {/* Product Selection and Quantity Management */}
+              {products.map(product => {
+                const currentQuantity = inventory[product.id] || 0;
+                const isInMenu = currentQuantity > 0;
+
+                return (
+                  <div
+                    key={product.id}
+                    className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
+                      isInMenu
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <h4
+                        className={`font-medium ${currentQuantity === 0 ? 'text-gray-400' : 'text-black'}`}
+                      >
+                        {product.name}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const newQty = Math.max(0, currentQuantity - 1);
+                          const newInventory = {
+                            ...inventory,
+                            [product.id]: newQty,
+                          };
+                          console.log('Updating inventory:', newInventory);
+                          setInventory(newInventory);
+                        }}
+                        disabled={currentQuantity === 0}
+                      >
+                        -
+                      </Button>
+
+                      <Input
+                        id={`qty-${product.id}`}
+                        type="number"
+                        min="0"
+                        value={currentQuantity}
+                        onChange={e => {
+                          const newQty = parseInt(e.target.value) || 0;
+                          const newInventory = {
+                            ...inventory,
+                            [product.id]: newQty,
+                          };
+                          console.log('Updating inventory:', newInventory);
+                          setInventory(newInventory);
+                        }}
+                        className="w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const newQty = currentQuantity + 1;
+                          const newInventory = {
+                            ...inventory,
+                            [product.id]: newQty,
+                          };
+                          console.log('Updating inventory:', newInventory);
+                          setInventory(newInventory);
+                        }}
+                      >
+                        +
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor={`qty-${product.id}`} className="text-sm">
-                      Quantity:
-                    </Label>
-                    <Input
-                      id={`qty-${product.id}`}
-                      type="number"
-                      min="0"
-                      value={inventory[product.id] || 0}
-                      onChange={e =>
-                        setInventory({
-                          ...inventory,
-                          [product.id]: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="w-20"
-                    />
+                );
+              })}
+            </div>
+
+            {/* Menu Summary */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">Menu Summary</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {Object.values(inventory).filter(qty => qty > 0).length}
                   </div>
+                  <div className="text-sm text-gray-600">Products</div>
                 </div>
-              ))}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {Object.values(inventory).reduce(
+                      (sum, qty) => sum + qty,
+                      0
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">Total Items</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {Object.entries(inventory)
+                      .filter(([_, qty]) => qty > 0)
+                      .reduce((sum, [_, qty]) => {
+                        const product = products.find(p => p.id === _);
+                        return sum + (product ? product.price * qty : 0);
+                      }, 0)
+                      .toFixed(2)}
+                  </div>
+                  <div className="text-sm text-gray-600">Total Value (€)</div>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                onClick={saveInventory}
-                className="bg-black hover:bg-gray-800"
-              >
-                Save Inventory
-              </Button>
               <Button
                 onClick={() => setShowInventoryModal(false)}
                 variant="outline"
               >
                 Cancel
+              </Button>
+              <Button
+                onClick={saveInventory}
+                className="bg-black hover:bg-gray-800"
+                disabled={Object.values(inventory).every(qty => qty === 0)}
+              >
+                Save Menu
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Sell Modal */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Sell</DialogTitle>
+              <DialogDescription>Update the sell information</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-sell-date">Sell Date</Label>
+                <Input
+                  id="edit-sell-date"
+                  type="date"
+                  value={editSellDate}
+                  onChange={e => setEditSellDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-sell-location">Location</Label>
+                <Select
+                  value={editSellLocation}
+                  onValueChange={setEditSellLocation}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map(location => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name} - {location.district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-sell-notes">Notes (Optional)</Label>
+                <Input
+                  id="edit-sell-notes"
+                  value={editSellNotes}
+                  onChange={e => setEditSellNotes(e.target.value)}
+                  placeholder="Special instructions or notes"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button onClick={() => setShowEditModal(false)} variant="outline">
+                Cancel
+              </Button>
+              <Button
+                onClick={saveEditSell}
+                className="bg-black hover:bg-gray-800"
+              >
+                Save Changes
               </Button>
             </div>
           </DialogContent>

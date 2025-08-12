@@ -47,6 +47,19 @@ BEGIN
   END IF;
 END $$;
 
+-- Add foreign key constraint for location_id if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'sells' 
+    AND constraint_name = 'sells_location_id_fkey'
+  ) THEN
+    ALTER TABLE sells ADD CONSTRAINT sells_location_id_fkey 
+    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT;
+  END IF;
+END $$;
+
 -- Remove unique constraint on sell_date if it exists
 DO $$ 
 BEGIN

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase/server';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         .in('id', productIds);
 
       const productMap = new Map(
-        products?.map((product) => [product.id, product.name]) || []
+        products?.map(product => [product.id, product.name]) || []
       );
 
       const emailData = {
@@ -147,12 +147,14 @@ export async function POST(request: Request) {
         customerEmail,
         pickupDate,
         pickupTime,
-        items: items.map((item: { id: string; quantity: number; price: number }) => ({
-          productName: productMap.get(item.id) || 'Unknown Product',
-          quantity: item.quantity,
-          unitPrice: item.price,
-          totalPrice: item.quantity * item.price,
-        })),
+        items: items.map(
+          (item: { id: string; quantity: number; price: number }) => ({
+            productName: productMap.get(item.id) || 'Unknown Product',
+            quantity: item.quantity,
+            unitPrice: item.price,
+            totalPrice: item.quantity * item.price,
+          })
+        ),
         totalAmount,
         specialInstructions,
       };
@@ -161,10 +163,15 @@ export async function POST(request: Request) {
       if (emailResult) {
         console.log('API: Order confirmation email sent successfully');
       } else {
-        console.log('API: Order confirmation email failed, but order was created successfully');
+        console.log(
+          'API: Order confirmation email failed, but order was created successfully'
+        );
       }
     } catch (emailError) {
-      console.error('API: Failed to send order confirmation email:', emailError);
+      console.error(
+        'API: Failed to send order confirmation email:',
+        emailError
+      );
       // Don't fail the order if email fails, but log the error
     }
 
