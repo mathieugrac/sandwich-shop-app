@@ -3,16 +3,18 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     // Get the sell with location information
     const { data: sell, error: sellError } = await supabase
       .from('sells')
       .select(
         `
         *,
-        locations (
+        location:locations (
           id,
           name,
           district,
@@ -22,7 +24,7 @@ export async function GET(
         )
       `
       )
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (sellError || !sell) {
@@ -36,7 +38,7 @@ export async function GET(
       .select(
         `
         *,
-        products (
+        product:products (
           id,
           name,
           description,
@@ -48,7 +50,7 @@ export async function GET(
         )
       `
       )
-      .eq('sell_id', params.id);
+      .eq('sell_id', id);
 
     if (inventoryError) {
       console.error('Error fetching sell inventory:', inventoryError);
