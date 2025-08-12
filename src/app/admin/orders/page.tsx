@@ -107,7 +107,7 @@ export default function OrdersPage() {
           id,
           sell_date,
           status,
-          locations (
+          location:locations (
             name,
             district,
             address,

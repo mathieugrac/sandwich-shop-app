@@ -3,13 +3,15 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const { data: location, error } = await supabase
       .from('locations')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -32,9 +34,11 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     const body = await request.json();
     const {
       name,
@@ -66,7 +70,7 @@ export async function PUT(
         active: active !== undefined ? active : true,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -90,14 +94,16 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+
     // Check if location is referenced by any sells
     const { data: sells, error: sellsError } = await supabase
       .from('sells')
       .select('id')
-      .eq('location_id', params.id);
+      .eq('location_id', id);
 
     if (sellsError) {
       console.error('Error checking sells:', sellsError);
@@ -118,7 +124,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('locations')
       .update({ active: false, updated_at: new Date().toISOString() })
-      .eq('id', params.id);
+      .eq('id', id);
 
     if (error) {
       console.error('Error deleting location:', error);

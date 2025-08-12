@@ -803,8 +803,8 @@ export default function SellManagementPage() {
                 Manage Menu - {selectedSell?.locations?.name}
               </DialogTitle>
               <DialogDescription>
-                Add products to this sell's menu and set quantities for each
-                item
+                Add products to this sell&apos;s menu and set quantities for
+                each item
               </DialogDescription>
             </DialogHeader>
 
