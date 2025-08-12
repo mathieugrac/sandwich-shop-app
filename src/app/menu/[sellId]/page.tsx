@@ -131,8 +131,15 @@ export default function MenuPage() {
   }
 
   // Filter only products with available inventory
+  console.log('🔍 Menu: sellData.inventory:', sellData.inventory);
+  
   const availableProducts = sellData.inventory
-    .filter(item => item.product.active && item.available_quantity > 0)
+    .filter(item => {
+      console.log('🔍 Menu: item:', item);
+      console.log('🔍 Menu: item.product:', item.product);
+      console.log('🔍 Menu: item.product?.active:', item.product?.active);
+      return item.product?.active && item.available_quantity > 0;
+    })
     .map(item => item.product);
 
   return (
@@ -219,10 +226,10 @@ export default function MenuPage() {
                 <SandwichItem
                   key={product.id}
                   name={product.name}
-                  description={product.description}
+                  description={product.description || undefined}
                   price={product.price}
                   availableStock={getAvailableStock(product.id)}
-                  imageUrl={product.image_url}
+                  imageUrl={product.image_url || undefined}
                   onAddToCart={() => handleAddToCart(product.id)}
                 />
               ))}
