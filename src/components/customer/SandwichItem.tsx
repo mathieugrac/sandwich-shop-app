@@ -84,7 +84,9 @@ export function SandwichItem({
   };
 
   return (
-    <Card className="overflow-hidden py-0">
+    <Card
+      className={`overflow-hidden py-0 ${isSoldOut ? 'shadow-none' : 'shadow-xs'}`}
+    >
       {/* Image Section */}
       <div className="relative">
         <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
@@ -103,16 +105,15 @@ export function SandwichItem({
         </div>
 
         {/* Add to Cart Button / Quantity Control */}
-        {!isInCart ? (
+        {!isSoldOut && !isInCart ? (
           <Button
             size="sm"
             className="absolute bottom-3 right-2 w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50"
             onClick={handleAddToCart}
-            disabled={isSoldOut}
           >
             <Plus className="h-4 w-4 text-black" />
           </Button>
-        ) : (
+        ) : !isSoldOut && isInCart ? (
           <div className="absolute bottom-3 right-2 bg-white border border-gray-300 rounded-full flex items-center px-[3px] py-1 h-10">
             <Button
               size="sm"
@@ -136,20 +137,28 @@ export function SandwichItem({
               <Plus className="h-3 w-3 text-black" />
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Content Section */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-1">
-          <h3 className="font-bold text-black text-lg">{name}</h3>
-          <span className="text-black text-lg">€{price.toFixed(2)}</span>
+          <h3
+            className={`font-bold text-lg ${isSoldOut ? 'text-gray-400' : 'text-black'}`}
+          >
+            {name}
+          </h3>
+          <span
+            className={`text-lg ${isSoldOut ? 'text-gray-400' : 'text-black'}`}
+          >
+            €{price.toFixed(2)}
+          </span>
         </div>
 
         {/* Stock Status */}
         <div className="text-sm mb-3">
           {isSoldOut ? (
-            <span className="italic">SOLD OUT</span>
+            <span className="italic text-gray-400">SOLD OUT</span>
           ) : isLowStock ? (
             <span className="italic">
               {availableStock} sandwiches left, hurry up!
@@ -163,7 +172,9 @@ export function SandwichItem({
 
         {/* Description */}
         {description && (
-          <div className="text-sm text-gray-600 leading-relaxed">
+          <div
+            className={`text-sm leading-relaxed ${isSoldOut ? 'text-gray-400' : 'text-gray-600'}`}
+          >
             {description}
           </div>
         )}
