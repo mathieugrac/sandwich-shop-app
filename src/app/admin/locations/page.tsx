@@ -38,6 +38,7 @@ import {
 interface Location {
   id: string;
   name: string;
+  district: string;
   address: string;
   location_url: string | null;
   pickup_hour_start: string;
@@ -54,6 +55,7 @@ export default function LocationsPage() {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    district: '',
     address: '',
     location_url: '',
     pickup_hour_start: '',
@@ -95,6 +97,7 @@ export default function LocationsPage() {
   const resetForm = () => {
     setFormData({
       name: '',
+      district: '',
       address: '',
       location_url: '',
       pickup_hour_start: '',
@@ -111,6 +114,7 @@ export default function LocationsPage() {
   const openEditModal = (location: Location) => {
     setFormData({
       name: location.name,
+      district: location.district,
       address: location.address,
       location_url: location.location_url || '',
       pickup_hour_start: location.pickup_hour_start,
@@ -129,6 +133,7 @@ export default function LocationsPage() {
   const saveLocation = async () => {
     if (
       !formData.name ||
+      !formData.district ||
       !formData.address ||
       !formData.pickup_hour_start ||
       !formData.pickup_hour_end
@@ -138,6 +143,7 @@ export default function LocationsPage() {
     try {
       const locationData = {
         name: formData.name,
+        district: formData.district,
         address: formData.address,
         location_url: formData.location_url || null,
         pickup_hour_start: formData.pickup_hour_start,
@@ -233,6 +239,7 @@ export default function LocationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>District</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>Pickup Hours</TableHead>
                   <TableHead>Status</TableHead>
@@ -245,6 +252,7 @@ export default function LocationsPage() {
                     <TableCell className="font-medium">
                       {location.name}
                     </TableCell>
+                    <TableCell>{location.district}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {location.address}
                     </TableCell>
@@ -325,6 +333,18 @@ export default function LocationsPage() {
               </div>
 
               <div>
+                <Label htmlFor="district">District</Label>
+                <Input
+                  id="district"
+                  value={formData.district}
+                  onChange={e =>
+                    setFormData({ ...formData, district: e.target.value })
+                  }
+                  placeholder="e.g., Penha da França"
+                />
+              </div>
+
+              <div>
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
@@ -338,9 +358,7 @@ export default function LocationsPage() {
               </div>
 
               <div>
-                <Label htmlFor="location_url">
-                  Location URL (Optional)
-                </Label>
+                <Label htmlFor="location_url">Location URL (Optional)</Label>
                 <Input
                   id="location_url"
                   value={formData.location_url}
