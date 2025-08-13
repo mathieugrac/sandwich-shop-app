@@ -3,15 +3,18 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
+    console.log('🔍 API: Fetching drops with location data...');
+
     const { data: drops, error } = await supabase
       .from('drops')
       .select(
         `
         *,
-        locations (
+        location:locations (
           id,
           name,
           address,
+          district,
           location_url,
           pickup_hour_start,
           pickup_hour_end
@@ -21,16 +24,19 @@ export async function GET() {
       .order('date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching drops:', error);
+      console.error('❌ API: Error fetching drops:', error);
       return NextResponse.json(
         { error: 'Failed to fetch drops' },
         { status: 500 }
       );
     }
 
+    console.log('✅ API: Drops fetched successfully:', drops);
+    console.log('✅ API: First drop location data:', drops?.[0]?.location);
+
     return NextResponse.json(drops);
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('❌ API: Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -85,34 +91,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get all active products to create drop product entries
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('id, sell_price')
-      .eq('active', true);
-
-    if (productsError) {
-      console.error('Error fetching products:', productsError);
-      // Don't fail the drop creation, just log the error
-    } else if (products && products.length > 0) {
-      // Create drop product entries for all products with 0 quantity and captured selling price
-      const dropProductData = products.map(product => ({
-        drop_id: drop.id,
-        product_id: product.id,
-        stock_quantity: 0,
-        reserved_quantity: 0,
-        selling_price: product.sell_price, // Capture the selling price at drop level
-      }));
-
-      const { error: dropProductError } = await supabase
-        .from('drop_products')
-        .insert(dropProductData);
-
-      if (dropProductError) {
-        console.error('Error creating drop product entries:', dropProductError);
-        // Don't fail the drop creation, just log the error
-      }
-    }
+    // Don't automatically create drop products - let admin manage menu manually
+    // This ensures only selected products are attached to drops
 
     return NextResponse.json(drop);
   } catch (error) {

@@ -117,9 +117,9 @@ export interface DropWithLocation extends Drop {
   location: Location;
 }
 
-export interface DropWithInventory extends Drop {
+export interface DropWithProducts extends Drop {
   location: Location;
-  inventory: Array<
+  dropProducts: Array<
     DropProduct & {
       product: Product;
     }

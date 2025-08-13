@@ -105,25 +105,10 @@ export async function POST(request: Request) {
     // Create order products linked to drop_products
     const orderProducts = [];
     for (const item of items) {
-      // Find the corresponding drop_product for this product
-      const { data: dropProduct, error: dropProductError } = await supabase
-        .from('drop_products')
-        .select('id, selling_price')
-        .eq('drop_id', activeDrop.id)
-        .eq('product_id', item.id)
-        .single();
-
-      if (dropProductError || !dropProduct) {
-        console.error('API: Error finding drop product:', dropProductError);
-        return NextResponse.json(
-          { error: 'Product not available for this drop' },
-          { status: 400 }
-        );
-      }
-
+      // The item.id is now the drop_product_id from the cart
       orderProducts.push({
         order_id: order.id,
-        drop_product_id: dropProduct.id,
+        drop_product_id: item.id, // Use the drop_product_id directly
         order_quantity: item.quantity,
       });
     }
@@ -142,44 +127,44 @@ export async function POST(request: Request) {
 
     // Reserve inventory for each item using the new drop-based function
     for (const item of items) {
-      // Find the drop_product_id for this product
-      const { data: dropProduct } = await supabase
-        .from('drop_products')
-        .select('id')
-        .eq('drop_id', activeDrop.id)
-        .eq('product_id', item.id)
-        .single();
-
-      if (dropProduct) {
-        const { error: reserveError } = await supabase.rpc(
-          'reserve_drop_product_inventory',
-          {
-            p_drop_product_id: dropProduct.id,
-            p_quantity: item.quantity,
-          }
-        );
-
-        if (reserveError) {
-          console.error('Error reserving inventory:', reserveError);
-          return NextResponse.json(
-            { error: 'Failed to reserve inventory' },
-            { status: 500 }
-          );
+      // The item.id is the drop_product_id, so we can reserve directly
+      const { error: reserveError } = await supabase.rpc(
+        'reserve_drop_product_inventory',
+        {
+          p_drop_product_id: item.id, // Use drop_product_id directly
+          p_quantity: item.quantity,
         }
+      );
+
+      if (reserveError) {
+        console.error('Error reserving drop products:', reserveError);
+        return NextResponse.json(
+          { error: 'Failed to reserve drop products' },
+          { status: 400 }
+        );
       }
     }
 
     // Send order confirmation email
     try {
-      // Get product names for email
-      const productIds = items.map((item: { id: string }) => item.id);
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, name')
-        .in('id', productIds);
+      // Get product names for email - now we need to get them from drop_products
+      const dropProductIds = items.map((item: { id: string }) => item.id);
+      const { data: dropProducts } = await supabase
+        .from('drop_products')
+        .select(
+          `
+          id,
+          selling_price,
+          product:products(id, name)
+        `
+        )
+        .in('id', dropProductIds);
 
       const productMap = new Map(
-        products?.map(product => [product.id, product.name]) || []
+        dropProducts?.map(dp => [
+          dp.id,
+          { name: dp.product.name, price: dp.selling_price },
+        ]) || []
       );
 
       const emailData = {
@@ -189,12 +174,15 @@ export async function POST(request: Request) {
         pickupDate,
         pickupTime,
         items: items.map(
-          (item: { id: string; quantity: number; price: number }) => ({
-            productName: productMap.get(item.id) || 'Unknown Product',
-            quantity: item.quantity,
-            unitPrice: item.price,
-            totalPrice: item.quantity * item.price,
-          })
+          (item: { id: string; quantity: number; price: number }) => {
+            const productInfo = productMap.get(item.id);
+            return {
+              productName: productInfo?.name || 'Unknown Product',
+              quantity: item.quantity,
+              unitPrice: item.price,
+              totalPrice: item.quantity * item.price,
+            };
+          }
         ),
         totalAmount,
         specialInstructions,
