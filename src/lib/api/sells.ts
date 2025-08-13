@@ -1,14 +1,9 @@
-import {
-  Sell,
-  SellWithLocation,
-  SellWithInventory,
-  Location,
-} from '@/types/database';
+import { Drop, Location } from '@/types/database';
 
-export interface NextActiveSell {
-  sell: {
+export interface NextActiveDrop {
+  drop: {
     id: string;
-    sell_date: string;
+    date: string;
     status: string;
     location: Location;
   };
@@ -16,7 +11,7 @@ export interface NextActiveSell {
     id: string;
     name: string;
     description: string | null;
-    price: number;
+    sell_price: number;
     image_url: string | null;
     category: string;
     active: boolean;
@@ -25,57 +20,55 @@ export interface NextActiveSell {
   }>;
 }
 
-export async function fetchSells(): Promise<SellWithLocation[]> {
-  const response = await fetch('/api/sells');
+export async function fetchDrops(): Promise<Drop[]> {
+  const response = await fetch('/api/drops');
   if (!response.ok) {
-    throw new Error('Failed to fetch sells');
+    throw new Error('Failed to fetch drops');
   }
   return response.json();
 }
 
-export async function fetchNextActiveSell(): Promise<NextActiveSell | null> {
-  const response = await fetch('/api/sells/next-active');
+export async function fetchNextActiveDrop(): Promise<NextActiveDrop | null> {
+  const response = await fetch('/api/drops/next-active');
   if (!response.ok) {
-    throw new Error('Failed to fetch next active sell');
+    throw new Error('Failed to fetch next active drop');
   }
   return response.json();
 }
 
-export async function fetchSellWithInventory(
-  sellId: string
-): Promise<SellWithInventory | null> {
-  const response = await fetch(`/api/sells/${sellId}/inventory`);
+export async function fetchDropWithInventory(dropId: string): Promise<unknown> {
+  const response = await fetch(`/api/drops/${dropId}/drop-products`);
   if (!response.ok) {
-    throw new Error('Failed to fetch sell inventory');
+    throw new Error('Failed to fetch drop inventory');
   }
   return response.json();
 }
 
-export async function createSell(sellData: {
-  sell_date: string;
+export async function createDrop(dropData: {
+  date: string;
   location_id: string;
   notes?: string;
-}): Promise<Sell> {
-  const response = await fetch('/api/sells', {
+}): Promise<Drop> {
+  const response = await fetch('/api/drops', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(sellData),
+    body: JSON.stringify(dropData),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create sell');
+    throw new Error('Failed to create drop');
   }
 
   return response.json();
 }
 
-export async function updateSellStatus(
-  sellId: string,
-  status: Sell['status']
+export async function updateDropStatus(
+  dropId: string,
+  status: Drop['status']
 ): Promise<void> {
-  const response = await fetch(`/api/sells/${sellId}/status`, {
+  const response = await fetch(`/api/drops/${dropId}/status`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -84,18 +77,18 @@ export async function updateSellStatus(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update sell status');
+    throw new Error('Failed to update drop status');
   }
 }
 
-export async function updateSellInventory(
-  sellId: string,
+export async function updateDropInventory(
+  dropId: string,
   inventory: Array<{
     product_id: string;
     total_quantity: number;
   }>
 ): Promise<void> {
-  const response = await fetch(`/api/sells/${sellId}/inventory`, {
+  const response = await fetch(`/api/drops/${dropId}/drop-products`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -104,14 +97,16 @@ export async function updateSellInventory(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to update sell inventory');
+    throw new Error('Failed to update drop inventory');
   }
 }
 
-export async function fetchFutureSells(): Promise<Array<SellWithLocation & { total_available: number }>> {
-  const response = await fetch('/api/sells/future');
+export async function fetchFutureDrops(): Promise<
+  Array<Drop & { total_available: number }>
+> {
+  const response = await fetch('/api/drops/future');
   if (!response.ok) {
-    throw new Error('Failed to fetch future sells');
+    throw new Error('Failed to fetch future drops');
   }
   return response.json();
 }

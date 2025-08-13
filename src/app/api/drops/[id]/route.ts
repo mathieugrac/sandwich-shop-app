@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { data: drop, error } = await supabase
       .from('drops')
       .select(
@@ -21,7 +22,7 @@ export async function GET(
         )
       `
       )
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (error) {
@@ -33,10 +34,7 @@ export async function GET(
     }
 
     if (!drop) {
-      return NextResponse.json(
-        { error: 'Drop not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
     }
 
     return NextResponse.json(drop);
@@ -51,9 +49,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { date, location_id, status, notes } = body;
 
@@ -74,7 +73,7 @@ export async function PUT(
         notes,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .select()
       .single();
 
@@ -98,13 +97,11 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { error } = await supabase
-      .from('drops')
-      .delete()
-      .eq('id', params.id);
+    const { id } = await params;
+    const { error } = await supabase.from('drops').delete().eq('id', id);
 
     if (error) {
       console.error('Error deleting drop:', error);
