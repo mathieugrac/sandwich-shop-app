@@ -311,6 +311,7 @@ export default function MenuPage() {
                     description={dropProduct.product.description || undefined}
                     price={dropProduct.selling_price}
                     availableStock={getAvailableStock(dropProduct.id)}
+                    images={dropProduct.product.product_images}
                     onAddToCart={() => handleAddToCart(dropProduct.id)}
                     onUpdateQuantity={newQuantity =>
                       handleUpdateQuantity(dropProduct.id, newQuantity)

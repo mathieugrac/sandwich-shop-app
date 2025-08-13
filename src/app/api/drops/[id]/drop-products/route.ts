@@ -36,7 +36,7 @@ export async function GET(
 
     console.log('✅ API: Drop found:', drop.id, drop.date);
 
-    // Then get the drop products with product information
+    // Then get the drop products with product information and images
     const { data: dropProducts, error: dropProductsError } = await supabase
       .from('drop_products')
       .select(
@@ -50,7 +50,13 @@ export async function GET(
           sell_price,
           production_cost,
           active,
-          sort_order
+          sort_order,
+          product_images (
+            id,
+            image_url,
+            alt_text,
+            sort_order
+          )
         )
       `
       )

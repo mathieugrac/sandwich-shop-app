@@ -4,12 +4,19 @@ import { Plus, Minus } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 
+interface ProductImage {
+  id: string;
+  image_url: string;
+  alt_text: string | null;
+  sort_order: number;
+}
+
 interface SandwichItemProps {
   name: string;
   description?: string;
   price: number;
   availableStock: number;
-  imageUrl?: string;
+  images?: ProductImage[];
   onAddToCart: () => void;
   onUpdateQuantity?: (newQuantity: number) => void;
   onRemoveFromCart?: () => void;
@@ -21,7 +28,7 @@ export function SandwichItem({
   description,
   price,
   availableStock,
-  imageUrl,
+  images,
   onAddToCart,
   onUpdateQuantity,
   onRemoveFromCart,
@@ -32,6 +39,12 @@ export function SandwichItem({
 
   const isSoldOut = availableStock === 0;
   const isLowStock = availableStock <= 3 && availableStock > 0;
+
+  // Get the first image (sorted by sort_order)
+  const firstImage =
+    images && images.length > 0
+      ? images.sort((a, b) => a.sort_order - b.sort_order)[0]
+      : null;
 
   const handleAddToCart = () => {
     if (quantity === 0) {
@@ -75,16 +88,17 @@ export function SandwichItem({
       {/* Image Section */}
       <div className="relative">
         <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-          {imageUrl ? (
+          {firstImage ? (
             <Image
-              src={imageUrl}
-              alt={name}
+              src={firstImage.image_url}
+              alt={firstImage.alt_text || name}
               width={400}
               height={192}
               className="w-full h-full object-cover"
+              priority
             />
           ) : (
-            <div className="text-gray-400 text-sm">Image placeholder</div>
+            <div className="text-gray-400 text-sm">No image available</div>
           )}
         </div>
 
