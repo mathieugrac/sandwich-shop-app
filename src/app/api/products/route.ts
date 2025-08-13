@@ -109,7 +109,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (sell_price !== undefined) updateData.sell_price = sell_price;

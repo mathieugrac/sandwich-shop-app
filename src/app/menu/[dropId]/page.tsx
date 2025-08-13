@@ -7,13 +7,13 @@ import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 import { useCart } from '@/lib/cart-context';
 import { fetchDropWithProducts } from '@/lib/api/drops';
 import { DropWithProducts } from '@/types/database';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
 export default function MenuPage() {
   const { dropId } = useParams();
-  const { addToCart } = useCart();
+  const { addToCart, updateQuantity, removeFromCart, items } = useCart();
   const router = useRouter();
   const [dropData, setDropData] = useState<DropWithProducts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +69,19 @@ export default function MenuPage() {
     }
   };
 
+  const handleUpdateQuantity = (dropProductId: string, newQuantity: number) => {
+    updateQuantity(dropProductId, newQuantity);
+  };
+
+  const handleRemoveFromCart = (dropProductId: string) => {
+    removeFromCart(dropProductId);
+  };
+
+  const getCurrentCartQuantity = (dropProductId: string) => {
+    const cartItem = items.find(item => item.id === dropProductId);
+    return cartItem?.quantity || 0;
+  };
+
   const getAvailableStock = (dropProductId: string) => {
     const dropProductItem = dropData?.dropProducts.find(
       item => item.id === dropProductId
@@ -79,12 +92,25 @@ export default function MenuPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
-      weekday: 'long',
-      year: 'numeric',
       month: 'long',
       day: 'numeric',
     };
     return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatPickupTime = (timeString: string) => {
+    // Convert time string (e.g., "14:00") to 12-hour format with am/pm
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+
+    // Show minutes only if they're not "00"
+    if (minutes === '00') {
+      return `${displayHour}`;
+    } else {
+      return `${displayHour}:${minutes}`;
+    }
   };
 
   const handleBack = () => {
@@ -152,7 +178,7 @@ export default function MenuPage() {
   );
 
   // Temporarily show all products for debugging
-  let availableProducts = dropData.dropProducts || [];
+  const availableProducts = dropData.dropProducts || [];
 
   // If no drop products exist yet, show a message about setup
   const hasNoDropProducts = dropData.dropProducts.length === 0;
@@ -165,7 +191,7 @@ export default function MenuPage() {
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-[480px] mx-auto bg-white min-h-screen">
         {/* Header with Back Button */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center">
+        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
           <Button
             onClick={handleBack}
             variant="ghost"
@@ -174,14 +200,50 @@ export default function MenuPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-black">Menu</h1>
-            <p className="text-gray-600">{formatDate(dropData.date)}</p>
+
+          <div className="text-center flex-1">
+            <div className="text-md font-semibold">
+              {formatDate(dropData.date)} (
+              {formatPickupTime(dropData.location.pickup_hour_start)}
+              {parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
+                12 !==
+              parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+                ? parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
+                  12
+                  ? 'am'
+                  : 'pm'
+                : ''}{' '}
+              - {formatPickupTime(dropData.location.pickup_hour_end)}
+              {parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
+                12 ===
+              parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+                ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+                  ? 'am'
+                  : 'pm'
+                : 'pm'}
+              )
+            </div>
+            <div className="text-sm text-gray-600">
+              {dropData.location.name}, {dropData.location.district}
+            </div>
           </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-2"
+            onClick={() => {
+              if (dropData.location.location_url) {
+                window.open(dropData.location.location_url, '_blank');
+              }
+            }}
+          >
+            <MapPin className="w-5 h-5" />
+          </Button>
         </div>
 
         <main className="px-5">
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 py-5">
             {/* Menu Section */}
             {hasNoDropProducts ? (
               <div className="text-center py-8">
@@ -241,28 +303,25 @@ export default function MenuPage() {
                 </div>
               </div>
             ) : (
-              <section>
-                <div className="mb-6">
-                  <h2 className="text-xl font-bold text-black mb-2">
-                    Available Products
-                  </h2>
-                  <p className="text-gray-600">
-                    Select your favorite sandwiches
-                  </p>
-                </div>
-                <div className="space-y-5">
-                  {availableProducts.map(dropProduct => (
-                    <SandwichItem
-                      key={dropProduct.id}
-                      name={dropProduct.product.name}
-                      description={dropProduct.product.description || undefined}
-                      price={dropProduct.selling_price}
-                      availableStock={getAvailableStock(dropProduct.id)}
-                      onAddToCart={() => handleAddToCart(dropProduct.id)}
-                    />
-                  ))}
-                </div>
-              </section>
+              <div className="space-y-5">
+                {availableProducts.map(dropProduct => (
+                  <SandwichItem
+                    key={dropProduct.id}
+                    name={dropProduct.product.name}
+                    description={dropProduct.product.description || undefined}
+                    price={dropProduct.selling_price}
+                    availableStock={getAvailableStock(dropProduct.id)}
+                    onAddToCart={() => handleAddToCart(dropProduct.id)}
+                    onUpdateQuantity={newQuantity =>
+                      handleUpdateQuantity(dropProduct.id, newQuantity)
+                    }
+                    onRemoveFromCart={() =>
+                      handleRemoveFromCart(dropProduct.id)
+                    }
+                    initialQuantity={getCurrentCartQuantity(dropProduct.id)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </main>

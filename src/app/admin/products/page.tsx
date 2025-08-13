@@ -55,7 +55,7 @@ export default function ProductsPage() {
     description: '',
     sell_price: '',
     production_cost: '',
-    category: 'sandwich' as const,
+    category: 'sandwich' as 'sandwich' | 'side' | 'dessert' | 'beverage',
     active: true,
     sort_order: 0,
   });
@@ -97,7 +97,7 @@ export default function ProductsPage() {
       description: '',
       sell_price: '',
       production_cost: '',
-      category: 'sandwich' as const,
+      category: 'sandwich',
       active: true,
       sort_order: 0,
     });

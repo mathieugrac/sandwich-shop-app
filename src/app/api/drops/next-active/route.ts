@@ -76,13 +76,13 @@ export async function GET() {
     // Transform the data to match the expected format
     const products =
       dropProducts?.map(dp => ({
-        id: dp.products.id,
-        name: dp.products.name,
-        description: dp.products.description,
+        id: dp.products[0]?.id,
+        name: dp.products[0]?.name,
+        description: dp.products[0]?.description,
         sell_price: dp.selling_price,
-        category: dp.products.category,
-        active: dp.products.active,
-        sort_order: dp.products.sort_order,
+        category: dp.products[0]?.category,
+        active: dp.products[0]?.active,
+        sort_order: dp.products[0]?.sort_order,
         availableStock: dp.available_quantity,
       })) || [];
 

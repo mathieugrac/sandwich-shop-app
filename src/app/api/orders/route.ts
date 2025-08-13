@@ -163,7 +163,7 @@ export async function POST(request: Request) {
       const productMap = new Map(
         dropProducts?.map(dp => [
           dp.id,
-          { name: dp.product.name, price: dp.selling_price },
+          { name: dp.product[0]?.name, price: dp.selling_price },
         ]) || []
       );
 

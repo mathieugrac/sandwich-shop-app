@@ -46,7 +46,7 @@ export default async function TestDB() {
           <div key={product.id} className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-xl font-semibold mb-2">{product.name}</h3>
             <p className="text-gray-600 mb-3">{product.description}</p>
-            <p className="text-2xl font-bold text-green-600">${product.price}</p>
+            <p className="text-2xl font-bold text-green-600">${product.sell_price}</p>
           </div>
         ))}
       </div>
