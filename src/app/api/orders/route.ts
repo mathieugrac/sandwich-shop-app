@@ -34,21 +34,39 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the next active sell
-    const { data: nextSell, error: sellError } = await supabase.rpc(
-      'get_next_active_sell'
+    // Get the next active drop
+    const { data: nextDrop, error: dropError } = await supabase.rpc(
+      'get_next_active_drop'
     );
 
-    if (sellError || !nextSell || nextSell.length === 0) {
-      console.error('API: Error getting next active sell:', sellError);
+    if (dropError || !nextDrop || nextDrop.length === 0) {
+      console.error('API: Error getting next active drop:', dropError);
       return NextResponse.json(
-        { error: 'No active sell available' },
+        { error: 'No active drop available' },
         { status: 400 }
       );
     }
 
-    const activeSell = nextSell[0];
-    console.log('API: Linking order to sell:', activeSell);
+    const activeDrop = nextDrop[0];
+    console.log('API: Linking order to drop:', activeDrop);
+
+    // Get or create client
+    const { data: client, error: clientError } = await supabase.rpc(
+      'get_or_create_client',
+      {
+        p_name: customerName,
+        p_email: customerEmail,
+        p_phone: customerPhone,
+      }
+    );
+
+    if (clientError) {
+      console.error('API: Error getting/creating client:', clientError);
+      return NextResponse.json(
+        { error: 'Failed to process customer information' },
+        { status: 500 }
+      );
+    }
 
     // Generate simple order number
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -59,17 +77,15 @@ export async function POST(request: Request) {
 
     console.log('API: Attempting to create order with number:', orderNumber);
 
-    // Create order linked to the active sell
+    // Create order linked to the active drop
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         order_number: orderNumber,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
+        drop_id: activeDrop.id, // Link to the active drop
+        client_id: client,
         pickup_time: pickupTime,
-        pickup_date: pickupDate,
-        sell_id: activeSell.id, // Link to the active sell
+        order_date: pickupDate,
         total_amount: totalAmount,
         special_instructions: specialInstructions,
       })
@@ -86,45 +102,70 @@ export async function POST(request: Request) {
 
     console.log('API: Order created successfully:', order);
 
-    // Create order items
-    const orderItems = items.map(
-      (item: { id: string; quantity: number; price: number }) => ({
+    // Create order products linked to drop_products
+    const orderProducts = [];
+    for (const item of items) {
+      // Find the corresponding drop_product for this product
+      const { data: dropProduct, error: dropProductError } = await supabase
+        .from('drop_products')
+        .select('id, selling_price')
+        .eq('drop_id', activeDrop.id)
+        .eq('product_id', item.id)
+        .single();
+
+      if (dropProductError || !dropProduct) {
+        console.error('API: Error finding drop product:', dropProductError);
+        return NextResponse.json(
+          { error: 'Product not available for this drop' },
+          { status: 400 }
+        );
+      }
+
+      orderProducts.push({
         order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        unit_price: item.price,
-      })
-    );
+        drop_product_id: dropProduct.id,
+        order_quantity: item.quantity,
+      });
+    }
 
-    const { error: orderItemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+    const { error: orderProductsError } = await supabase
+      .from('order_products')
+      .insert(orderProducts);
 
-    if (orderItemsError) {
-      console.error('Error creating order items:', orderItemsError);
+    if (orderProductsError) {
+      console.error('Error creating order products:', orderProductsError);
       return NextResponse.json(
-        { error: 'Failed to create order items' },
+        { error: 'Failed to create order products' },
         { status: 500 }
       );
     }
 
-    // Reserve inventory for each item using the new sell-based function
+    // Reserve inventory for each item using the new drop-based function
     for (const item of items) {
-      const { error: reserveError } = await supabase.rpc(
-        'reserve_sell_inventory',
-        {
-          p_sell_id: activeSell.id,
-          p_product_id: item.id,
-          p_quantity: item.quantity,
-        }
-      );
+      // Find the drop_product_id for this product
+      const { data: dropProduct } = await supabase
+        .from('drop_products')
+        .select('id')
+        .eq('drop_id', activeDrop.id)
+        .eq('product_id', item.id)
+        .single();
 
-      if (reserveError) {
-        console.error('Error reserving inventory:', reserveError);
-        return NextResponse.json(
-          { error: 'Failed to reserve inventory' },
-          { status: 500 }
+      if (dropProduct) {
+        const { error: reserveError } = await supabase.rpc(
+          'reserve_drop_product_inventory',
+          {
+            p_drop_product_id: dropProduct.id,
+            p_quantity: item.quantity,
+          }
         );
+
+        if (reserveError) {
+          console.error('Error reserving inventory:', reserveError);
+          return NextResponse.json(
+            { error: 'Failed to reserve inventory' },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -179,7 +220,7 @@ export async function POST(request: Request) {
       success: true,
       order: {
         ...order,
-        items: orderItems,
+        order_products: orderProducts,
       },
     });
   } catch (error) {

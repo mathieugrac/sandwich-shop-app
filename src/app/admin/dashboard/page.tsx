@@ -103,17 +103,17 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Sells */}
+          {/* Drops */}
           <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/sells')}
+            onClick={() => navigateTo('/admin/drops')}
           >
             <CardHeader className="text-center">
               <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-              <CardTitle>Sells</CardTitle>
+              <CardTitle>Drops</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              <p className="text-gray-600">Create and manage sandwich sells</p>
+              <p className="text-gray-600">Create and manage sandwich drops</p>
             </CardContent>
           </Card>
 

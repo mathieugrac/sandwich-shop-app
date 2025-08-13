@@ -1,15 +1,7 @@
-import { Product } from './products';
+import { Product, DropProduct } from '@/types/database';
 
-export interface InventoryItem {
-  id: string;
-  product_id: string;
-  date: string;
-  total_quantity: number;
-  reserved_quantity: number;
-  available_quantity: number;
-  created_at: string;
-  updated_at: string;
-  products: Product;
+export interface InventoryItem extends DropProduct {
+  product: Product;
 }
 
 export async function fetchInventory(date: string): Promise<InventoryItem[]> {
@@ -17,6 +9,18 @@ export async function fetchInventory(date: string): Promise<InventoryItem[]> {
 
   if (!response.ok) {
     throw new Error('Failed to fetch inventory');
+  }
+
+  return response.json();
+}
+
+export async function fetchDropInventory(
+  dropId: string
+): Promise<InventoryItem[]> {
+  const response = await fetch(`/api/drops/${dropId}/inventory`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch drop inventory');
   }
 
   return response.json();

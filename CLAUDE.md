@@ -6,7 +6,7 @@
 
 **Target Audience:** International workers in coworking space, requiring international phone number support.
 
-**Current Status:** Phase 5 (Email & Polish) - 85% complete. Email system implemented and working for testing.
+**Current Status:** Phase 6 (New Data Model Implementation) - 0% complete. Starting implementation of new drop-based data model structure.
 
 ---
 
@@ -25,33 +25,31 @@
 
 ---
 
-## 🚧 Phase 6: Update Logic & Database - Detailed Plan
+## 🚧 Phase 6: New Data Model Implementation - Detailed Plan
 
-### **Phase 6A: Database Schema & Core Logic (Week 1)**
+### **Phase 6A: New Data Model Implementation (Week 1)**
 
-1. **Create Locations table** and update Sells table with location relationship
-   - Locations: name, district, address, google_maps_link, delivery_timeframe
-   - Update sells table to reference location_id
-   - Remove unique constraint on sell_date (multiple sells per date possible)
-2. **Update sell status logic** with auto-completion based on delivery timeframe
-   - Auto-complete sells 30 minutes after delivery timeframe ends
-   - Update database functions for new logic
-3. **Fix the sell-inventory relationship** - integrate inventory management into sell editing
-   - Remove separate inventory management page
-   - Add inventory modal within sell editing
-4. **Update database functions** for the new logic
+1. **Implement new data model structure** with DROPS instead of SELLS
+   - Drops: date, location_id, status (upcoming, active, completed, cancelled)
+   - Drop_products: stock_quantity, reserved_quantity, available_quantity, selling_price
+   - Order_products: links to drop_products instead of separate product references
+2. **Update location structure** with pickup hours at location level
+   - Locations: pickup_hour_start, pickup_hour_end instead of delivery_timeframe
+3. **Enhance product structure** with production costs and better categories
+   - Products: production_cost field, categories (sandwich, side, dessert, beverage)
+4. **Implement new database functions** for drop-based operations
 
 ### **Phase 6B: New Home Page & Calendar (Week 2)**
 
 1. **Redesign home page** with project description and upcoming drops calendar
-   - Show all future sells (not just next active)
+   - Show all future drops (not just next active)
    - Display location info and available quantities
    - "18 left 🥪" shows total available sandwiches
-2. **Create Menu page** (`/menu`) for active sells
-   - Unique URL for each sell (e.g., `/menu/[sell-id]`)
+2. **Create Menu page** (`/menu`) for active drops
+   - Unique URL for each drop (e.g., `/menu/[drop-id]`)
    - Product catalog with real-time inventory
 3. **Update navigation flow** (Home → Menu → Cart → Checkout → Confirmation)
-4. **Implement location display** in calendar and sell details
+4. **Implement location display** in calendar and drop details
 
 ### **Phase 6C: Admin Platform Updates (Week 3) ✅ COMPLETED**
 
@@ -72,27 +70,26 @@
 
 ### **Key Business Logic Changes**
 
-- **Multiple sells per date** possible (different locations)
-- **Location-based delivery timeframes** (moved from global to location-specific)
-- **Auto-completion** 30 minutes after delivery timeframe ends
+- **Multiple drops per date** possible (different locations)
+- **Location-based pickup hours** (moved from global to location-specific)
+- **Auto-completion** 30 minutes after pickup hours end
 - **Cart persistence** across page refreshes maintained
-- **Admin access** to all sells regardless of status
-- **Inventory management** integrated into sell editing (not separate page)
+- **Admin access** to all drops regardless of status
+- **Inventory management** integrated into drop editing (not separate page)
+- **Price capture** at drop level to prevent price changes affecting existing orders
 
 ### **Phase 6 Summary - COMPLETED ✅**
 
-**Phase 6 has been successfully completed!** We have successfully:
+**Phase 6 is now focused on implementing the new data model!** We will:
 
-- **✅ Built a complete admin platform** with 5 management sections
-- **✅ Created all necessary database tables** (locations, clients, product_images)
-- **✅ Implemented full CRUD operations** for Products, Locations, Sells, Clients, and Orders
-- **✅ Fixed database compatibility issues** and ensured all queries work properly
-- **✅ Created a clean, professional UI** with consistent design patterns
-- **✅ Integrated inventory management** directly into sell editing
-- **✅ Added comprehensive order management** with filtering and search
-- **✅ Implemented client analytics** with order history and revenue tracking
+- **🔄 Migrate from SELLS to DROPS** based system
+- **🔄 Update database schema** with new table structure
+- **🔄 Implement new inventory management** at drop_product level
+- **🔄 Update admin platform** to work with new data model
+- **🔄 Enhance analytics capabilities** with improved data structure
+- **🔄 Maintain all existing functionality** while improving data model
 
-**The admin platform is now production-ready** and provides a complete solution for managing a sandwich shop business.
+**The new data model will provide better analytics, cleaner relationships, and improved business logic.**
 
 ---
 
@@ -117,7 +114,7 @@
 
 - **Primary Task:** “Inbox 0” for pending orders
 - **Order Management:** Clickable status cards for quick filtering
-- **Dashboard Priority:** View Orders → Manage Sells → Manage Inventory
+- **Dashboard Priority:** View Orders → Manage Drops → Manage Inventory
 - **Default Focus:** Pending orders when landing on Order Management
 
 ---
@@ -153,58 +150,100 @@
 ### Core Tables
 
 ```sql
--- Products tableCREATE TABLE products (
+-- Products table (catalogue of food products)
+CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   description TEXT,
-  price DECIMAL(10,2) NOT NULL,
-  image_url TEXT,
-  category VARCHAR(50) DEFAULT 'sandwich',
+  category VARCHAR(50) NOT NULL CHECK (category IN ('sandwich', 'side', 'dessert', 'beverage')),
+  sell_price DECIMAL(10,2) NOT NULL,
+  production_cost DECIMAL(10,2) NOT NULL,
   active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
--- Sells table (sell-based model)CREATE TABLE sells (
+
+-- Product images table (multiple images per product)
+CREATE TABLE product_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sell_date DATE NOT NULL UNIQUE,
-  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'active', 'completed', 'cancelled')),
-  announcement_sent BOOLEAN DEFAULT false,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  alt_text VARCHAR(255),
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Locations table (delivery/pickup points)
+CREATE TABLE locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  address TEXT NOT NULL,
+  location_url TEXT,
+  pickup_hour_start TIME NOT NULL,
+  pickup_hour_end TIME NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Drops table (sell events at specific time & location)
+CREATE TABLE drops (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL,
+  location_id UUID REFERENCES locations(id) ON DELETE RESTRICT,
+  status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'completed', 'cancelled')),
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
--- Sell inventory (quantities for each product per sell)CREATE TABLE sell_inventory (
+
+-- Drop products table (product quantities available for specific drops)
+CREATE TABLE drop_products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sell_id UUID REFERENCES sells(id) ON DELETE CASCADE,
+  drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-  total_quantity INTEGER NOT NULL,
-  reserved_quantity INTEGER DEFAULT 0,
-  available_quantity INTEGER GENERATED ALWAYS AS (total_quantity - reserved_quantity) STORED,
+  stock_quantity INTEGER NOT NULL CHECK (stock_quantity >= 0),
+  reserved_quantity INTEGER DEFAULT 0 CHECK (reserved_quantity >= 0),
+  available_quantity INTEGER GENERATED ALWAYS AS (stock_quantity - reserved_quantity) STORED,
+  selling_price DECIMAL(10,2) NOT NULL, -- Captured price at drop level
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(sell_id, product_id)
+  UNIQUE(drop_id, product_id)
 );
--- Orders tableCREATE TABLE orders (
+
+-- Clients table (customers who order food)
+CREATE TABLE clients (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(20),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(email)
+);
+
+-- Orders table (customer orders for specific drops)
+CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number VARCHAR(20) UNIQUE NOT NULL,
-  sell_id UUID REFERENCES sells(id) ON DELETE CASCADE,
-  customer_name VARCHAR(100) NOT NULL,
-  customer_email VARCHAR(255) NOT NULL,
-  customer_phone VARCHAR(20),
-  pickup_time TIME NOT NULL,
+  drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+  pickup_time TIME NOT NULL, -- 15-min slot within location pickup hours
+  order_date DATE NOT NULL,
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled')),
   total_amount DECIMAL(10,2) NOT NULL,
   special_instructions TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
--- Order items tableCREATE TABLE order_items (
+
+-- Order products table (products ordered by customers)
+CREATE TABLE order_products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-  product_id UUID REFERENCES products(id),
-  quantity INTEGER NOT NULL CHECK (quantity > 0),
-  unit_price DECIMAL(10,2) NOT NULL,
+  drop_product_id UUID REFERENCES drop_products(id) ON DELETE RESTRICT,
+  order_quantity INTEGER NOT NULL CHECK (order_quantity > 0),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ```
@@ -212,33 +251,109 @@
 ### Key Functions
 
 ```sql
--- Function to generate unique order numbersCREATE OR REPLACE FUNCTION generate_order_number()
+-- Function to generate unique order numbers
+CREATE OR REPLACE FUNCTION generate_order_number()
 RETURNS TEXT AS $$
-BEGIN  RETURN 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(FLOOR(RANDOM() * 9999)::TEXT, 4, '0');
+BEGIN
+  RETURN 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(FLOOR(RANDOM() * 9999)::TEXT, 4, '0');
 END;
 $$ LANGUAGE plpgsql;
 
--- Get next active sellCREATE OR REPLACE FUNCTION get_next_active_sell()
-RETURNS TABLE (id UUID, sell_date DATE, status VARCHAR(20)) AS $$
-BEGIN  RETURN QUERY  SELECT s.id, s.sell_date, s.status
-  FROM sells s
-  WHERE s.status = 'active' AND s.sell_date >= CURRENT_DATE  ORDER BY s.sell_date ASC  LIMIT 1;
+-- Get next active drop
+CREATE OR REPLACE FUNCTION get_next_active_drop()
+RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT d.id, d.date, d.status, d.location_id
+  FROM drops d
+  JOIN locations l ON d.location_id = l.id
+  WHERE d.status = 'active'
+    AND d.date >= CURRENT_DATE
+    AND l.active = true
+  ORDER BY d.date ASC
+  LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
 
--- Reserve sell inventoryCREATE OR REPLACE FUNCTION reserve_sell_inventory(
-  p_sell_id UUID, p_product_id UUID, p_quantity INTEGER)
+-- Reserve drop product inventory
+CREATE OR REPLACE FUNCTION reserve_drop_product_inventory(
+  p_drop_product_id UUID, p_quantity INTEGER)
 RETURNS BOOLEAN AS $$
-DECLARE  available_qty INTEGER;
-BEGIN  SELECT available_quantity INTO available_qty
-  FROM sell_inventory
-  WHERE sell_id = p_sell_id AND product_id = p_product_id;
-  IF available_qty >= p_quantity THEN    UPDATE sell_inventory
+DECLARE
+  available_qty INTEGER;
+BEGIN
+  SELECT available_quantity INTO available_qty
+  FROM drop_products
+  WHERE id = p_drop_product_id;
+
+  IF available_qty >= p_quantity THEN
+    UPDATE drop_products
     SET reserved_quantity = reserved_quantity + p_quantity,
         updated_at = NOW()
-    WHERE sell_id = p_sell_id AND product_id = p_product_id;
+    WHERE id = p_drop_product_id;
     RETURN TRUE;
-  ELSE    RETURN FALSE;
+  ELSE
+    RETURN FALSE;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Auto-complete expired drops
+CREATE OR REPLACE FUNCTION auto_complete_expired_drops()
+RETURNS INTEGER AS $$
+DECLARE
+  completed_count INTEGER := 0;
+  drop_record RECORD;
+BEGIN
+  -- Find drops that should be auto-completed (30 minutes after pickup hours end)
+  FOR drop_record IN
+    SELECT d.id, d.date, l.pickup_hour_end
+    FROM drops d
+    JOIN locations l ON d.location_id = l.id
+    WHERE d.status = 'active'
+      AND d.date <= CURRENT_DATE
+      AND l.pickup_hour_end IS NOT NULL
+  LOOP
+    -- For now, complete drops from previous days
+    -- In production, parse pickup_hour_end and check actual time
+    IF drop_record.date < CURRENT_DATE THEN
+      UPDATE drops
+      SET status = 'completed', updated_at = NOW()
+      WHERE id = drop_record.id;
+      completed_count := completed_count + 1;
+    END IF;
+  END LOOP;
+
+  RETURN completed_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Get or create client
+CREATE OR REPLACE FUNCTION get_or_create_client(
+  p_name VARCHAR(100), p_email VARCHAR(255), p_phone VARCHAR(20))
+RETURNS UUID AS $$
+DECLARE
+  client_id UUID;
+BEGIN
+  -- Try to find existing client by email
+  SELECT id INTO client_id
+  FROM clients
+  WHERE email = p_email;
+
+  IF client_id IS NOT NULL THEN
+    -- Update existing client info if name/phone changed
+    UPDATE clients
+    SET name = COALESCE(p_name, name),
+        phone = COALESCE(p_phone, phone),
+        updated_at = NOW()
+    WHERE id = client_id;
+    RETURN client_id;
+  ELSE
+    -- Create new client
+    INSERT INTO clients (name, email, phone)
+    VALUES (p_name, p_email, p_phone)
+    RETURNING id INTO client_id;
+    RETURN client_id;
   END IF;
 END;
 $$ LANGUAGE plpgsql;
@@ -277,6 +392,36 @@ ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
     )
     .min(1, 'At least one item required'),  specialInstructions: z.string().optional(),});
 ```
+
+---
+
+## 🆕 New Data Model Structure
+
+### Key Changes from Previous Schema
+
+**✅ Improved Structure:**
+
+- **PRODUCTS**: Added `production_cost` field, updated categories to `('sandwich', 'side', 'dessert', 'beverage')`
+- **LOCATIONS**: Moved pickup hours to location level (`pickup_hour_start`, `pickup_hour_end`)
+- **DROPS**: Replaced "sells" concept with clearer "drops" terminology
+- **DROP_PRODUCTS**: Added `selling_price` capture at drop level for price history
+- **ORDER_PRODUCTS**: Links directly to drop products instead of separate product references
+- **CLIENTS**: Centralized customer management with order history
+
+**🔧 Technical Improvements:**
+
+- **Price Capture**: Selling prices are captured at drop level, preventing price changes from affecting existing orders
+- **Inventory Management**: Stock, reserved, and available quantities at drop_product level
+- **Better Analytics**: Structure optimized for comprehensive business analytics
+- **Cleaner Relationships**: More intuitive table relationships and constraints
+
+**📊 Analytics Capabilities:**
+
+- **Best-selling products** across all drops and time periods
+- **Customer insights** with order history and lifetime value
+- **Revenue analytics** by drop, location, product category
+- **Inventory optimization** with detailed stock tracking
+- **Performance metrics** by location and time periods
 
 ---
 
@@ -345,11 +490,11 @@ src/
 - **GET /api/products:** Fetch active products
 - **GET /api/inventory/[date]:** Fetch inventory for specific date
 - **POST /api/orders:** Create new order with inventory reservation
-- **GET /api/sells/next-active:** Get next active sell and its products
-- **GET /api/sells:** Get all sells
-- **POST /api/sells:** Create new sell
-- **GET /api/sells/[id]/inventory:** Get inventory for specific sell
-- **PUT /api/sells/[id]/inventory:** Update inventory for specific sell
+- **GET /api/drops/next-active:** Get next active drop and its products
+- **GET /api/drops:** Get all drops
+- **POST /api/drops:** Create new drop
+- **GET /api/drops/[id]/inventory:** Get inventory for specific drop
+- **PUT /api/drops/[id]/inventory:** Update inventory for specific drop
 
 ---
 
@@ -419,7 +564,7 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 
 - **Initial Phase:** Testing concept with Impact Hub coworking space (Lisbon, Portugal)
 - **Location:** 5 minutes from production site
-- **Frequency:** 2 sells per week during testing phase
+- **Frequency:** 2 drops per week during testing phase
 - **Goal:** Validate concept, improve logistics, and grow brand
 
 ### Sell Creation Process
@@ -432,7 +577,7 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 
 ### Order Management Workflow
 
-- **Order Placement:** Expecting customers will order the day before (20%) and during the morning of the sell (80%)
+- **Order Placement:** Expecting customers will order the day before (20%) and during the morning of the drop (80%)
 - **Manual Validation:** Admin manually validates orders to update stocks while we don’t have a Stripe connection for payment in advance
 - **Order Status Flow:**
   - **Pending:** Needs admin confirmation

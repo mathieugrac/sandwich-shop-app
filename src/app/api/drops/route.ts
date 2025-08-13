@@ -3,32 +3,32 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const { data: sells, error } = await supabase
-      .from('sells')
+    const { data: drops, error } = await supabase
+      .from('drops')
       .select(
         `
         *,
         locations (
           id,
           name,
-          district,
           address,
-          google_maps_link,
-          delivery_timeframe
+          location_url,
+          pickup_hour_start,
+          pickup_hour_end
         )
       `
       )
-      .order('sell_date', { ascending: true });
+      .order('date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching sells:', error);
+      console.error('Error fetching drops:', error);
       return NextResponse.json(
-        { error: 'Failed to fetch sells' },
+        { error: 'Failed to fetch drops' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(sells);
+    return NextResponse.json(drops);
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(
@@ -41,12 +41,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { sell_date, location_id, status, notes } = body;
+    const { date, location_id, status, notes } = body;
 
     // Validate required fields
-    if (!sell_date || !location_id) {
+    if (!date || !location_id) {
       return NextResponse.json(
-        { error: 'Sell date and location are required' },
+        { error: 'Drop date and location are required' },
         { status: 400 }
       );
     }
@@ -66,55 +66,55 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: sell, error } = await supabase
-      .from('sells')
+    const { data: drop, error } = await supabase
+      .from('drops')
       .insert({
-        sell_date,
+        date,
         location_id,
-        status: status || 'draft',
+        status: status || 'upcoming',
         notes,
-        announcement_sent: false,
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Error creating sell:', error);
+      console.error('Error creating drop:', error);
       return NextResponse.json(
-        { error: 'Failed to create sell' },
+        { error: 'Failed to create drop' },
         { status: 500 }
       );
     }
 
-    // Get all active products to create inventory entries
+    // Get all active products to create drop product entries
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id')
+      .select('id, sell_price')
       .eq('active', true);
 
     if (productsError) {
       console.error('Error fetching products:', productsError);
-      // Don't fail the sell creation, just log the error
+      // Don't fail the drop creation, just log the error
     } else if (products && products.length > 0) {
-      // Create inventory entries for all products with 0 quantity
-      const inventoryData = products.map(product => ({
-        sell_id: sell.id,
+      // Create drop product entries for all products with 0 quantity and captured selling price
+      const dropProductData = products.map(product => ({
+        drop_id: drop.id,
         product_id: product.id,
-        total_quantity: 0,
+        stock_quantity: 0,
         reserved_quantity: 0,
+        selling_price: product.sell_price, // Capture the selling price at drop level
       }));
 
-      const { error: inventoryError } = await supabase
-        .from('sell_inventory')
-        .insert(inventoryData);
+      const { error: dropProductError } = await supabase
+        .from('drop_products')
+        .insert(dropProductData);
 
-      if (inventoryError) {
-        console.error('Error creating inventory entries:', inventoryError);
-        // Don't fail the sell creation, just log the error
+      if (dropProductError) {
+        console.error('Error creating drop product entries:', dropProductError);
+        // Don't fail the drop creation, just log the error
       }
     }
 
-    return NextResponse.json(sell);
+    return NextResponse.json(drop);
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(

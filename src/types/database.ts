@@ -2,9 +2,9 @@ export interface Product {
   id: string;
   name: string;
   description: string | null;
-  price: number;
-  image_url: string | null;
-  category: string;
+  sell_price: number;
+  production_cost: number;
+  category: 'sandwich' | 'side' | 'dessert' | 'beverage';
   active: boolean;
   sort_order: number;
   created_at: string;
@@ -23,33 +23,33 @@ export interface ProductImage {
 export interface Location {
   id: string;
   name: string;
-  district: string;
   address: string;
-  google_maps_link: string | null;
-  delivery_timeframe: string;
+  location_url: string | null;
+  pickup_hour_start: string;
+  pickup_hour_end: string;
   active: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export interface Sell {
+export interface Drop {
   id: string;
-  sell_date: string;
+  date: string;
   location_id: string;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
-  announcement_sent: boolean;
+  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
   notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-export interface SellInventory {
+export interface DropProduct {
   id: string;
-  sell_id: string;
+  drop_id: string;
   product_id: string;
-  total_quantity: number;
+  stock_quantity: number;
   reserved_quantity: number;
   available_quantity: number;
+  selling_price: number;
   created_at: string;
   updated_at: string;
 }
@@ -66,12 +66,10 @@ export interface Client {
 export interface Order {
   id: string;
   order_number: string;
-  sell_id: string;
+  drop_id: string;
   client_id: string | null;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string | null;
   pickup_time: string;
+  order_date: string;
   status: 'pending' | 'confirmed' | 'prepared' | 'completed' | 'cancelled';
   total_amount: number;
   special_instructions: string | null;
@@ -79,12 +77,11 @@ export interface Order {
   updated_at: string;
 }
 
-export interface OrderItem {
+export interface OrderProduct {
   id: string;
   order_id: string;
-  product_id: string;
-  quantity: number;
-  unit_price: number;
+  drop_product_id: string;
+  order_quantity: number;
   created_at: string;
 }
 
@@ -115,29 +112,53 @@ export interface OrderFormData {
 }
 
 // Extended interfaces for API responses
-export interface SellWithLocation extends Sell {
+export interface DropWithLocation extends Drop {
   location: Location;
 }
 
-export interface SellWithInventory extends Sell {
+export interface DropWithInventory extends Drop {
   location: Location;
   inventory: Array<
-    SellInventory & {
+    DropProduct & {
       product: Product;
     }
   >;
 }
 
 export interface OrderWithDetails extends Order {
-  sell: Sell;
+  drop: Drop;
   client: Client | null;
-  order_items: Array<
-    OrderItem & {
-      product: Product;
+  order_products: Array<
+    OrderProduct & {
+      drop_product: DropProduct & {
+        product: Product;
+      };
     }
   >;
 }
 
 export interface ProductWithImages extends Product {
   images: ProductImage[];
+}
+
+// New interfaces for the improved data model
+export interface DropProductWithProduct extends DropProduct {
+  product: Product;
+}
+
+export interface OrderProductWithDetails extends OrderProduct {
+  drop_product: DropProductWithProduct;
+}
+
+export interface DropWithProducts extends Drop {
+  location: Location;
+  drop_products: DropProductWithProduct[];
+}
+
+export interface ClientWithOrders extends Client {
+  orders: Order[];
+}
+
+export interface LocationWithDrops extends Location {
+  drops: Drop[];
 }
