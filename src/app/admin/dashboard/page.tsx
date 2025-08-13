@@ -146,6 +146,22 @@ export default function AdminDashboardPage() {
               <p className="text-gray-600">Track and manage customer orders</p>
             </CardContent>
           </Card>
+
+          {/* Inventory */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/inventory')}
+          >
+            <CardHeader className="text-center">
+              <Package className="w-12 h-12 mx-auto mb-4 text-indigo-600" />
+              <CardTitle>Inventory</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p className="text-gray-600">
+                Manage product quantities and pricing
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
