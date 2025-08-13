@@ -6,6 +6,7 @@ import { Calendar, MapPin, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { fetchDrops } from '@/lib/api/drops';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export function UpcomingDrops() {
   const [drops, setDrops] = useState<DropWithLocation[]>([]);
@@ -103,9 +104,6 @@ export function UpcomingDrops() {
     <section className="py-8">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-black mb-2">Upcoming Drops</h2>
-        <p className="text-gray-600">
-          Pre-order your favorite sandwiches for upcoming events
-        </p>
       </div>
 
       <div className="space-y-4">
@@ -125,31 +123,29 @@ export function UpcomingDrops() {
           }
 
           return (
-            <div key={drop.id} className="bg-gray-50 border-0">
+            <div key={drop.id} className="bg-gray-100 border-0 rounded-md">
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   {/* Date and Location */}
                   <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-gray-500" />
-                      <span className="font-medium">
-                        {new Date(drop.date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">
-                        {drop.location.name}
-                      </span>
-                      {drop.location.district && (
-                        <span className="text-xs text-gray-500">
-                          ({drop.location.district})
-                        </span>
-                      )}
+                    <div className="flex items-center space-x-4">
+                      {/* Date Display */}
+                      <div className="bg-gray-200 rounded-md p-3 text-center min-w-[56px]">
+                        <div className="text-2xl text-gray-800">{day}</div>
+                        <div className="text-xs text-gray-500 font-medium">
+                          {month}
+                        </div>
+                      </div>
+
+                      {/* Location Info */}
+                      <div className="">
+                        <p className="text-md font-semibold text-black">
+                          {drop.location.name}
+                        </p>
+                        <p className="text-md text-gray-600">
+                          {drop.location.district}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -158,9 +154,10 @@ export function UpcomingDrops() {
                     {drop.status === 'active' ? (
                       <Button
                         onClick={() => handlePreOrder(drop)}
-                        className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-sm"
+                        className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
+                        size="lg"
                       >
-                        Order Now
+                        Pre-Order
                       </Button>
                     ) : drop.status === 'upcoming' ? (
                       <Button
@@ -171,16 +168,6 @@ export function UpcomingDrops() {
                         Notify Me
                       </Button>
                     ) : null}
-                  </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Package className="w-4 h-4" />
-                    <span>
-                      Pickup: {drop.location.pickup_hour_start} -{' '}
-                      {drop.location.pickup_hour_end}
-                    </span>
                   </div>
                 </div>
               </div>
