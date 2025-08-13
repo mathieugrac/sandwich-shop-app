@@ -38,10 +38,10 @@ import {
 interface Location {
   id: string;
   name: string;
-  district: string;
   address: string;
-  google_maps_link: string | null;
-  delivery_timeframe: string;
+  location_url: string | null;
+  pickup_hour_start: string;
+  pickup_hour_end: string;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -54,10 +54,10 @@ export default function LocationsPage() {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    district: '',
     address: '',
-    google_maps_link: '',
-    delivery_timeframe: '',
+    location_url: '',
+    pickup_hour_start: '',
+    pickup_hour_end: '',
     active: true,
   });
   const router = useRouter();
@@ -95,10 +95,10 @@ export default function LocationsPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      district: '',
       address: '',
-      google_maps_link: '',
-      delivery_timeframe: '',
+      location_url: '',
+      pickup_hour_start: '',
+      pickup_hour_end: '',
       active: true,
     });
   };
@@ -111,10 +111,10 @@ export default function LocationsPage() {
   const openEditModal = (location: Location) => {
     setFormData({
       name: location.name,
-      district: location.district,
       address: location.address,
-      google_maps_link: location.google_maps_link || '',
-      delivery_timeframe: location.delivery_timeframe,
+      location_url: location.location_url || '',
+      pickup_hour_start: location.pickup_hour_start,
+      pickup_hour_end: location.pickup_hour_end,
       active: location.active,
     });
     setEditingLocation(location);
@@ -129,19 +129,19 @@ export default function LocationsPage() {
   const saveLocation = async () => {
     if (
       !formData.name ||
-      !formData.district ||
       !formData.address ||
-      !formData.delivery_timeframe
+      !formData.pickup_hour_start ||
+      !formData.pickup_hour_end
     )
       return;
 
     try {
       const locationData = {
         name: formData.name,
-        district: formData.district,
         address: formData.address,
-        google_maps_link: formData.google_maps_link || null,
-        delivery_timeframe: formData.delivery_timeframe,
+        location_url: formData.location_url || null,
+        pickup_hour_start: formData.pickup_hour_start,
+        pickup_hour_end: formData.pickup_hour_end,
         active: formData.active,
       };
 
@@ -233,9 +233,8 @@ export default function LocationsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>District</TableHead>
                   <TableHead>Address</TableHead>
-                  <TableHead>Delivery Timeframe</TableHead>
+                  <TableHead>Pickup Hours</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -246,11 +245,12 @@ export default function LocationsPage() {
                     <TableCell className="font-medium">
                       {location.name}
                     </TableCell>
-                    <TableCell>{location.district}</TableCell>
                     <TableCell className="max-w-xs truncate">
                       {location.address}
                     </TableCell>
-                    <TableCell>{location.delivery_timeframe}</TableCell>
+                    <TableCell>
+                      {location.pickup_hour_start} - {location.pickup_hour_end}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={location.active ? 'default' : 'secondary'}
@@ -260,12 +260,12 @@ export default function LocationsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
-                        {location.google_maps_link && (
+                        {location.location_url && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() =>
-                              window.open(location.google_maps_link!, '_blank')
+                              window.open(location.location_url!, '_blank')
                             }
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -325,18 +325,6 @@ export default function LocationsPage() {
               </div>
 
               <div>
-                <Label htmlFor="district">District</Label>
-                <Input
-                  id="district"
-                  value={formData.district}
-                  onChange={e =>
-                    setFormData({ ...formData, district: e.target.value })
-                  }
-                  placeholder="e.g., Penha da França"
-                />
-              </div>
-
-              <div>
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
@@ -350,35 +338,52 @@ export default function LocationsPage() {
               </div>
 
               <div>
-                <Label htmlFor="google_maps_link">
-                  Google Maps Link (Optional)
+                <Label htmlFor="location_url">
+                  Location URL (Optional)
                 </Label>
                 <Input
-                  id="google_maps_link"
-                  value={formData.google_maps_link}
+                  id="location_url"
+                  value={formData.location_url}
                   onChange={e =>
                     setFormData({
                       ...formData,
-                      google_maps_link: e.target.value,
+                      location_url: e.target.value,
                     })
                   }
                   placeholder="https://maps.google.com/..."
                 />
               </div>
 
-              <div>
-                <Label htmlFor="delivery_timeframe">Delivery Timeframe</Label>
-                <Input
-                  id="delivery_timeframe"
-                  value={formData.delivery_timeframe}
-                  onChange={e =>
-                    setFormData({
-                      ...formData,
-                      delivery_timeframe: e.target.value,
-                    })
-                  }
-                  placeholder="e.g., 12:00-14:00"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="pickup_hour_start">Pickup Start Time</Label>
+                  <Input
+                    id="pickup_hour_start"
+                    type="time"
+                    value={formData.pickup_hour_start}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        pickup_hour_start: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="pickup_hour_end">Pickup End Time</Label>
+                  <Input
+                    id="pickup_hour_end"
+                    type="time"
+                    value={formData.pickup_hour_end}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        pickup_hour_end: e.target.value,
+                      })
+                    }
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">

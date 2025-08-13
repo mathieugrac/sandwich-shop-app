@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -45,41 +40,38 @@ import {
 interface Order {
   id: string;
   order_number: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string | null;
   pickup_time: string;
   status: 'pending' | 'confirmed' | 'prepared' | 'completed' | 'cancelled';
   total_amount: number;
   special_instructions: string | null;
   created_at: string;
-  sell_id: string | null;
+  drop_id: string;
   client_id: string | null;
 }
 
-interface Sell {
+interface Drop {
   id: string;
-  sell_date: string;
+  date: string;
   status: string;
   locations?: {
     name: string;
-    district: string;
     address: string;
-    delivery_timeframe: string;
+    pickup_hour_start: string;
+    pickup_hour_end: string;
   };
 }
 
-interface OrderWithSell extends Order {
-  sell?: Sell;
+interface OrderWithDrop extends Order {
+  drop?: Drop;
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderWithSell[]>([]);
-  const [sells, setSells] = useState<Sell[]>([]);
+  const [orders, setOrders] = useState<OrderWithDrop[]>([]);
+  const [drops, setDrops] = useState<Drop[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sellFilter, setSellFilter] = useState<string>('all');
+  const [dropFilter, setDropFilter] = useState<string>('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -98,29 +90,31 @@ export default function OrdersPage() {
 
   const loadData = async () => {
     try {
-      console.log('🔄 Loading orders and sells...');
+      console.log('🔄 Loading orders and drops...');
 
-      // Load sells first
-      const { data: sellsData, error: sellsError } = await supabase
-        .from('sells')
-        .select(`
+      // Load drops first
+      const { data: dropsData, error: dropsError } = await supabase
+        .from('drops')
+        .select(
+          `
           id,
-          sell_date,
+          date,
           status,
           location:locations (
             name,
-            district,
             address,
-            delivery_timeframe
+            pickup_hour_start,
+            pickup_hour_end
           )
-        `)
-        .order('sell_date', { ascending: false });
+        `
+        )
+        .order('date', { ascending: false });
 
-      if (sellsError) {
-        console.error('❌ Error loading sells:', sellsError);
+      if (dropsError) {
+        console.error('❌ Error loading drops:', dropsError);
       } else {
-        console.log('✅ Sells loaded:', sellsData);
-        setSells(sellsData || []);
+        console.log('✅ Drops loaded:', dropsData);
+        setDrops(dropsData || []);
       }
 
       // Load all orders
@@ -133,17 +127,17 @@ export default function OrdersPage() {
         console.error('❌ Error loading orders:', ordersError);
       } else {
         console.log('✅ Orders loaded:', ordersData);
-        
-        // Combine orders with sell information
-        const ordersWithSells = (ordersData || []).map(order => {
-          const sell = sellsData?.find(s => s.id === order.sell_id);
+
+        // Combine orders with drop information
+        const ordersWithDrops = (ordersData || []).map(order => {
+          const drop = dropsData?.find(d => d.id === order.drop_id);
           return {
             ...order,
-            sell: sell || undefined
+            drop: drop || undefined,
           };
         });
-        
-        setOrders(ordersWithSells);
+
+        setOrders(ordersWithDrops);
       }
     } catch (error) {
       console.error('❌ Unexpected error in loadData:', error);
@@ -203,25 +197,28 @@ export default function OrdersPage() {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.order_number.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSell = sellFilter === 'all' || order.sell_id === sellFilter;
+    const matchesSearch = order.order_number
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
 
-    return matchesSearch && matchesStatus && matchesSell;
+    const matchesStatus =
+      statusFilter === 'all' || order.status === statusFilter;
+    const matchesDrop = dropFilter === 'all' || order.drop_id === dropFilter;
+
+    return matchesSearch && matchesStatus && matchesDrop;
   });
 
-  const groupedOrders = filteredOrders.reduce((groups, order) => {
-    const sellDate = order.sell?.sell_date || 'No Sell Date';
-    if (!groups[sellDate]) {
-      groups[sellDate] = [];
-    }
-    groups[sellDate].push(order);
-    return groups;
-  }, {} as Record<string, OrderWithSell[]>);
+  const groupedOrders = filteredOrders.reduce(
+    (groups, order) => {
+      const dropDate = order.drop?.date || 'No Drop Date';
+      if (!groups[dropDate]) {
+        groups[dropDate] = [];
+      }
+      groups[dropDate].push(order);
+      return groups;
+    },
+    {} as Record<string, OrderWithDrop[]>
+  );
 
   if (loading) {
     return (
@@ -272,7 +269,7 @@ export default function OrdersPage() {
                     id="search"
                     placeholder="Search orders..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={e => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>
@@ -296,16 +293,17 @@ export default function OrdersPage() {
               </div>
 
               <div>
-                <Label htmlFor="sell-filter">Sell Date</Label>
-                <Select value={sellFilter} onValueChange={setSellFilter}>
+                <Label htmlFor="drop-filter">Drop Date</Label>
+                <Select value={dropFilter} onValueChange={setDropFilter}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sells</SelectItem>
-                    {sells.map((sell) => (
-                      <SelectItem key={sell.id} value={sell.id}>
-                        {new Date(sell.sell_date).toLocaleDateString()} - {sell.status}
+                    <SelectItem value="all">All Drops</SelectItem>
+                    {drops.map(drop => (
+                      <SelectItem key={drop.id} value={drop.id}>
+                        {new Date(drop.date).toLocaleDateString()} -{' '}
+                        {drop.status}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -315,19 +313,23 @@ export default function OrdersPage() {
           </CardContent>
         </Card>
 
-        {/* Orders by Sell Date */}
-        {Object.entries(groupedOrders).map(([sellDate, ordersForDate]) => (
-          <Card key={sellDate} className="mb-6">
+        {/* Orders by Drop Date */}
+        {Object.entries(groupedOrders).map(([dropDate, ordersForDate]) => (
+          <Card key={dropDate} className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
-                {sellDate === 'No Sell Date' ? 'Orders Without Sell Date' : `Sell Date: ${new Date(sellDate).toLocaleDateString()}`}
-                {sellDate !== 'No Sell Date' && ordersForDate[0]?.sell?.locations && (
-                  <div className="ml-4 flex items-center text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {ordersForDate[0].sell.locations.name} - {ordersForDate[0].sell.locations.delivery_timeframe}
-                  </div>
-                )}
+                {dropDate === 'No Drop Date'
+                  ? 'Orders Without Drop Date'
+                  : `Drop Date: ${new Date(dropDate).toLocaleDateString()}`}
+                {dropDate !== 'No Drop Date' &&
+                  ordersForDate[0]?.drop?.locations && (
+                    <div className="ml-4 flex items-center text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {ordersForDate[0].drop.locations.name} -{' '}
+                      {ordersForDate[0].drop.locations.pickup_hour_start} - {ordersForDate[0].drop.locations.pickup_hour_end}
+                    </div>
+                  )}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -335,7 +337,6 @@ export default function OrdersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Order #</TableHead>
-                    <TableHead>Customer</TableHead>
                     <TableHead>Pickup Time</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Amount</TableHead>
@@ -344,17 +345,10 @@ export default function OrdersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ordersForDate.map((order) => (
+                  {ordersForDate.map(order => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.order_number}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{order.customer_name}</div>
-                          <div className="text-sm text-gray-500">{order.customer_email}</div>
-                          {order.customer_phone && (
-                            <div className="text-sm text-gray-500">{order.customer_phone}</div>
-                          )}
-                        </div>
+                      <TableCell className="font-medium">
+                        {order.order_number}
                       </TableCell>
                       <TableCell>{order.pickup_time}</TableCell>
                       <TableCell>
@@ -368,7 +362,9 @@ export default function OrdersPage() {
                       <TableCell>
                         <div className="flex items-center space-x-1">
                           <Euro className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{order.total_amount}</span>
+                          <span className="font-medium">
+                            {order.total_amount}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -378,17 +374,25 @@ export default function OrdersPage() {
                         <div className="flex justify-end space-x-2">
                           <Select
                             value={order.status}
-                            onValueChange={(value) => updateOrderStatus(order.id, value)}
+                            onValueChange={value =>
+                              updateOrderStatus(order.id, value)
+                            }
                           >
                             <SelectTrigger className="w-32">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="confirmed">Confirmed</SelectItem>
+                              <SelectItem value="confirmed">
+                                Confirmed
+                              </SelectItem>
                               <SelectItem value="prepared">Prepared</SelectItem>
-                              <SelectItem value="completed">Completed</SelectItem>
-                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                              <SelectItem value="completed">
+                                Completed
+                              </SelectItem>
+                              <SelectItem value="cancelled">
+                                Cancelled
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -407,7 +411,9 @@ export default function OrdersPage() {
               <div className="text-gray-500">
                 <Clock className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p>No orders found matching your filters</p>
-                <p className="text-sm">Try adjusting your search or filter criteria</p>
+                <p className="text-sm">
+                  Try adjusting your search or filter criteria
+                </p>
               </div>
             </CardContent>
           </Card>

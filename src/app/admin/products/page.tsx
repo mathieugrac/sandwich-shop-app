@@ -36,9 +36,9 @@ interface Product {
   id: string;
   name: string;
   description: string | null;
-  price: number;
-  image_url: string | null;
-  category: string;
+  sell_price: number;
+  production_cost: number;
+  category: 'sandwich' | 'side' | 'dessert' | 'beverage';
   active: boolean;
   sort_order: number;
   created_at: string;
@@ -53,8 +53,9 @@ export default function ProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    price: '',
-    category: 'sandwich',
+    sell_price: '',
+    production_cost: '',
+    category: 'sandwich' as const,
     active: true,
     sort_order: 0,
   });
@@ -94,8 +95,9 @@ export default function ProductsPage() {
     setFormData({
       name: '',
       description: '',
-      price: '',
-      category: 'sandwich',
+      sell_price: '',
+      production_cost: '',
+      category: 'sandwich' as const,
       active: true,
       sort_order: 0,
     });
@@ -110,7 +112,8 @@ export default function ProductsPage() {
     setFormData({
       name: product.name,
       description: product.description || '',
-      price: product.price.toString(),
+      sell_price: product.sell_price.toString(),
+      production_cost: product.production_cost.toString(),
       category: product.category,
       active: product.active,
       sort_order: product.sort_order,
@@ -125,13 +128,15 @@ export default function ProductsPage() {
   };
 
   const saveProduct = async () => {
-    if (!formData.name || !formData.price) return;
+    if (!formData.name || !formData.sell_price || !formData.production_cost)
+      return;
 
     try {
       const productData = {
         name: formData.name,
         description: formData.description || null,
-        price: parseFloat(formData.price),
+        sell_price: parseFloat(formData.sell_price),
+        production_cost: parseFloat(formData.production_cost),
         category: formData.category,
         active: formData.active,
         sort_order: formData.sort_order,
@@ -224,7 +229,8 @@ export default function ProductsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Price</TableHead>
+                  <TableHead>Selling Price</TableHead>
+                  <TableHead>Production Cost</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sort Order</TableHead>
@@ -240,7 +246,8 @@ export default function ProductsPage() {
                     <TableCell className="max-w-xs truncate">
                       {product.description || '-'}
                     </TableCell>
-                    <TableCell>€{product.price}</TableCell>
+                    <TableCell>€{product.sell_price}</TableCell>
+                    <TableCell>€{product.production_cost}</TableCell>
                     <TableCell>
                       <Badge variant="outline">{product.category}</Badge>
                     </TableCell>
@@ -319,37 +326,62 @@ export default function ProductsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="price">Price (€)</Label>
+                  <Label htmlFor="sell_price">Selling Price (€)</Label>
                   <Input
-                    id="price"
+                    id="sell_price"
                     type="number"
                     step="0.01"
-                    value={formData.price}
+                    value={formData.sell_price}
                     onChange={e =>
-                      setFormData({ ...formData, price: e.target.value })
+                      setFormData({ ...formData, sell_price: e.target.value })
                     }
                     placeholder="0.00"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={value =>
-                      setFormData({ ...formData, category: value })
+                  <Label htmlFor="production_cost">Production Cost (€)</Label>
+                  <Input
+                    id="production_cost"
+                    type="number"
+                    step="0.01"
+                    value={formData.production_cost}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        production_cost: e.target.value,
+                      })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="sandwich">Sandwich</SelectItem>
-                      <SelectItem value="drink">Drink</SelectItem>
-                      <SelectItem value="dessert">Dessert</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    placeholder="0.00"
+                  />
                 </div>
+              </div>
+
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={value =>
+                    setFormData({
+                      ...formData,
+                      category: value as
+                        | 'sandwich'
+                        | 'side'
+                        | 'dessert'
+                        | 'beverage',
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sandwich">Sandwich</SelectItem>
+                    <SelectItem value="side">Side</SelectItem>
+                    <SelectItem value="dessert">Dessert</SelectItem>
+                    <SelectItem value="beverage">Beverage</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
