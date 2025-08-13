@@ -9,6 +9,7 @@ export interface Product {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  product_images?: ProductImage[];
 }
 
 export interface ProductImage {
@@ -144,7 +145,9 @@ export interface ProductWithImages extends Product {
 
 // New interfaces for the improved data model
 export interface DropProductWithProduct extends DropProduct {
-  product: Product;
+  product: Product & {
+    product_images?: ProductImage[];
+  };
 }
 
 export interface OrderProductWithDetails extends OrderProduct {

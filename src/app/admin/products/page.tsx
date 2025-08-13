@@ -30,7 +30,8 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
 
 interface Product {
   id: string;
@@ -43,6 +44,15 @@ interface Product {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+interface ProductImage {
+  id: string;
+  product_id: string;
+  image_url: string;
+  alt_text: string | null;
+  sort_order: number;
+  created_at: string;
 }
 
 export default function ProductsPage() {
@@ -59,6 +69,9 @@ export default function ProductsPage() {
     active: true,
     sort_order: 0,
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -101,6 +114,8 @@ export default function ProductsPage() {
       active: true,
       sort_order: 0,
     });
+    setSelectedImage(null);
+    setImagePreview(null);
   };
 
   const openCreateModal = () => {
@@ -108,7 +123,7 @@ export default function ProductsPage() {
     setShowCreateModal(true);
   };
 
-  const openEditModal = (product: Product) => {
+  const openEditModal = async (product: Product) => {
     setFormData({
       name: product.name,
       description: product.description || '',
@@ -118,6 +133,23 @@ export default function ProductsPage() {
       active: product.active,
       sort_order: product.sort_order,
     });
+    
+    // Load existing image if any
+    try {
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('*')
+        .eq('product_id', product.id)
+        .order('sort_order', { ascending: true })
+        .limit(1);
+      
+      if (images && images.length > 0) {
+        setImagePreview(images[0].image_url);
+      }
+    } catch (error) {
+      console.error('Error loading product images:', error);
+    }
+    
     setEditingProduct(product);
   };
 
@@ -125,6 +157,49 @@ export default function ProductsPage() {
     setShowCreateModal(false);
     setEditingProduct(null);
     resetForm();
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (productId: string): Promise<string | null> => {
+    if (!selectedImage) return null;
+
+    try {
+      setUploadingImage(true);
+      
+      // Upload to Supabase Storage
+      const fileExt = selectedImage.name.split('.').pop();
+      const fileName = `${productId}-${Date.now()}.${fileExt}`;
+      const filePath = `product-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, selectedImage);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const saveProduct = async () => {
@@ -142,6 +217,8 @@ export default function ProductsPage() {
         sort_order: formData.sort_order,
       };
 
+      let productId: string;
+
       if (editingProduct) {
         // Update existing product
         const { error } = await supabase
@@ -150,11 +227,37 @@ export default function ProductsPage() {
           .eq('id', editingProduct.id);
 
         if (error) throw error;
+        productId = editingProduct.id;
       } else {
         // Create new product
-        const { error } = await supabase.from('products').insert(productData);
+        const { data, error } = await supabase
+          .from('products')
+          .insert(productData)
+          .select()
+          .single();
 
         if (error) throw error;
+        productId = data.id;
+      }
+
+      // Handle image upload
+      if (selectedImage) {
+        const imageUrl = await uploadImage(productId);
+        if (imageUrl) {
+          // Save image record to database
+          const { error: imageError } = await supabase
+            .from('product_images')
+            .upsert({
+              product_id: productId,
+              image_url: imageUrl,
+              alt_text: formData.name,
+              sort_order: 0,
+            });
+
+          if (imageError) {
+            console.error('Error saving image record:', imageError);
+          }
+        }
       }
 
       closeModal();
@@ -168,6 +271,30 @@ export default function ProductsPage() {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
+      // Delete associated images from storage
+      const { data: images } = await supabase
+        .from('product_images')
+        .select('image_url')
+        .eq('product_id', productId);
+
+      if (images) {
+        for (const image of images) {
+          const filePath = image.image_url.split('/').pop();
+          if (filePath) {
+            await supabase.storage
+              .from('product-images')
+              .remove([`product-images/${filePath}`]);
+          }
+        }
+      }
+
+      // Delete image records
+      await supabase
+        .from('product_images')
+        .delete()
+        .eq('product_id', productId);
+
+      // Delete product
       const { error } = await supabase
         .from('products')
         .delete()
@@ -188,7 +315,7 @@ export default function ProductsPage() {
           <p className="text-gray-600">Loading products...</p>
         </div>
       </div>
-    );
+ );
   }
 
   return (
@@ -227,6 +354,7 @@ export default function ProductsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Image</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Selling Price</TableHead>
@@ -240,6 +368,11 @@ export default function ProductsPage() {
               <TableBody>
                 {products.map(product => (
                   <TableRow key={product.id}>
+                    <TableCell>
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-gray-400" />
+                      </div>
+                    </TableCell>
                     <TableCell className="font-medium">
                       {product.name}
                     </TableCell>
@@ -300,6 +433,58 @@ export default function ProductsPage() {
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Image Upload */}
+              <div>
+                <Label htmlFor="image">Product Image</Label>
+                <div className="mt-2">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <Image
+                        src={imagePreview}
+                        alt="Preview"
+                        width={200}
+                        height={200}
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => {
+                          setSelectedImage(null);
+                          setImagePreview(null);
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        Click to upload an image
+                      </p>
+                      <Input
+                        id="image"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                        className="hidden"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => document.getElementById('image')?.click()}
+                      >
+                        Choose Image
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="name">Name</Label>
                 <Input
@@ -423,9 +608,10 @@ export default function ProductsPage() {
               <Button
                 onClick={saveProduct}
                 className="bg-black hover:bg-gray-800"
+                disabled={uploadingImage}
               >
                 <Save className="w-4 h-4 mr-2" />
-                {editingProduct ? 'Update' : 'Create'}
+                {uploadingImage ? 'Uploading...' : editingProduct ? 'Update' : 'Create'}
               </Button>
             </div>
           </DialogContent>
