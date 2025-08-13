@@ -23,6 +23,7 @@ export interface ProductImage {
 export interface Location {
   id: string;
   name: string;
+  district: string;
   address: string;
   location_url: string | null;
   pickup_hour_start: string;
