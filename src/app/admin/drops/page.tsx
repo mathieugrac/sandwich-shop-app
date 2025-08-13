@@ -432,37 +432,168 @@ export default function DropManagementPage() {
       );
       console.log(`📦 Products to include: ${productsToInclude.length}`);
 
-      // First, remove all existing products from this drop
-      const { error: deleteError } = await supabase
-        .from('drop_products')
-        .delete()
+      // Check if there are existing orders for this drop
+      const { data: existingOrders, error: ordersCheckError } = await supabase
+        .from('orders')
+        .select('id')
         .eq('drop_id', selectedDrop.id);
 
-      if (deleteError) {
-        console.error('❌ Error removing existing products:', deleteError);
-        throw deleteError;
+      if (ordersCheckError) {
+        console.error('❌ Error checking existing orders:', ordersCheckError);
+        throw ordersCheckError;
       }
 
-      // If no products to include, we're done (drop has empty menu)
-      if (productsToInclude.length === 0) {
-        console.log('✅ Drop menu cleared (no products)');
-        setMessage({
-          type: 'success',
-          text: 'Drop menu cleared successfully!',
-        });
-        setShowInventoryModal(false);
-        await loadData();
-        return;
-      }
+      const hasExistingOrders = existingOrders && existingOrders.length > 0;
 
-      // Add the selected products to this drop's menu
-      const { error: insertError } = await supabase
-        .from('drop_products')
-        .insert(productsToInclude);
+      if (hasExistingOrders) {
+        console.log(
+          `⚠️ Drop has ${existingOrders.length} existing orders - using UPDATE approach`
+        );
 
-      if (insertError) {
-        console.error('❌ Error adding products to drop:', insertError);
-        throw insertError;
+        // Get current drop products to see what needs to be updated vs inserted
+        const { data: currentDropProducts, error: currentError } =
+          await supabase
+            .from('drop_products')
+            .select('id, product_id, stock_quantity, selling_price')
+            .eq('drop_id', selectedDrop.id);
+
+        if (currentError) {
+          console.error(
+            '❌ Error fetching current drop products:',
+            currentError
+          );
+          throw currentError;
+        }
+
+        // Create a map of current products for easy lookup
+        const currentProductsMap = new Map(
+          currentDropProducts?.map(dp => [dp.product_id, dp]) || []
+        );
+
+        // Process each product to include
+        for (const productToInclude of productsToInclude) {
+          const existingProduct = currentProductsMap.get(
+            productToInclude.product_id
+          );
+
+          if (existingProduct) {
+            // Update existing product
+            const { error: updateError } = await supabase
+              .from('drop_products')
+              .update({
+                stock_quantity: productToInclude.stock_quantity,
+                selling_price: productToInclude.selling_price,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingProduct.id);
+
+            if (updateError) {
+              console.error('❌ Error updating drop product:', updateError);
+              throw updateError;
+            }
+          } else {
+            // Insert new product
+            const { error: insertError } = await supabase
+              .from('drop_products')
+              .insert(productToInclude);
+
+            if (insertError) {
+              console.error(
+                '❌ Error inserting new drop product:',
+                insertError
+              );
+              throw insertError;
+            }
+          }
+        }
+
+        // Remove products that are no longer in the menu (only if no orders exist)
+        const productsToRemove =
+          currentDropProducts?.filter(
+            cp => !productsToInclude.some(p => p.product_id === cp.product_id)
+          ) || [];
+
+        for (const productToRemove of productsToRemove) {
+          // Check if this specific drop_product has any orders
+          const { data: productOrders, error: productOrdersError } =
+            await supabase
+              .from('order_products')
+              .select('id')
+              .eq('drop_product_id', productToRemove.id);
+
+          if (productOrdersError) {
+            console.error(
+              '❌ Error checking product orders:',
+              productOrdersError
+            );
+            throw productOrdersError;
+          }
+
+          if (productOrders && productOrders.length > 0) {
+            console.log(
+              `⚠️ Cannot remove product ${productToRemove.product_id} - has ${productOrders.length} orders`
+            );
+            // Set quantity to 0 instead of deleting
+            const { error: zeroError } = await supabase
+              .from('drop_products')
+              .update({
+                stock_quantity: 0,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', productToRemove.id);
+
+            if (zeroError) {
+              console.error('❌ Error zeroing drop product:', zeroError);
+              throw zeroError;
+            }
+          } else {
+            // Safe to delete
+            const { error: deleteError } = await supabase
+              .from('drop_products')
+              .delete()
+              .eq('id', productToRemove.id);
+
+            if (deleteError) {
+              console.error('❌ Error deleting drop product:', deleteError);
+              throw deleteError;
+            }
+          }
+        }
+      } else {
+        console.log('✅ No existing orders - using DELETE + INSERT approach');
+
+        // First, remove all existing products from this drop
+        const { error: deleteError } = await supabase
+          .from('drop_products')
+          .delete()
+          .eq('drop_id', selectedDrop.id);
+
+        if (deleteError) {
+          console.error('❌ Error removing existing products:', deleteError);
+          throw deleteError;
+        }
+
+        // If no products to include, we're done (drop has empty menu)
+        if (productsToInclude.length === 0) {
+          console.log('✅ Drop menu cleared (no products)');
+          setMessage({
+            type: 'success',
+            text: 'Drop menu cleared successfully!',
+          });
+          setShowInventoryModal(false);
+          await loadData();
+          return;
+        }
+
+        // Add the selected products to this drop's menu
+        const { error: insertError } = await supabase
+          .from('drop_products')
+          .insert(productsToInclude);
+
+        if (insertError) {
+          console.error('❌ Error adding products to drop:', insertError);
+          throw insertError;
+        }
       }
 
       // Update the cache with the new menu data
@@ -853,7 +984,7 @@ export default function DropManagementPage() {
               <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
                   💡 <strong>Tip:</strong> Products are not automatically added
-                  to drops. Use the + button to add products to this drop's
+                  to drops. Use the + button to add products to this drop&apos;s
                   menu, or set quantities to 0 to remove them. Only products
                   with quantities &gt; 0 will be included in the customer menu.
                 </p>
