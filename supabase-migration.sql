@@ -1,33 +1,67 @@
--- Migration script to update existing database schema
--- Run this after your existing schema is in place
+-- ========================================
+-- MIGRATION FROM OLD SCHEMA TO NEW SCHEMA
+-- ========================================
+-- This file helps transition from the old "sells" based model to the new "drops" based model
 
--- 1. Create new tables that don't exist yet
-
--- Locations table (NEW)
-CREATE TABLE IF NOT EXISTS locations (
+-- Step 1: Create new tables with temporary names to avoid conflicts
+CREATE TABLE products_new (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
-  district VARCHAR(100) NOT NULL,
-  address TEXT NOT NULL,
-  google_maps_link TEXT,
-  delivery_timeframe VARCHAR(100) NOT NULL,
+  description TEXT,
+  category VARCHAR(50) NOT NULL CHECK (category IN ('sandwich', 'side', 'dessert', 'beverage')),
+  sell_price DECIMAL(10,2) NOT NULL,
+  production_cost DECIMAL(10,2) NOT NULL,
   active BOOLEAN DEFAULT true,
+  sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Product images table (NEW - for multiple images per product)
-CREATE TABLE IF NOT EXISTS product_images (
+CREATE TABLE product_images_new (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products_new(id) ON DELETE CASCADE,
   image_url TEXT NOT NULL,
   alt_text VARCHAR(255),
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Clients table (NEW)
-CREATE TABLE IF NOT EXISTS clients (
+CREATE TABLE locations_new (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(100) NOT NULL,
+  address TEXT NOT NULL,
+  location_url TEXT,
+  pickup_hour_start TIME NOT NULL,
+  pickup_hour_end TIME NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE drops_new (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  date DATE NOT NULL,
+  location_id UUID REFERENCES locations_new(id) ON DELETE RESTRICT,
+  status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'completed', 'cancelled')),
+  notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE drop_products_new (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  drop_id UUID REFERENCES drops_new(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products_new(id) ON DELETE CASCADE,
+  stock_quantity INTEGER NOT NULL CHECK (stock_quantity >= 0),
+  reserved_quantity INTEGER DEFAULT 0 CHECK (reserved_quantity >= 0),
+  available_quantity INTEGER GENERATED ALWAYS AS (stock_quantity - reserved_quantity) STORED,
+  selling_price DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(drop_id, product_id)
+);
+
+CREATE TABLE clients_new (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   email VARCHAR(255) NOT NULL,
@@ -37,251 +71,171 @@ CREATE TABLE IF NOT EXISTS clients (
   UNIQUE(email)
 );
 
--- 2. Modify existing tables
+CREATE TABLE orders_new (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_number VARCHAR(20) UNIQUE NOT NULL,
+  drop_id UUID REFERENCES drops_new(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES clients_new(id) ON DELETE SET NULL,
+  pickup_time TIME NOT NULL,
+  order_date DATE NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled')),
+  total_amount DECIMAL(10,2) NOT NULL,
+  special_instructions TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Add location_id to sells table if it doesn't exist
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'sells' AND column_name = 'location_id') THEN
-    ALTER TABLE sells ADD COLUMN location_id UUID;
-  END IF;
-END $$;
+CREATE TABLE order_products_new (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id UUID REFERENCES orders_new(id) ON DELETE CASCADE,
+  drop_product_id UUID REFERENCES drop_products_new(id) ON DELETE RESTRICT,
+  order_quantity INTEGER NOT NULL CHECK (order_quantity > 0),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Add foreign key constraint for location_id if it doesn't exist
-DO $$ 
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.table_constraints 
-    WHERE table_name = 'sells' 
-    AND constraint_name = 'sells_location_id_fkey'
-  ) THEN
-    ALTER TABLE sells ADD CONSTRAINT sells_location_id_fkey 
-    FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE RESTRICT;
-  END IF;
-END $$;
+-- Step 2: Migrate data from old tables to new tables
 
--- Remove unique constraint on sell_date if it exists
-DO $$ 
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'sells' AND constraint_name = 'sells_sell_date_key') THEN
-    ALTER TABLE sells DROP CONSTRAINT sells_sell_date_key;
-  END IF;
-END $$;
-
--- Add client_id to orders table if it doesn't exist
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'client_id') THEN
-    ALTER TABLE orders ADD COLUMN client_id UUID;
-  END IF;
-END $$;
-
--- Add sell_id to orders table if it doesn't exist
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'sell_id') THEN
-    ALTER TABLE orders ADD COLUMN sell_id UUID;
-  END IF;
-END $$;
-
--- Remove pickup_date from orders if it exists (since we now use sell_id)
-DO $$ 
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'pickup_date') THEN
-    ALTER TABLE orders DROP COLUMN pickup_date;
-  END IF;
-END $$;
-
--- Update order status enum if needed
-DO $$ 
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'status') THEN
-    -- First, drop the existing constraint if it exists
-    ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
-    
-    -- Check if 'ready' status exists and update to 'prepared' if needed
-    UPDATE orders SET status = 'prepared' WHERE status = 'ready';
-    
-    -- Now add the new constraint
-    ALTER TABLE orders ADD CONSTRAINT orders_status_check 
-      CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled'));
-  END IF;
-END $$;
-
--- 3. Create or replace functions
-
--- Function to get next active sell (UPDATED - considers location delivery timeframes)
--- First drop the existing function if it exists
-DROP FUNCTION IF EXISTS get_next_active_sell();
-
-CREATE OR REPLACE FUNCTION get_next_active_sell()
-RETURNS TABLE (id UUID, sell_date DATE, status VARCHAR(20), location_id UUID) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT s.id, s.sell_date, s.status, s.location_id
-  FROM sells s
-  JOIN locations l ON s.location_id = l.id
-  WHERE s.status = 'active' 
-    AND s.sell_date >= CURRENT_DATE
-    AND l.active = true
-  ORDER BY s.sell_date ASC, l.delivery_timeframe ASC
-  LIMIT 1;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to reserve sell inventory
-CREATE OR REPLACE FUNCTION reserve_sell_inventory(
-  p_sell_id UUID, p_product_id UUID, p_quantity INTEGER)
-RETURNS BOOLEAN AS $$
-DECLARE
-  available_qty INTEGER;
-BEGIN
-  SELECT available_quantity INTO available_qty
-  FROM sell_inventory
-  WHERE sell_id = p_sell_id AND product_id = p_product_id;
-  
-  IF available_qty >= p_quantity THEN
-    UPDATE sell_inventory
-    SET reserved_quantity = reserved_quantity + p_quantity,
-        updated_at = NOW()
-    WHERE sell_id = p_sell_id AND product_id = p_product_id;
-    RETURN TRUE;
-  ELSE
-    RETURN FALSE;
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to auto-complete sells after delivery timeframe (NEW)
-CREATE OR REPLACE FUNCTION auto_complete_expired_sells()
-RETURNS INTEGER AS $$
-DECLARE
-  completed_count INTEGER := 0;
-  sell_record RECORD;
-BEGIN
-  -- Find sells that should be auto-completed (30 minutes after delivery timeframe)
-  FOR sell_record IN
-    SELECT s.id, s.sell_date, l.delivery_timeframe
-    FROM sells s
-    JOIN locations l ON s.location_id = l.id
-    WHERE s.status = 'active'
-      AND s.sell_date <= CURRENT_DATE
-      AND l.delivery_timeframe IS NOT NULL
-  LOOP
-    -- For now, we'll use a simple logic - complete sells from previous days
-    -- In production, you'd want to parse the delivery_timeframe and check actual time
-    IF sell_record.sell_date < CURRENT_DATE THEN
-      UPDATE sells 
-      SET status = 'completed', updated_at = NOW()
-      WHERE id = sell_record.id;
-      completed_count := completed_count + 1;
-    END IF;
-  END LOOP;
-  
-  RETURN completed_count;
-END;
-$$ LANGUAGE plpgsql;
-
--- Function to get or create client (NEW)
-CREATE OR REPLACE FUNCTION get_or_create_client(
-  p_name VARCHAR(100), p_email VARCHAR(255), p_phone VARCHAR(20))
-RETURNS UUID AS $$
-DECLARE
-  client_id UUID;
-BEGIN
-  -- Try to find existing client by email
-  SELECT id INTO client_id
-  FROM clients
-  WHERE email = p_email;
-  
-  IF client_id IS NOT NULL THEN
-    -- Update existing client info if name/phone changed
-    UPDATE clients 
-    SET name = COALESCE(p_name, name),
-        phone = COALESCE(p_phone, phone),
-        updated_at = NOW()
-    WHERE id = client_id;
-    RETURN client_id;
-  ELSE
-    -- Create new client
-    INSERT INTO clients (name, email, phone)
-    VALUES (p_name, p_email, p_phone)
-    RETURNING id INTO client_id;
-    RETURN client_id;
-  END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- 4. Enable RLS on new tables
-ALTER TABLE locations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE product_images ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-
--- 5. Create RLS policies for new tables
-
--- Public read access for active locations
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'locations' AND policyname = 'Public can view active locations') THEN
-    CREATE POLICY "Public can view active locations" ON locations
-      FOR SELECT USING (active = true);
-  END IF;
-END $$;
-
--- Authenticated admin access for locations
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'locations' AND policyname = 'Admin can manage locations') THEN
-    CREATE POLICY "Admin can manage locations" ON locations
-      FOR ALL USING (auth.role() = 'authenticated');
-  END IF;
-END $$;
-
--- Authenticated admin access for product images
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'product_images' AND policyname = 'Admin can manage product images') THEN
-    CREATE POLICY "Admin can manage product images" ON product_images
-      FOR ALL USING (auth.role() = 'authenticated');
-  END IF;
-END $$;
-
--- Authenticated admin access for clients
-DO $$ 
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'clients' AND policyname = 'Admin can manage clients') THEN
-    CREATE POLICY "Admin can manage clients" ON clients
-      FOR ALL USING (auth.role() = 'authenticated');
-  END IF;
-END $$;
-
--- 6. Insert sample data
-
--- Sample locations data (only if locations table is empty)
-INSERT INTO locations (name, district, address, google_maps_link, delivery_timeframe)
-SELECT 'Impact Hub', 'Penha da França', 'Rua Fialho de Almeida 3, 1170-131 Lisboa', 'https://maps.google.com/?q=Impact+Hub+Lisboa', '12:00-14:00'
-WHERE NOT EXISTS (SELECT 1 FROM locations WHERE name = 'Impact Hub');
-
--- 7. Update existing sells to have a location (if they don't have one)
-UPDATE sells 
-SET location_id = (SELECT id FROM locations WHERE name = 'Impact Hub' LIMIT 1)
-WHERE location_id IS NULL;
-
--- 8. Create sell_inventory entries for existing sells if they don't exist
-INSERT INTO sell_inventory (sell_id, product_id, total_quantity, reserved_quantity)
+-- Migrate products (add production_cost, update category constraints)
+INSERT INTO products_new (id, name, description, category, sell_price, production_cost, active, sort_order, created_at, updated_at)
 SELECT 
-  s.id,
-  p.id,
+  id,
+  name,
+  description,
   CASE 
-    WHEN p.name = 'Nutty Beet' THEN 20
-    WHEN p.name = 'Umami Mush' THEN 25
-    WHEN p.name = 'Burgundy Beef' THEN 15
-    ELSE 20
+    WHEN category = 'drink' THEN 'beverage'
+    ELSE category
   END,
-  0
-FROM sells s, products p
-WHERE s.status = 'draft'
-  AND NOT EXISTS (
-    SELECT 1 FROM sell_inventory si 
-    WHERE si.sell_id = s.id AND si.product_id = p.id
-  );
+  price as sell_price,
+  0.00 as production_cost, -- Will be set manually in admin
+  active,
+  sort_order,
+  created_at,
+  updated_at
+FROM products;
+
+-- Migrate locations (convert delivery_timeframe to pickup hours)
+INSERT INTO locations_new (id, name, address, location_url, pickup_hour_start, pickup_hour_end, active, created_at, updated_at)
+SELECT 
+  id,
+  name,
+  address,
+  google_maps_link as location_url,
+  '00:00'::TIME as pickup_hour_start, -- Will be set manually in admin
+  '00:00'::TIME as pickup_hour_end,   -- Will be set manually in admin
+  active,
+  created_at,
+  updated_at
+FROM locations;
+
+-- Migrate sells to drops
+INSERT INTO drops_new (id, date, location_id, status, notes, created_at, updated_at)
+SELECT 
+  id,
+  sell_date as date,
+  location_id,
+  CASE 
+    WHEN status = 'draft' THEN 'upcoming'
+    ELSE status
+  END,
+  notes,
+  created_at,
+  updated_at
+FROM sells;
+
+-- Migrate sell_inventory to drop_products
+INSERT INTO drop_products_new (id, drop_id, product_id, stock_quantity, reserved_quantity, selling_price, created_at, updated_at)
+SELECT 
+  id,
+  sell_id as drop_id,
+  product_id,
+  total_quantity as stock_quantity,
+  reserved_quantity,
+  (SELECT sell_price FROM products_new WHERE id = product_id) as selling_price,
+  created_at,
+  updated_at
+FROM sell_inventory;
+
+-- Migrate clients (if they exist)
+INSERT INTO clients_new (id, name, email, phone, created_at, updated_at)
+SELECT 
+  id,
+  name,
+  email,
+  phone,
+  created_at,
+  updated_at
+FROM clients;
+
+-- Migrate orders
+INSERT INTO orders_new (id, order_number, drop_id, client_id, pickup_time, order_date, status, total_amount, special_instructions, created_at, updated_at)
+SELECT 
+  o.id,
+  o.order_number,
+  o.sell_id as drop_id,
+  o.client_id,
+  o.pickup_time,
+  COALESCE(o.created_at::DATE, CURRENT_DATE) as order_date,
+  o.status,
+  o.total_amount,
+  o.special_instructions,
+  o.created_at,
+  o.updated_at
+FROM orders o;
+
+-- Migrate order_items to order_products (this is more complex due to structure change)
+-- We need to find the corresponding drop_product_id for each order_item
+INSERT INTO order_products_new (id, order_id, drop_product_id, order_quantity, created_at)
+SELECT 
+  oi.id,
+  oi.order_id,
+  dp.id as drop_product_id,
+  oi.quantity as order_quantity,
+  oi.created_at
+FROM order_items oi
+JOIN orders_new o ON oi.order_id = o.id
+JOIN drop_products_new dp ON dp.drop_id = o.drop_id AND dp.product_id = oi.product_id;
+
+-- Step 3: Drop old tables and rename new ones
+-- Since this is early phase with no important data, we can proceed directly
+
+-- Drop old tables
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS sell_inventory;
+DROP TABLE IF EXISTS sells;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS locations;
+DROP TABLE IF EXISTS clients;
+DROP TABLE IF EXISTS orders;
+
+-- Rename new tables
+ALTER TABLE products_new RENAME TO products;
+ALTER TABLE product_images_new RENAME TO product_images;
+ALTER TABLE locations_new RENAME TO locations;
+ALTER TABLE drops_new RENAME TO drops;
+ALTER TABLE drop_products_new RENAME TO drop_products;
+ALTER TABLE clients_new RENAME TO clients;
+ALTER TABLE orders_new RENAME TO orders;
+ALTER TABLE order_products_new RENAME TO order_products;
+
+-- Step 4: Recreate indexes and constraints (after renaming)
+-- This will be done automatically when you run the new schema
+
+-- Step 5: Update any existing functions or views that reference old table names
+-- You'll need to update your application code to use the new table names
+
+-- ========================================
+-- ROLLBACK PLAN (if needed)
+-- ========================================
+-- If you need to rollback, you can:
+-- 1. Keep the old tables with "_old" suffix
+-- 2. Restore from backup
+-- 3. Re-run the old schema
+
+-- ========================================
+-- POST-MIGRATION TASKS
+-- ========================================
+-- 1. Update your application code to use new table names
+-- 2. Update API endpoints to reference new structure
+-- 3. Test all functionality with new schema
+-- 4. Update any database queries in your code
+-- 5. Update TypeScript types to match new structure

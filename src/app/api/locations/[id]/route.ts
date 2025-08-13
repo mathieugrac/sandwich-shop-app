@@ -42,18 +42,19 @@ export async function PUT(
     const body = await request.json();
     const {
       name,
-      district,
       address,
-      google_maps_link,
-      delivery_timeframe,
+      location_url,
+      pickup_hour_start,
+      pickup_hour_end,
       active,
     } = body;
 
     // Validate required fields
-    if (!name || !district || !address || !delivery_timeframe) {
+    if (!name || !address || !pickup_hour_start || !pickup_hour_end) {
       return NextResponse.json(
         {
-          error: 'Name, district, address, and delivery_timeframe are required',
+          error:
+            'Name, address, pickup_hour_start, and pickup_hour_end are required',
         },
         { status: 400 }
       );
@@ -63,10 +64,10 @@ export async function PUT(
       .from('locations')
       .update({
         name,
-        district,
         address,
-        google_maps_link,
-        delivery_timeframe,
+        location_url,
+        pickup_hour_start,
+        pickup_hour_end,
         active: active !== undefined ? active : true,
         updated_at: new Date().toISOString(),
       })
@@ -99,23 +100,23 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Check if location is referenced by any sells
-    const { data: sells, error: sellsError } = await supabase
-      .from('sells')
+    // Check if location is referenced by any drops
+    const { data: drops, error: dropsError } = await supabase
+      .from('drops')
       .select('id')
       .eq('location_id', id);
 
-    if (sellsError) {
-      console.error('Error checking sells:', sellsError);
+    if (dropsError) {
+      console.error('Error checking drops:', dropsError);
       return NextResponse.json(
         { error: 'Failed to check location usage' },
         { status: 500 }
       );
     }
 
-    if (sells && sells.length > 0) {
+    if (drops && drops.length > 0) {
       return NextResponse.json(
-        { error: 'Cannot delete location that has associated sells' },
+        { error: 'Cannot delete location that has associated drops' },
         { status: 400 }
       );
     }

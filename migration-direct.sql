@@ -1,23 +1,37 @@
 -- ========================================
--- FOMÉ SANDWICH SHOP - NEW DATA MODEL
+-- DIRECT MIGRATION TO NEW DATA MODEL
 -- ========================================
+-- Run this script in your Supabase SQL Editor
+-- This will completely replace your current schema with the new one
+
+-- Step 1: Drop existing tables in correct order (handling dependencies)
+-- First drop tables that depend on others, then the base tables
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS sell_inventory CASCADE;
+DROP TABLE IF EXISTS sells CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS locations CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS product_images CASCADE;
+
+-- Step 2: Create new tables with the improved structure
 
 -- Products table
--- The catalogue of food products being sold
 CREATE TABLE products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   description TEXT,
   category VARCHAR(50) NOT NULL CHECK (category IN ('sandwich', 'side', 'dessert', 'beverage')),
   sell_price DECIMAL(10,2) NOT NULL,
-  production_cost DECIMAL(10,2) NOT NULL,
+  production_cost DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Product images table (multiple images per product)
+-- Product images table
 CREATE TABLE product_images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
@@ -28,12 +42,11 @@ CREATE TABLE product_images (
 );
 
 -- Locations table
--- Places where orders can be delivered/picked up
 CREATE TABLE locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
   address TEXT NOT NULL,
-  location_url TEXT, -- Google Maps or other location link
+  location_url TEXT,
   pickup_hour_start TIME NOT NULL,
   pickup_hour_end TIME NOT NULL,
   active BOOLEAN DEFAULT true,
@@ -41,7 +54,7 @@ CREATE TABLE locations (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Drops table (replaces "sells" - a sell event at specific time & location)
+-- Drops table
 CREATE TABLE drops (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   date DATE NOT NULL,
@@ -52,7 +65,7 @@ CREATE TABLE drops (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Drop products table (quantities of products available for a specific drop)
+-- Drop products table
 CREATE TABLE drop_products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
@@ -60,14 +73,13 @@ CREATE TABLE drop_products (
   stock_quantity INTEGER NOT NULL CHECK (stock_quantity >= 0),
   reserved_quantity INTEGER DEFAULT 0 CHECK (reserved_quantity >= 0),
   available_quantity INTEGER GENERATED ALWAYS AS (stock_quantity - reserved_quantity) STORED,
-  selling_price DECIMAL(10,2) NOT NULL, -- Captured price at drop level
+  selling_price DECIMAL(10,2) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(drop_id, product_id)
 );
 
 -- Clients table
--- People who order food through the app
 CREATE TABLE clients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
@@ -79,13 +91,12 @@ CREATE TABLE clients (
 );
 
 -- Orders table
--- Customer orders for a specific drop
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number VARCHAR(20) UNIQUE NOT NULL,
   drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
-  pickup_time TIME NOT NULL, -- 15-min slot within location pickup hours
+  pickup_time TIME NOT NULL,
   order_date DATE NOT NULL,
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled')),
   total_amount DECIMAL(10,2) NOT NULL,
@@ -94,7 +105,7 @@ CREATE TABLE orders (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Order products table (products ordered by customers)
+-- Order products table
 CREATE TABLE order_products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
@@ -103,7 +114,7 @@ CREATE TABLE order_products (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Admin users table (shop owner/staff)
+-- Admin users table
 CREATE TABLE admin_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -112,9 +123,7 @@ CREATE TABLE admin_users (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ========================================
--- FUNCTIONS
--- ========================================
+-- Step 3: Create functions
 
 -- Function to generate unique order numbers
 CREATE OR REPLACE FUNCTION generate_order_number()
@@ -163,14 +172,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to auto-complete drops after pickup hours
+-- Function to auto-complete expired drops
 CREATE OR REPLACE FUNCTION auto_complete_expired_drops()
 RETURNS INTEGER AS $$
 DECLARE
   completed_count INTEGER := 0;
   drop_record RECORD;
 BEGIN
-  -- Find drops that should be auto-completed (30 minutes after pickup hours end)
   FOR drop_record IN
     SELECT d.id, d.date, l.pickup_hour_end
     FROM drops d
@@ -179,8 +187,6 @@ BEGIN
       AND d.date <= CURRENT_DATE
       AND l.pickup_hour_end IS NOT NULL
   LOOP
-    -- For now, complete drops from previous days
-    -- In production, parse pickup_hour_end and check actual time
     IF drop_record.date < CURRENT_DATE THEN
       UPDATE drops 
       SET status = 'completed', updated_at = NOW()
@@ -200,13 +206,11 @@ RETURNS UUID AS $$
 DECLARE
   client_id UUID;
 BEGIN
-  -- Try to find existing client by email
   SELECT id INTO client_id
   FROM clients
   WHERE email = p_email;
   
   IF client_id IS NOT NULL THEN
-    -- Update existing client info if name/phone changed
     UPDATE clients 
     SET name = COALESCE(p_name, name),
         phone = COALESCE(p_phone, phone),
@@ -214,7 +218,6 @@ BEGIN
     WHERE id = client_id;
     RETURN client_id;
   ELSE
-    -- Create new client
     INSERT INTO clients (name, email, phone)
     VALUES (p_name, p_email, p_phone)
     RETURNING id INTO client_id;
@@ -223,9 +226,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ========================================
--- ROW LEVEL SECURITY (RLS)
--- ========================================
+-- Step 4: Enable RLS and create policies
 
 -- Enable RLS on all tables
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
@@ -290,15 +291,33 @@ CREATE POLICY "Anyone can create orders" ON orders
 CREATE POLICY "Anyone can create order products" ON order_products
   FOR INSERT WITH CHECK (true);
 
--- ========================================
--- SAMPLE DATA
--- ========================================
+-- Step 5: Create constraints and indexes
 
--- Sample locations data (pickup hours will be set manually in admin)
+-- Ensure pickup hours are valid
+ALTER TABLE locations ADD CONSTRAINT check_pickup_hours 
+CHECK (pickup_hour_end > pickup_hour_start);
+
+-- Performance indexes
+CREATE INDEX idx_drops_date_status ON drops(date, status);
+CREATE INDEX idx_drops_location_id ON drops(location_id);
+CREATE INDEX idx_drop_products_drop_id ON drop_products(drop_id);
+CREATE INDEX idx_drop_products_product_id ON drop_products(product_id);
+CREATE INDEX idx_orders_drop_id ON orders(drop_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_client_id ON orders(client_id);
+CREATE INDEX idx_order_products_order_id ON order_products(order_id);
+CREATE INDEX idx_order_products_drop_product_id ON order_products(drop_product_id);
+CREATE INDEX idx_products_category ON products(category);
+CREATE INDEX idx_products_active ON products(active);
+CREATE INDEX idx_locations_active ON locations(active);
+
+-- Step 6: Insert sample data
+
+-- Sample locations (pickup hours will be set manually in admin)
 INSERT INTO locations (name, address, location_url, pickup_hour_start, pickup_hour_end) VALUES
 ('Impact Hub', 'Rua Fialho de Almeida 3, 1170-131 Lisboa', 'https://maps.google.com/?q=Impact+Hub+Lisboa', '00:00', '00:00');
 
--- Sample products data (production_cost will be set manually in admin)
+-- Sample products (production_cost will be set manually in admin)
 INSERT INTO products (name, description, category, sell_price, production_cost, sort_order) VALUES
 ('Nutty Beet', 'honey-roasted beetroot, creamy labneh, zaatar, crunchy hazelnuts, pickled oignons and fresh mint', 'sandwich', 9.00, 0.00, 1),
 ('Umami Mush', 'Marinated oyster mushrooms, crispy buckwheat, pickled apple, fresh coriander and miso butter', 'sandwich', 10.00, 0.00, 2),
@@ -306,12 +325,12 @@ INSERT INTO products (name, description, category, sell_price, production_cost, 
 ('Fresh Lemonade', 'Homemade lemonade with mint', 'beverage', 3.50, 0.00, 4),
 ('Chocolate Brownie', 'Rich chocolate brownie with walnuts', 'dessert', 4.50, 0.00, 5);
 
--- Sample drops data (linked to Impact Hub)
+-- Sample drops
 INSERT INTO drops (date, location_id, status, notes) VALUES
 (CURRENT_DATE + INTERVAL '1 day', (SELECT id FROM locations WHERE name = 'Impact Hub'), 'upcoming', 'First test drop'),
 (CURRENT_DATE + INTERVAL '8 days', (SELECT id FROM locations WHERE name = 'Impact Hub'), 'upcoming', 'Second test drop');
 
--- Sample drop products data
+-- Sample drop products
 INSERT INTO drop_products (drop_id, product_id, stock_quantity, selling_price)
 SELECT 
   d.id,
@@ -328,28 +347,9 @@ SELECT
 FROM drops d, products p
 WHERE d.status = 'upcoming';
 
--- ========================================
--- CONSTRAINTS & VALIDATIONS
--- ========================================
-
--- Ensure pickup hours are valid (end time must be after start time)
-ALTER TABLE locations ADD CONSTRAINT check_pickup_hours 
-CHECK (pickup_hour_end > pickup_hour_start);
-
--- ========================================
--- PERFORMANCE INDEXES
--- ========================================
-
--- Indexes for frequently queried fields
-CREATE INDEX idx_drops_date_status ON drops(date, status);
-CREATE INDEX idx_drops_location_id ON drops(location_id);
-CREATE INDEX idx_drop_products_drop_id ON drop_products(drop_id);
-CREATE INDEX idx_drop_products_product_id ON drop_products(product_id);
-CREATE INDEX idx_orders_drop_id ON orders(drop_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_client_id ON orders(client_id);
-CREATE INDEX idx_order_products_order_id ON order_products(order_id);
-CREATE INDEX idx_order_products_drop_product_id ON order_products(drop_product_id);
-CREATE INDEX idx_products_category ON products(category);
-CREATE INDEX idx_products_active ON products(active);
-CREATE INDEX idx_locations_active ON locations(active); 
+-- Step 7: Verify the migration
+SELECT 'Migration completed successfully!' as status;
+SELECT COUNT(*) as products_count FROM products;
+SELECT COUNT(*) as locations_count FROM locations;
+SELECT COUNT(*) as drops_count FROM drops;
+SELECT COUNT(*) as drop_products_count FROM drop_products;

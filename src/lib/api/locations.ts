@@ -18,10 +18,10 @@ export async function fetchLocation(id: string): Promise<Location> {
 
 export async function createLocation(locationData: {
   name: string;
-  district: string;
   address: string;
-  google_maps_link?: string;
-  delivery_timeframe: string;
+  location_url?: string;
+  pickup_hour_start: string;
+  pickup_hour_end: string;
 }): Promise<Location> {
   const response = await fetch('/api/locations', {
     method: 'POST',
@@ -42,10 +42,10 @@ export async function updateLocation(
   id: string,
   locationData: Partial<{
     name: string;
-    district: string;
     address: string;
-    google_maps_link: string;
-    delivery_timeframe: string;
+    location_url: string;
+    pickup_hour_start: string;
+    pickup_hour_end: string;
     active: boolean;
   }>
 ): Promise<Location> {

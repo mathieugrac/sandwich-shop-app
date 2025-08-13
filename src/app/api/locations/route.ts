@@ -30,14 +30,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, district, address, google_maps_link, delivery_timeframe } =
+    const { name, address, location_url, pickup_hour_start, pickup_hour_end } =
       body;
 
     // Validate required fields
-    if (!name || !district || !address || !delivery_timeframe) {
+    if (!name || !address || !pickup_hour_start || !pickup_hour_end) {
       return NextResponse.json(
         {
-          error: 'Name, district, address, and delivery_timeframe are required',
+          error:
+            'Name, address, pickup_hour_start, and pickup_hour_end are required',
         },
         { status: 400 }
       );
@@ -47,10 +48,10 @@ export async function POST(request: Request) {
       .from('locations')
       .insert({
         name,
-        district,
         address,
-        google_maps_link,
-        delivery_timeframe,
+        location_url,
+        pickup_hour_start,
+        pickup_hour_end,
         active: true,
       })
       .select()

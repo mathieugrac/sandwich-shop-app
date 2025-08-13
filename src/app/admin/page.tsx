@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
             </div>
             <CardTitle className="text-2xl">Admin Login</CardTitle>
             <CardDescription>
-              Sign in to manage orders and sells
+              Sign in to manage orders and drops
             </CardDescription>
           </CardHeader>
           <CardContent>
