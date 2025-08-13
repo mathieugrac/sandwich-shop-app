@@ -133,7 +133,7 @@ export default function CheckoutPage() {
         pickupTime: pickupTime,
         pickupDate: new Date().toISOString().split('T')[0],
         items: items.map(item => ({
-          id: item.id,
+          id: item.dropProductId, // Use drop_product_id for the API
           quantity: item.quantity,
           price: item.price,
         })),
@@ -216,7 +216,7 @@ export default function CheckoutPage() {
         if (error.message.includes('No active sell available')) {
           errorMessage =
             'Sorry, there are no active orders at the moment. Please try again later.';
-        } else if (error.message.includes('Failed to reserve inventory')) {
+        } else if (error.message.includes('Failed to reserve drop products')) {
           errorMessage =
             'Sorry, some items are no longer available. Please refresh and try again.';
         } else if (error.message.includes('Missing required fields')) {

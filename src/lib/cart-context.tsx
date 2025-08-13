@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface CartItem {
-  id: string;
+  id: string; // This will be the drop_product.id
   name: string;
   price: number;
   quantity: number;
+  dropProductId: string; // Reference to drop_product.id
+  productId: string; // Reference to the original product.id
 }
 
 interface CartContextType {

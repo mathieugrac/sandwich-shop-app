@@ -1,39 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { DropWithLocation } from '@/types/database';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, MapPin, Clock } from 'lucide-react';
-import { fetchFutureSells } from '@/lib/api/sells';
-import { SellWithLocation } from '@/types/database';
+import { Calendar, MapPin, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-interface SellWithInventory extends SellWithLocation {
-  total_available: number;
-}
+import { useEffect, useState } from 'react';
+import { fetchDrops } from '@/lib/api/drops';
 
 export function UpcomingDrops() {
-  const [sells, setSells] = useState<SellWithInventory[]>([]);
+  const [drops, setDrops] = useState<DropWithLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const loadFutureSells = async () => {
+    const loadFutureDrops = async () => {
       try {
-        console.log('🔄 UpcomingDrops: Starting to load future sells...');
-        const futureSells = await fetchFutureSells();
-        console.log('✅ UpcomingDrops: Future sells loaded:', futureSells);
-        setSells(futureSells);
+        console.log('🔄 UpcomingDrops: Starting to load future drops...');
+        const futureDrops = await fetchDrops();
+        console.log('✅ UpcomingDrops: Future drops loaded:', futureDrops);
+        setDrops(futureDrops);
       } catch (error) {
-        console.error('❌ UpcomingDrops: Error loading future sells:', error);
+        console.error('❌ UpcomingDrops: Error loading future drops:', error);
       } finally {
         console.log('🏁 UpcomingDrops: Setting loading to false');
         setLoading(false);
       }
     };
 
-    loadFutureSells();
+    loadFutureDrops();
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -44,22 +38,24 @@ export function UpcomingDrops() {
     };
   };
 
-  const handlePreOrder = (sell: SellWithInventory) => {
-    if (sell.status === 'active') {
-      router.push(`/menu/${sell.id}`);
+  const handlePreOrder = (drop: DropWithLocation) => {
+    if (drop.status === 'active') {
+      router.push(`/menu/${drop.id}`);
     }
   };
 
-  const handleNotifyMe = (sell: SellWithInventory) => {
+  const handleNotifyMe = (drop: DropWithLocation) => {
     // TODO: Implement notification system
-    console.log('Notify me clicked for sell:', sell.id);
+    console.log('Notify me clicked for drop:', drop.id);
   };
 
   console.log(
     '🔄 UpcomingDrops: Render state - loading:',
     loading,
-    'sells count:',
-    sells.length
+    'drops count:',
+    drops.length,
+    'drops data:',
+    drops
   );
 
   if (loading) {
@@ -71,15 +67,33 @@ export function UpcomingDrops() {
     );
   }
 
-  if (sells.length === 0) {
+  // Defensive check: Make sure drops is an array and has data
+  if (!Array.isArray(drops) || drops.length === 0) {
     return (
       <div className="text-center py-8">
-        <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <Calendar className="w-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           No upcoming drops
         </h3>
         <p className="text-gray-600">
           Check back later for new sandwich drops!
+        </p>
+      </div>
+    );
+  }
+
+  // Filter out drops that don't have location data
+  const validDrops = drops.filter(drop => drop.location);
+
+  if (validDrops.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Calendar className="w-12 w-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          No valid drops found
+        </h3>
+        <p className="text-gray-600">
+          Some drops may be missing location information.
         </p>
       </div>
     );
@@ -95,87 +109,82 @@ export function UpcomingDrops() {
       </div>
 
       <div className="space-y-4">
-        {sells.map(sell => {
-          const { day, month } = formatDate(sell.sell_date);
-          const isActive = sell.status === 'active';
-          const isDraft = sell.status === 'draft';
+        {validDrops.map(drop => {
+          const { day, month } = formatDate(drop.date);
+          const isActive = drop.status === 'active';
+          const isUpcoming = drop.status === 'upcoming';
+
+          // Debug: Log the drop data to see what's actually being returned
+          console.log('🔍 Drop data:', drop);
+          console.log('🔍 Drop location:', drop.location);
+
+          // Defensive check: Make sure location exists
+          if (!drop.location) {
+            console.error('❌ Drop missing location:', drop);
+            return null; // Skip rendering this drop
+          }
 
           return (
-            <Card key={sell.id} className="bg-gray-50 border-0">
-              <CardContent className="p-4">
+            <div key={drop.id} className="bg-gray-50 border-0">
+              <div className="p-4">
                 <div className="flex items-center justify-between">
                   {/* Date and Location */}
-                  <div className="flex items-center space-x-4">
-                    {/* Date Box */}
-                    <div className="bg-gray-200 rounded-lg p-3 text-center min-w-[60px]">
-                      <div className="text-2xl font-bold text-black">{day}</div>
-                      <div className="text-sm text-black">{month}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      <span className="font-medium">
+                        {new Date(drop.date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
                     </div>
-
-                    {/* Location Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <MapPin className="w-4 h-4 text-gray-600" />
-                        <h3 className="font-bold text-black">
-                          {sell.location.name}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {sell.location.district}
-                      </p>
-
-                      {/* Available Quantity or Status */}
-                      {isActive ? (
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className="text-sm text-black">
-                            {sell.total_available} left 🥪
-                          </span>
-                        </div>
-                      ) : isDraft ? (
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Clock className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-500">
-                            Coming soon..
-                          </span>
-                        </div>
-                      ) : null}
+                    <div className="flex items-center space-x-2 mt-1">
+                      <MapPin className="w-4 h-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">
+                        {drop.location.name}
+                      </span>
+                      {drop.location.district && (
+                        <span className="text-xs text-gray-500">
+                          ({drop.location.district})
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <div className="flex-shrink-0">
-                    {isActive ? (
+                  {/* Action Buttons */}
+                  <div className="flex flex-col items-end space-y-2">
+                    {drop.status === 'active' ? (
                       <Button
-                        onClick={() => handlePreOrder(sell)}
-                        className="bg-black text-white hover:bg-gray-800 px-6 py-2 rounded-lg"
+                        onClick={() => handlePreOrder(drop)}
+                        className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-sm"
                       >
-                        Pre-Order
+                        Order Now
                       </Button>
-                    ) : isDraft ? (
+                    ) : drop.status === 'upcoming' ? (
                       <Button
-                        onClick={() => handleNotifyMe(sell)}
+                        onClick={() => handleNotifyMe(drop)}
                         variant="outline"
-                        className="border-black text-black hover:bg-gray-100 px-6 py-2 rounded-lg"
+                        className="px-4 py-2 text-sm"
                       >
                         Notify Me
                       </Button>
-                    ) : (
-                      <Badge variant="secondary" className="px-3 py-1">
-                        {sell.status}
-                      </Badge>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
-                {/* Delivery Timeframe */}
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    <Clock className="w-4 h-4" />
-                    <span>Delivery: {sell.location.delivery_timeframe}</span>
+                    <Package className="w-4 h-4" />
+                    <span>
+                      Pickup: {drop.location.pickup_hour_start} -{' '}
+                      {drop.location.pickup_hour_end}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>

@@ -53,37 +53,7 @@ import {
   Trash2,
   Edit,
 } from 'lucide-react';
-
-interface Location {
-  id: string;
-  name: string;
-  address: string;
-  location_url: string;
-  pickup_hour_start: string;
-  pickup_hour_end: string;
-}
-
-interface Drop {
-  id: string;
-  date: string;
-  location_id: string;
-  status: 'upcoming' | 'active' | 'completed' | 'cancelled';
-  notes: string;
-  created_at: string;
-  updated_at: string;
-  locations?: Location;
-  inventory_count?: number;
-  inventory_total?: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  sell_price: number;
-  production_cost: number;
-  sort_order: number;
-}
+import { Drop, DropWithLocation, Location, Product } from '@/types/database';
 
 interface DropProduct {
   id: string;
@@ -93,11 +63,18 @@ interface DropProduct {
   reserved_quantity: number;
   available_quantity: number;
   selling_price: number;
+  created_at: string;
+  updated_at: string;
   products?: Product;
 }
 
 export default function DropManagementPage() {
-  const [drops, setDrops] = useState<Drop[]>([]);
+  const [drops, setDrops] = useState<
+    (DropWithLocation & {
+      drop_products_count?: number;
+      drop_products_total?: number;
+    })[]
+  >([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,8 +86,20 @@ export default function DropManagementPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedDrop, setSelectedDrop] = useState<Drop | null>(null);
-  const [editingDrop, setEditingDrop] = useState<Drop | null>(null);
+  const [selectedDrop, setSelectedDrop] = useState<
+    | (DropWithLocation & {
+        drop_products_count?: number;
+        drop_products_total?: number;
+      })
+    | null
+  >(null);
+  const [editingDrop, setEditingDrop] = useState<
+    | (DropWithLocation & {
+        drop_products_count?: number;
+        drop_products_total?: number;
+      })
+    | null
+  >(null);
   const [newDropDate, setNewDropDate] = useState('');
   const [newDropLocation, setNewDropLocation] = useState('');
   const [newDropStatus, setNewDropStatus] = useState<
@@ -198,8 +187,8 @@ export default function DropManagementPage() {
 
           dropsWithInventoryCount = dropsData.map(drop => ({
             ...drop,
-            inventory_count: countMap[drop.id] || 0,
-            inventory_total: totalMap[drop.id] || 0,
+            drop_products_count: countMap[drop.id] || 0,
+            drop_products_total: totalMap[drop.id] || 0,
           }));
         }
       }
@@ -264,7 +253,7 @@ export default function DropManagementPage() {
           );
           return {
             ...drop,
-            locations: location || null,
+            location: location || null,
           };
         });
         console.log(
@@ -321,24 +310,13 @@ export default function DropManagementPage() {
 
       console.log('Drop created successfully:', drop);
 
-      // Create drop products for all products
-      const dropProductData = products.map(product => ({
-        drop_id: drop.id,
-        product_id: product.id,
-        stock_quantity: 0, // Default to 0, admin will set later
-        reserved_quantity: 0,
-        selling_price: product.sell_price, // Capture the selling price at drop level
-      }));
+      // Don't automatically create drop products - let admin manage menu manually
+      // This ensures only selected products are attached to drops
 
-      const { error: dropProductError } = await supabase
-        .from('drop_products')
-        .insert(dropProductData);
-
-      if (dropProductError) {
-        console.error('Drop product creation error:', dropProductError);
-      }
-
-      setMessage({ type: 'success', text: 'Drop created successfully!' });
+      setMessage({
+        type: 'success',
+        text: 'Drop created successfully! You can now manage its menu.',
+      });
       setShowCreateForm(false);
       setNewDropDate('');
       setNewDropLocation('');
@@ -357,7 +335,12 @@ export default function DropManagementPage() {
     }
   };
 
-  const openInventoryModal = async (drop: Drop) => {
+  const openInventoryModal = async (
+    drop: DropWithLocation & {
+      drop_products_count?: number;
+      drop_products_total?: number;
+    }
+  ) => {
     setSelectedDrop(drop);
 
     // Check if we have cached inventory for this drop
@@ -384,6 +367,7 @@ export default function DropManagementPage() {
       .eq('drop_id', drop.id);
 
     if (inventoryData && inventoryData.length > 0) {
+      // Transform the data to match our interface
       const inventoryMap: { [key: string]: number } = {};
       inventoryData.forEach(item => {
         inventoryMap[item.product_id] = item.stock_quantity;
@@ -395,23 +379,25 @@ export default function DropManagementPage() {
         [drop.id]: inventoryMap,
       }));
     } else {
-      // Initialize with all products at 0
-      const inventoryMap: { [key: string]: number } = {};
-      products.forEach(product => {
-        inventoryMap[product.id] = 0;
-      });
-      setInventory(inventoryMap);
-      // Cache this inventory data
+      // Initialize with NO products (empty inventory)
+      // This means no products are attached to the drop by default
+      setInventory({});
+      // Cache this empty inventory data
       setDropInventoryCache(prev => ({
         ...prev,
-        [drop.id]: inventoryMap,
+        [drop.id]: {},
       }));
     }
 
     setShowInventoryModal(true);
   };
 
-  const openEditModal = (drop: Drop) => {
+  const openEditModal = (
+    drop: DropWithLocation & {
+      drop_products_count?: number;
+      drop_products_total?: number;
+    }
+  ) => {
     setEditingDrop(drop);
     setEditDropDate(drop.date);
     setEditDropLocation(drop.location_id);
@@ -419,14 +405,14 @@ export default function DropManagementPage() {
     setShowEditModal(true);
   };
 
-  const saveInventory = async () => {
+  const saveDropMenu = async () => {
     if (!selectedDrop) return;
 
     try {
-      // Prepare all inventory updates with selling prices
-      const inventoryUpdates = Object.entries(inventory).map(
-        ([productId, quantity]) => {
-          // Get the product to get its selling price
+      // Get only products that have quantities > 0 (products actually in this drop's menu)
+      const productsToInclude = Object.entries(inventory)
+        .filter(([productId, quantity]) => quantity > 0)
+        .map(([productId, quantity]) => {
           const product = products.find(p => p.id === productId);
           if (!product) {
             throw new Error(`Product ${productId} not found`);
@@ -439,60 +425,70 @@ export default function DropManagementPage() {
             reserved_quantity: 0,
             selling_price: product.sell_price,
           };
-        }
+        });
+
+      console.log(
+        `🔄 Updating drop menu for: ${selectedDrop.date} at ${selectedDrop.location?.name}`
       );
+      console.log(`📦 Products to include: ${productsToInclude.length}`);
 
-      console.log('About to update inventory for drop:', selectedDrop.id);
-
-      // First, delete existing drop products for this drop
+      // First, remove all existing products from this drop
       const { error: deleteError } = await supabase
         .from('drop_products')
         .delete()
         .eq('drop_id', selectedDrop.id);
 
       if (deleteError) {
-        console.error('Delete error:', deleteError);
+        console.error('❌ Error removing existing products:', deleteError);
         throw deleteError;
       }
 
-      // Then insert new drop products
+      // If no products to include, we're done (drop has empty menu)
+      if (productsToInclude.length === 0) {
+        console.log('✅ Drop menu cleared (no products)');
+        setMessage({
+          type: 'success',
+          text: 'Drop menu cleared successfully!',
+        });
+        setShowInventoryModal(false);
+        await loadData();
+        return;
+      }
+
+      // Add the selected products to this drop's menu
       const { error: insertError } = await supabase
         .from('drop_products')
-        .insert(inventoryUpdates);
+        .insert(productsToInclude);
 
       if (insertError) {
-        console.error('Insert error:', insertError);
-        console.error('Insert error details:', {
-          message: insertError.message,
-          details: insertError.details,
-          hint: insertError.hint,
-          code: insertError.code,
-        });
-        console.error('Inventory updates being sent:', inventoryUpdates);
+        console.error('❌ Error adding products to drop:', insertError);
         throw insertError;
       }
 
-      // Update the cache with the new inventory data
+      // Update the cache with the new menu data
       setDropInventoryCache(prev => ({
         ...prev,
         [selectedDrop.id]: inventory,
       }));
 
-      setMessage({ type: 'success', text: 'Menu updated successfully!' });
+      console.log('✅ Drop menu updated successfully');
+      setMessage({
+        type: 'success',
+        text: `Drop menu updated with ${productsToInclude.length} products!`,
+      });
       setShowInventoryModal(false);
       await loadData();
     } catch (error) {
-      console.error('Error updating menu:', error);
+      console.error('❌ Error updating drop menu:', error);
       if (error instanceof Error) {
-        console.error('Error message:', error.message);
         setMessage({
           type: 'error',
-          text: `Failed to update menu: ${error.message}`,
+          text: `Failed to update drop menu: ${error.message}`,
         });
       } else {
         setMessage({
           type: 'error',
-          text: 'Failed to update menu. Please try again.',
+          text: 'Failed to update drop menu. Please try again.',
         });
       }
     }
@@ -788,12 +784,12 @@ export default function DropManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {drop.locations?.name || 'No location'}
+                      {drop.location?.name || 'No location'}
                     </TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
                     <TableCell>
                       <span className="text-gray-600">
-                        {drop.inventory_total || 0} items
+                        {drop.drop_products_total || 0} items
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
@@ -844,15 +840,25 @@ export default function DropManagementPage() {
           <DialogContent className="w-[800px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Manage Menu - {selectedDrop?.locations?.name}
+                Manage Drop Menu - {selectedDrop?.location?.name}
               </DialogTitle>
               <DialogDescription>
-                Add products to this drop&apos;s menu and set quantities for
-                each item
+                Select which products to include in this drop&apos;s menu and
+                set quantities for each item
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
+              {/* Help Text */}
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Tip:</strong> Products are not automatically added
+                  to drops. Use the + button to add products to this drop's
+                  menu, or set quantities to 0 to remove them. Only products
+                  with quantities &gt; 0 will be included in the customer menu.
+                </p>
+              </div>
+
               {/* Product Selection and Quantity Management */}
               {products.map(product => {
                 const currentQuantity = inventory[product.id] || 0;
@@ -931,15 +937,17 @@ export default function DropManagementPage() {
               })}
             </div>
 
-            {/* Menu Summary */}
+            {/* Drop Menu Summary */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-3">Menu Summary</h4>
+              <h4 className="font-medium text-gray-900 mb-3">
+                Drop Menu Summary
+              </h4>
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
                     {Object.values(inventory).filter(qty => qty > 0).length}
                   </div>
-                  <div className="text-sm text-gray-600">Products</div>
+                  <div className="text-sm text-gray-600">Products in Menu</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
@@ -973,11 +981,13 @@ export default function DropManagementPage() {
                 Cancel
               </Button>
               <Button
-                onClick={saveInventory}
+                onClick={saveDropMenu}
                 className="bg-black hover:bg-gray-800"
                 disabled={Object.values(inventory).every(qty => qty === 0)}
               >
-                Save Menu
+                {Object.values(inventory).every(qty => qty === 0)
+                  ? 'Clear Menu'
+                  : 'Save Drop Menu'}
               </Button>
             </div>
           </DialogContent>

@@ -11,10 +11,11 @@ export async function GET() {
         date,
         status,
         notes,
-        locations (
+        location:locations (
           id,
           name,
           address,
+          district,
           location_url,
           pickup_hour_start,
           pickup_hour_end
@@ -41,7 +42,7 @@ export async function GET() {
           .eq('drop_id', drop.id);
 
         if (inventoryError) {
-          console.error('Error fetching drop inventory:', inventoryError);
+          console.error('Error fetching drop products:', inventoryError);
           return { ...drop, total_available: 0 };
         }
 
