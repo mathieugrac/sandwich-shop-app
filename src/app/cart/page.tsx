@@ -15,8 +15,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, MapPin, Clock } from 'lucide-react';
+import { MapPin, Clock } from 'lucide-react';
 import { PageHeader, PageLayout } from '@/components/shared';
+import { CartItem } from '@/components/customer';
 
 // Interface for drop information
 interface DropInfo {
@@ -217,63 +218,15 @@ export default function CartPage() {
             <h2 className="text-xl font-semibold mb-4">Items</h2>
             <div className="space-y-3">
               {items.map(item => (
-                <Card key={item.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-lg">{item.name}</h3>
-                      <p className="text-gray-600">
-                        €{item.price.toFixed(2)} each
-                      </p>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity - 1)
-                        }
-                        disabled={item.quantity <= 1}
-                        className="w-8 h-8 p-0"
-                        aria-label={`Decrease quantity of ${item.name}`}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-
-                      <span className="text-lg font-medium min-w-[2rem] text-center">
-                        {item.quantity}
-                      </span>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          updateQuantity(item.id, item.quantity + 1)
-                        }
-                        className="w-8 h-8 p-0"
-                        aria-label={`Increase quantity of ${item.name}`}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex justify-between items-center">
-                    <span className="text-gray-600">
-                      Total: €{(item.price * item.quantity).toFixed(2)}
-                    </span>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-600 hover:text-red-700"
-                      aria-label={`Remove ${item.name} from cart`}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                </Card>
+                <CartItem
+                  key={item.id}
+                  id={item.id}
+                  name={item.name}
+                  price={item.price}
+                  quantity={item.quantity}
+                  onUpdateQuantity={updateQuantity}
+                  onRemove={removeFromCart}
+                />
               ))}
             </div>
           </section>
