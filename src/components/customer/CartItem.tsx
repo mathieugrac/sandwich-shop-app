@@ -1,4 +1,3 @@
-import { Card } from '@/components/ui/card';
 import { QuantitySelector } from '@/components/shared/QuantitySelector';
 
 interface CartItemProps {
@@ -7,6 +6,7 @@ interface CartItemProps {
   price: number;
   quantity: number;
   availableStock: number;
+  imageUrl?: string;
   onUpdateQuantity: (id: string, newQuantity: number) => void;
   onRemove: (id: string) => void;
 }
@@ -17,6 +17,7 @@ export function CartItem({
   price,
   quantity,
   availableStock,
+  imageUrl,
   onUpdateQuantity,
   onRemove,
 }: CartItemProps) {
@@ -36,8 +37,22 @@ export function CartItem({
   };
 
   return (
-    <Card className="p-4">
-      <div className="flex justify-between items-start">
+    <div className="">
+      <div className="flex items-center space-x-4">
+        {/* Left side: Product image */}
+        {imageUrl && (
+          <div className="flex-shrink-0">
+            <img
+              src={imageUrl}
+              alt={name}
+              className="w-[60px] h-[60px] rounded-md object-cover"
+              width={60}
+              height={60}
+            />
+          </div>
+        )}
+
+        {/* Middle: Product info */}
         <div className="flex-1">
           <h3 className="font-medium text-lg">{name}</h3>
           <p className="text-gray-600">
@@ -45,17 +60,19 @@ export function CartItem({
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        {/* Right side: Quantity controls */}
+        <div className="flex-shrink-0">
           <QuantitySelector
             quantity={quantity}
             onIncrease={handleIncreaseQuantity}
             onDecrease={handleDecreaseQuantity}
             maxQuantity={availableStock}
             minQuantity={0}
-            size="sm"
+            size="md"
           />
         </div>
       </div>
-    </Card>
+
+    </div>
   );
 }

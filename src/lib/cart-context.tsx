@@ -10,6 +10,7 @@ interface CartItem {
   availableStock: number; // Available stock for this item
   dropProductId: string; // Reference to drop_product.id
   productId: string; // Reference to the original product.id
+  imageUrl?: string; // Product image URL for display
 }
 
 interface CartContextType {

@@ -76,6 +76,7 @@ export default function MenuPage() {
         availableStock: dropProduct.available_quantity, // Store available stock
         dropProductId: dropProduct.id, // Store reference to drop_product
         productId: dropProduct.product.id, // Store reference to original product
+        imageUrl: dropProduct.product.product_images?.[0]?.image_url, // Get first product image
       });
     }
   };
