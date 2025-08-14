@@ -21,6 +21,7 @@ import { CartItem } from '@/components/customer';
 
 // Interface for drop information
 interface DropInfo {
+  id?: string; // Optional drop ID for navigation
   date: string;
   location: {
     name: string;
@@ -162,16 +163,7 @@ export default function CartPage() {
     }
   }, [selectedTime, comment, dropInfo, router]);
 
-  // If cart is empty, redirect to home
-  useEffect(() => {
-    if (items.length === 0) {
-      router.push('/');
-    }
-  }, [items.length, router]);
 
-  if (items.length === 0) {
-    return null; // Will redirect
-  }
 
   // Show error state if there's an error
   if (error && !dropInfo) {
@@ -216,128 +208,159 @@ export default function CartPage() {
           {/* Items Section */}
           <section>
             <h2 className="text-xl font-semibold mb-4">Items</h2>
-            <div className="space-y-3">
-              {items.map(item => (
-                <CartItem
-                  key={item.id}
-                  id={item.id}
-                  name={item.name}
-                  price={item.price}
-                  quantity={item.quantity}
-                  onUpdateQuantity={updateQuantity}
-                  onRemove={removeFromCart}
-                />
-              ))}
-            </div>
-          </section>
-
-          <Separator />
-
-          {/* Comment Section */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Special Instructions</h2>
-            <Textarea
-              placeholder="Any special requests or dietary requirements?"
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              className="min-h-[100px]"
-              aria-label="Special instructions for your order"
-            />
-          </section>
-
-          <Separator />
-
-          {/* Delivery Section */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
-
-            {/* Pickup Time */}
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-gray-600" />
-                  <span className="font-medium">Pickup Time</span>
+            {items.length > 0 ? (
+              <div className="space-y-3">
+                {items.map(item => (
+                  <CartItem
+                    key={item.id}
+                    id={item.id}
+                    name={item.name}
+                    price={item.price}
+                    quantity={item.quantity}
+                    availableStock={item.availableStock}
+                    onUpdateQuantity={updateQuantity}
+                    onRemove={removeFromCart}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-400 mb-4">
+                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m6 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+                  </svg>
                 </div>
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger className="w-32" aria-label="Select pickup time">
-                    <SelectValue placeholder="Select time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pickupTimes.length > 0 ? (
-                      pickupTimes.map(time => (
-                        <SelectItem key={time} value={time}>
-                          {formatTimeWithAMPM(time)}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="" disabled>
-                        No times available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-5 w-5 text-gray-600" />
-                <span className="font-medium">Pickup Location</span>
-              </div>
-              <Card className="p-4">
-                <p className="text-gray-700 mb-3">
-                  {dropInfo?.location?.name || 'Location not specified'}
-                </p>
-                {dropInfo?.location?.location_url && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      window.open(dropInfo.location.location_url, '_blank')
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                <p className="text-gray-500 mb-6">Add some delicious sandwiches to get started!</p>
+                <Button
+                  onClick={() => {
+                    if (dropInfo?.id) {
+                      router.push(`/menu/${dropInfo.id}`);
+                    } else {
+                      router.push('/');
                     }
-                    className="w-full"
-                    aria-label="Open location in maps"
-                  >
-                    Open in Maps
-                  </Button>
-                )}
-              </Card>
-            </div>
-          </section>
-
-          <Separator />
-
-          {/* Price Recap */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <Card className="p-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>€{totalPrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-lg">
-                  <span>Total:</span>
-                  <span>€{totalPrice.toFixed(2)}</span>
-                </div>
+                  }}
+                  className="bg-black text-white hover:bg-gray-800"
+                >
+                  Add Products
+                </Button>
               </div>
-            </Card>
+            )}
           </section>
+
+          {items.length > 0 && (
+            <>
+              <Separator />
+
+              {/* Comment Section */}
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Special Instructions</h2>
+                <Textarea
+                  placeholder="Any special requests or dietary requirements?"
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  className="min-h-[100px]"
+                  aria-label="Special instructions for your order"
+                />
+              </section>
+
+              <Separator />
+
+              {/* Delivery Section */}
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
+
+                {/* Pickup Time */}
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-5 w-5 text-gray-600" />
+                      <span className="font-medium">Pickup Time</span>
+                    </div>
+                    <Select value={selectedTime} onValueChange={setSelectedTime}>
+                      <SelectTrigger className="w-32" aria-label="Select pickup time">
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pickupTimes.length > 0 ? (
+                          pickupTimes.map(time => (
+                            <SelectItem key={time} value={time}>
+                              {formatTimeWithAMPM(time)}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="" disabled>
+                            No times available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-gray-600" />
+                    <span className="font-medium">Pickup Location</span>
+                  </div>
+                  <Card className="p-4">
+                    <p className="text-gray-700 mb-3">
+                      {dropInfo?.location?.name || 'Location not specified'}
+                    </p>
+                    {dropInfo?.location?.location_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(dropInfo.location.location_url, '_blank')
+                        }
+                        className="w-full"
+                        aria-label="Open location in maps"
+                      >
+                        Open in Maps
+                      </Button>
+                    )}
+                  </Card>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* Price Recap */}
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+                <Card className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>€{totalPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-lg">
+                      <span>Total:</span>
+                      <span>€{totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </Card>
+              </section>
+            </>
+          )}
         </div>
       </main>
 
       {/* Sticky Place Order Button */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
-        <Button
-          onClick={handlePlaceOrder}
-          disabled={isLoading || !selectedTime || !dropInfo}
-          className="w-full bg-black text-white py-4 text-lg font-medium"
-          aria-label="Place your order"
-        >
-          {isLoading ? 'Processing...' : 'Place Order'}
-        </Button>
-      </div>
+      {items.length > 0 && (
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+          <Button
+            onClick={handlePlaceOrder}
+            disabled={isLoading || !selectedTime || !dropInfo}
+            className="w-full bg-black text-white py-4 text-lg font-medium"
+            aria-label="Place your order"
+          >
+            {isLoading ? 'Processing...' : 'Place Order'}
+          </Button>
+        </div>
+      )}
     </PageLayout>
   );
 }

@@ -62,6 +62,7 @@ export default function MenuPage() {
     if (dropProduct && dropData) {
       // Store drop information in localStorage for Cart and Checkout pages
       localStorage.setItem('currentDrop', JSON.stringify({
+        id: dropData.id, // Store the drop ID for navigation
         date: dropData.date,
         location: dropData.location,
         pickup_hour_start: dropData.location.pickup_hour_start,
@@ -72,6 +73,7 @@ export default function MenuPage() {
         id: dropProduct.id, // Use drop_product.id as cart item ID
         name: dropProduct.product.name,
         price: dropProduct.selling_price,
+        availableStock: dropProduct.available_quantity, // Store available stock
         dropProductId: dropProduct.id, // Store reference to drop_product
         productId: dropProduct.product.id, // Store reference to original product
       });

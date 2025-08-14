@@ -7,6 +7,7 @@ interface CartItem {
   name: string;
   price: number;
   quantity: number;
+  availableStock: number; // Available stock for this item
   dropProductId: string; // Reference to drop_product.id
   productId: string; // Reference to the original product.id
 }
