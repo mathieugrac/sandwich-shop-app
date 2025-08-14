@@ -272,7 +272,8 @@ function ConfirmationContent() {
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
           <Button
             onClick={handleBackToHome}
-            className="w-full bg-black text-white py-4 text-lg font-medium"
+            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full"
+            size="lg"
           >
             Back to Menu
           </Button>

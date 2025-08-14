@@ -259,9 +259,8 @@ export default function CartPage() {
                   placeholder="Any special requests or dietary requirements?"
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  className="min-h-[80px]"
                   aria-label="Special instructions for your order"
-                  className="shadow-none resize-none text-lg"
+                  className="shadow-none resize-none min-h-[80px]"
                 />
               </Card>
 
@@ -335,11 +334,11 @@ export default function CartPage() {
           <Button
             onClick={handlePlaceOrder}
             disabled={isLoading || !selectedTime || !dropInfo}
-            className="w-full bg-black text-white py-4 text-lg font-medium"
-            aria-label="Place your order"
+            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full"
+            aria-label="Continue to checkout"
             size="lg"
           >
-            {isLoading ? 'Processing...' : 'Place Order'}
+            {isLoading ? 'Processing...' : 'Continue'}
           </Button>
         </div>
       )}
