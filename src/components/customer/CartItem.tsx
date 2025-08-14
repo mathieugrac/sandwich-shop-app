@@ -68,7 +68,7 @@ export function CartItem({
             onDecrease={handleDecreaseQuantity}
             maxQuantity={availableStock}
             minQuantity={0}
-            size="md"
+            size="xl"
           />
         </div>
       </div>

@@ -28,8 +28,8 @@ interface QuantitySelectorProps {
   minQuantity?: number;
   /** Whether the component is disabled */
   disabled?: boolean;
-  /** Size variant: sm, md, or lg */
-  size?: 'sm' | 'md' | 'lg';
+  /** Size variant: sm, md, lg, or xl */
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   /** Additional CSS classes */
   className?: string;
 }
@@ -51,22 +51,25 @@ export function QuantitySelector({
     sm: 'h-8 text-xs',
     md: 'h-10 text-sm',
     lg: 'h-12 text-base',
+    xl: 'h-12 text-base',
   };
 
   const buttonSizeClasses = {
     sm: 'w-6 h-6 p-0',
     md: 'w-8 h-8 p-0',
     lg: 'w-10 h-10 p-0',
+    xl: 'w-[42px] h-[42px] p-0',
   };
 
   const iconSizes = {
     sm: 'h-2.5 w-2.5',
     md: 'h-3 w-3',
     lg: 'h-4 w-4',
+    xl: 'h-5 w-5',
   };
 
   return (
-    <div className={`bg-white border border-gray-300 rounded-full flex items-center px-[3px] py-1 ${sizeClasses[size]} ${className}`}>
+    <div className={`bg-white border border-gray-300 rounded-full flex items-center px-[2px] py-1 ${sizeClasses[size]} ${className}`}>
       <Button
         size="sm"
         variant="ghost"
