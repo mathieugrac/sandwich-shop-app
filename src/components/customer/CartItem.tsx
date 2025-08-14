@@ -1,6 +1,4 @@
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Trash2 } from 'lucide-react';
 import { QuantitySelector } from '@/components/shared/QuantitySelector';
 
 interface CartItemProps {
@@ -8,6 +6,7 @@ interface CartItemProps {
   name: string;
   price: number;
   quantity: number;
+  availableStock: number;
   onUpdateQuantity: (id: string, newQuantity: number) => void;
   onRemove: (id: string) => void;
 }
@@ -17,21 +16,23 @@ export function CartItem({
   name,
   price,
   quantity,
+  availableStock,
   onUpdateQuantity,
   onRemove,
 }: CartItemProps) {
   const handleIncreaseQuantity = () => {
-    onUpdateQuantity(id, quantity + 1);
+    if (quantity < availableStock) {
+      onUpdateQuantity(id, quantity + 1);
+    }
   };
 
   const handleDecreaseQuantity = () => {
     if (quantity > 1) {
       onUpdateQuantity(id, quantity - 1);
+    } else if (quantity === 1) {
+      // When quantity reaches 0, remove the item
+      onRemove(id);
     }
-  };
-
-  const handleRemove = () => {
-    onRemove(id);
   };
 
   return (
@@ -49,27 +50,11 @@ export function CartItem({
             quantity={quantity}
             onIncrease={handleIncreaseQuantity}
             onDecrease={handleDecreaseQuantity}
-            minQuantity={1}
+            maxQuantity={availableStock}
+            minQuantity={0}
             size="sm"
           />
         </div>
-      </div>
-
-      <div className="mt-3 flex justify-between items-center">
-        <span className="text-gray-600">
-          Total: €{(price * quantity).toFixed(2)}
-        </span>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRemove}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-          aria-label={`Remove ${name} from cart`}
-        >
-          <Trash2 className="h-4 w-4 mr-1" />
-          Remove
-        </Button>
       </div>
     </Card>
   );
