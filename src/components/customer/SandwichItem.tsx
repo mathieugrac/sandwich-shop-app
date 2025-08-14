@@ -110,7 +110,7 @@ export function SandwichItem({
         {!isSoldOut && !isInCart ? (
           <Button
             size="sm"
-            className="absolute bottom-3 right-2 w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50"
+            className="absolute bottom-3 right-2 w-12 h-12 rounded-full bg-white border border-gray-300 hover:bg-gray-50"
             onClick={handleAddToCart}
           >
             <Plus className="h-4 w-4 text-black" />
@@ -123,7 +123,7 @@ export function SandwichItem({
               onDecrease={handleDecreaseQuantity}
               maxQuantity={availableStock}
               minQuantity={0}
-              size="md"
+              size="xl"
             />
           </div>
         ) : null}
