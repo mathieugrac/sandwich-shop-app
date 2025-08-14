@@ -329,59 +329,18 @@ export default function CheckoutPage() {
       />
 
       <main className="px-5">
-        <div className="space-y-6 py-4">
-          {/* Order Summary */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <Card className="p-4">
-              <div className="space-y-2">
-                {items.map(item => (
-                  <div key={item.id} className="flex justify-between">
-                    <span>
-                      {item.quantity}x {item.name}
-                    </span>
-                    <span>€{(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
-                <Separator />
-                <div className="flex justify-between">
-                  <span>Total:</span>
-                  <span>€{totalPrice.toFixed(2)}</span>
-                </div>
-              </div>
-            </Card>
-          </section>
-
-          {/* Pickup Details */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
-            <Card className="p-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Pickup Time:</span>
-                  <span className="font-medium">{pickupTime}</span>
-                </div>
-                {specialInstructions && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      Special Instructions:
-                    </span>
-                    <span className="font-medium">{specialInstructions}</span>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </section>
-
-          <Separator />
-
+        <div className="space-y-6 py-5">
           {/* Customer Information Form */}
-          <section>
-            <h2 className="text-xl font-semibold mb-4">Your Information</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <Card className="p-5">
+            <h2 className="text-xl font-semibold mb-5">Your Information</h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+                <Label 
+                  htmlFor="name"
+                  className="mb-2"
+                >Full Name
+                </Label>
                 <Input
                   id="name"
                   type="text"
@@ -397,7 +356,11 @@ export default function CheckoutPage() {
 
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+                <Label 
+                  htmlFor="email"
+                  className="mb-2"
+                >Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -413,7 +376,11 @@ export default function CheckoutPage() {
 
               {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number (Optional)</Label>
+                <Label 
+                  htmlFor="phone"
+                  className="mb-2"
+                >Phone (Optional)
+                </Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -426,44 +393,69 @@ export default function CheckoutPage() {
                   <p className="text-sm text-red-600">{errors.phone}</p>
                 )}
               </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-black text-white py-4 text-lg font-medium"
-              >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <LoadingSpinner />
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  'Place Order'
-                )}
-              </Button>
             </form>
-          </section>
+          </Card>
+
+          {/* Order Summary */}
+          <Card className="p-5">
+            <h2 className="text-xl font-semibold mb-5">Order Summary</h2>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Total:</span>
+                  <span className="font-semibold">€{totalPrice.toFixed(2)}</span>
+                </div>
+                  {items.map(item => (
+                    <div key={item.id} className="flex justify-between">
+                      <span className="text-gray-500 text-sm">
+                        {item.quantity}x {item.name}
+                      </span>
+                      <span className="text-gray-500 text-sm">
+                        €{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                {/* Pickup Time and Special Instructions */}
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="">Pickup Time:</span>
+                    <span className="font-semibold">{pickupTime}</span>
+                  </div>
+                  {specialInstructions && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        Special Instructions:
+                      </span>
+                      <span className="font-medium">{specialInstructions}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-black text-white py-4 text-lg font-medium mt-4 rounded-full"
+                  onClick={handleSubmit}
+                  size="lg"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <LoadingSpinner />
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    'Place Order'
+                  )}
+                </Button>
+              </div>
+          </Card>
         </div>
       </main>
 
-      {/* Sticky Submit Button */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
-        <Button
-          onClick={handleSubmit}
-          disabled={isLoading}
-          className="w-full bg-black text-white py-4 text-lg font-medium"
-        >
-          {isLoading ? (
-            <div className="flex items-center space-x-2">
-              <LoadingSpinner />
-              <span>Processing...</span>
-            </div>
-          ) : (
-            'Place Order'
-          )}
-        </Button>
-      </div>
+
     </PageLayout>
   );
 }
