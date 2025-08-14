@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
 import { useCart } from '@/lib/cart-context';
 import { Button } from '@/components/ui/button';
@@ -25,26 +25,49 @@ interface DropInfo {
     name: string;
     district: string;
     location_url?: string;
+    pickup_hour_start: string;
+    pickup_hour_end: string;
   };
   pickup_hour_start: string;
   pickup_hour_end: string;
 }
 
-// Mock data for pickup times (12:00 - 14:00 in 15-min intervals)
-const pickupTimes = [
-  '12:00',
-  '12:15',
-  '12:30',
-  '12:45',
-  '13:00',
-  '13:15',
-  '13:30',
-  '13:45',
-  '14:00',
-];
+// Function to generate pickup time slots based on location hours
+const generatePickupTimes = (startTime: string, endTime: string): string[] => {
+  const times: string[] = [];
+  const start = new Date(`2000-01-01T${startTime}`);
+  const end = new Date(`2000-01-01T${endTime}`);
+  
+  // Add 15-minute intervals
+  const current = new Date(start);
+  while (current <= end) {
+    times.push(current.toTimeString().slice(0, 5));
+    current.setMinutes(current.getMinutes() + 15);
+  }
+  
+  return times;
+};
 
-// Mock shop address (to be replaced with real address)
-const shopAddress = '123 Sandwich Street, City, Country';
+// Function to format time with AM/PM
+const formatTimeWithAMPM = (timeString: string): string => {
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  
+  if (minutes === '00') {
+    return `${displayHour}${ampm}`;
+  } else {
+    return `${displayHour}:${minutes}${ampm}`;
+  }
+};
+
+// Function to format pickup time range
+const formatPickupTimeRange = (startTime: string, endTime: string): string => {
+  const startFormatted = formatTimeWithAMPM(startTime);
+  const endFormatted = formatTimeWithAMPM(endTime);
+  return `${startFormatted} - ${endFormatted}`;
+};
 
 export default function CartPage() {
   const router = useRouter();
@@ -54,45 +77,89 @@ export default function CartPage() {
   const [comment, setComment] = useState('');
   const [isLoading] = useState(false);
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Generate pickup times based on location hours
+  const pickupTimes = useMemo(() => {
+    if (!dropInfo?.location?.pickup_hour_start || !dropInfo?.location?.pickup_hour_end) {
+      return [];
+    }
+    return generatePickupTimes(
+      dropInfo.location.pickup_hour_start,
+      dropInfo.location.pickup_hour_end
+    );
+  }, [dropInfo?.location?.pickup_hour_start, dropInfo?.location?.pickup_hour_end]);
+
+  // Memoized formatting functions
+  const formatDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'long',
+      day: 'numeric',
+    };
+    return date.toLocaleDateString('en-US', options);
+  }, []);
 
   // Load drop information from localStorage
   useEffect(() => {
     const savedDrop = localStorage.getItem('currentDrop');
     if (savedDrop) {
       try {
-        setDropInfo(JSON.parse(savedDrop));
+        const parsedDrop = JSON.parse(savedDrop);
+        // Validate the structure
+        if (parsedDrop?.location?.pickup_hour_start && parsedDrop?.location?.pickup_hour_end) {
+          setDropInfo(parsedDrop);
+          setError(null);
+        } else {
+          setError('Invalid drop information format');
+          console.error('Drop info missing required fields:', parsedDrop);
+        }
       } catch (error) {
+        setError('Failed to load drop information');
         console.error('Error parsing drop info:', error);
       }
+    } else {
+      setError('No drop information found');
     }
   }, []);
 
   // Handle back navigation
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     router.back();
-  };
+  }, [router]);
 
   // Handle clear cart
-  const handleClearCart = () => {
+  const handleClearCart = useCallback(() => {
     clearCart();
-    localStorage.removeItem('currentDrop'); // Also clear drop info
+    localStorage.removeItem('currentDrop');
     router.push('/');
-  };
+  }, [clearCart, router]);
 
   // Handle place order
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = useCallback(() => {
     if (!selectedTime) {
-      alert('Please select a pickup time');
+      setError('Please select a pickup time');
       return;
     }
 
-    // Save pickup time and special instructions to localStorage for checkout
-    localStorage.setItem('pickupTime', selectedTime);
-    localStorage.setItem('specialInstructions', comment);
+    if (!dropInfo) {
+      setError('Drop information is missing');
+      return;
+    }
 
-    // Navigate to checkout page
-    router.push('/checkout');
-  };
+    try {
+      // Save pickup time and special instructions to localStorage for checkout
+      localStorage.setItem('pickupTime', selectedTime);
+      localStorage.setItem('specialInstructions', comment);
+      setError(null);
+
+      // Navigate to checkout page
+      router.push('/checkout');
+    } catch (error) {
+      setError('Failed to save order information');
+      console.error('Error saving order info:', error);
+    }
+  }, [selectedTime, comment, dropInfo, router]);
 
   // If cart is empty, redirect to home
   useEffect(() => {
@@ -105,46 +172,31 @@ export default function CartPage() {
     return null; // Will redirect
   }
 
-  // Format functions for the header
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'long',
-      day: 'numeric',
-    };
-    return date.toLocaleDateString('en-US', options);
-  };
-
-  const formatPickupTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'pm' : 'am';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    if (minutes === '00') {
-      return `${displayHour}`;
-    } else {
-      return `${displayHour}:${minutes}`;
-    }
-  };
+  // Show error state if there's an error
+  if (error && !dropInfo) {
+    return (
+      <PageLayout>
+        <PageHeader 
+          title="Error Loading Order"
+          subtitle="Unable to load drop information"
+          onBackClick={handleBack}
+        />
+        <main className="px-5 py-8">
+          <Card className="p-6 text-center">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={handleBack} variant="outline">
+              Go Back
+            </Button>
+          </Card>
+        </main>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>
       <PageHeader 
-        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
-          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
-          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : ''
-        } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
-          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
-          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : 'pm'
-        })` : "Your Order"}
+        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTimeRange(dropInfo.location.pickup_hour_start, dropInfo.location.pickup_hour_end)})` : "Your Order"}
         subtitle={dropInfo ? `${dropInfo.location.name}, ${dropInfo.location.district}` : "Cart"}
         showMapPin={!!dropInfo?.location?.location_url}
         locationUrl={dropInfo?.location?.location_url}
@@ -153,6 +205,13 @@ export default function CartPage() {
 
       <main className="px-5">
         <div className="space-y-6 py-4">
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Items Section */}
           <section>
             <h2 className="text-xl font-semibold mb-4">Items</h2>
@@ -176,6 +235,7 @@ export default function CartPage() {
                         }
                         disabled={item.quantity <= 1}
                         className="w-8 h-8 p-0"
+                        aria-label={`Decrease quantity of ${item.name}`}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
@@ -191,6 +251,7 @@ export default function CartPage() {
                           updateQuantity(item.id, item.quantity + 1)
                         }
                         className="w-8 h-8 p-0"
+                        aria-label={`Increase quantity of ${item.name}`}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -207,6 +268,7 @@ export default function CartPage() {
                       size="sm"
                       onClick={() => removeFromCart(item.id)}
                       className="text-red-600 hover:text-red-700"
+                      aria-label={`Remove ${item.name} from cart`}
                     >
                       Remove
                     </Button>
@@ -226,6 +288,7 @@ export default function CartPage() {
               value={comment}
               onChange={e => setComment(e.target.value)}
               className="min-h-[100px]"
+              aria-label="Special instructions for your order"
             />
           </section>
 
@@ -243,15 +306,21 @@ export default function CartPage() {
                   <span className="font-medium">Pickup Time</span>
                 </div>
                 <Select value={selectedTime} onValueChange={setSelectedTime}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-32" aria-label="Select pickup time">
                     <SelectValue placeholder="Select time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {pickupTimes.map(time => (
-                      <SelectItem key={time} value={time}>
-                        {time}
+                    {pickupTimes.length > 0 ? (
+                      pickupTimes.map(time => (
+                        <SelectItem key={time} value={time}>
+                          {formatTimeWithAMPM(time)}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        No times available
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -264,20 +333,22 @@ export default function CartPage() {
                 <span className="font-medium">Pickup Location</span>
               </div>
               <Card className="p-4">
-                <p className="text-gray-700 mb-3">{shopAddress}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    window.open(
-                      `https://maps.google.com/?q=${encodeURIComponent(shopAddress)}`,
-                      '_blank'
-                    )
-                  }
-                  className="w-full"
-                >
-                  Open in Google Maps
-                </Button>
+                <p className="text-gray-700 mb-3">
+                  {dropInfo?.location?.name || 'Location not specified'}
+                </p>
+                {dropInfo?.location?.location_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      window.open(dropInfo.location.location_url, '_blank')
+                    }
+                    className="w-full"
+                    aria-label="Open location in maps"
+                  >
+                    Open in Maps
+                  </Button>
+                )}
               </Card>
             </div>
           </section>
@@ -307,8 +378,9 @@ export default function CartPage() {
       <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
         <Button
           onClick={handlePlaceOrder}
-          disabled={isLoading || !selectedTime}
+          disabled={isLoading || !selectedTime || !dropInfo}
           className="w-full bg-black text-white py-4 text-lg font-medium"
+          aria-label="Place your order"
         >
           {isLoading ? 'Processing...' : 'Place Order'}
         </Button>
