@@ -7,9 +7,10 @@ import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 import { useCart } from '@/lib/cart-context';
 import { fetchDropWithProducts } from '@/lib/api/drops';
 import { DropWithProducts } from '@/types/database';
-import { ArrowLeft, Calendar, MapPin } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { PageHeader, PageLayout } from '@/components/shared';
 
 export default function MenuPage() {
   const { dropId } = useParams();
@@ -58,7 +59,15 @@ export default function MenuPage() {
     const dropProduct = dropData?.dropProducts.find(
       item => item.id === dropProductId
     );
-    if (dropProduct) {
+    if (dropProduct && dropData) {
+      // Store drop information in localStorage for Cart and Checkout pages
+      localStorage.setItem('currentDrop', JSON.stringify({
+        date: dropData.date,
+        location: dropData.location,
+        pickup_hour_start: dropData.location.pickup_hour_start,
+        pickup_hour_end: dropData.location.pickup_hour_end
+      }));
+      
       addToCart({
         id: dropProduct.id, // Use drop_product.id as cart item ID
         name: dropProduct.product.name,
@@ -188,148 +197,114 @@ export default function MenuPage() {
   console.log('🔍 Menu: hasNoDropProducts:', hasNoDropProducts);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-[480px] mx-auto bg-white min-h-screen">
-        {/* Header with Back Button */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-          <Button
-            onClick={handleBack}
-            variant="ghost"
-            size="sm"
-            className="p-2"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+    <PageLayout>
+      <PageHeader
+        title={`${formatDate(dropData.date)} (${formatPickupTime(dropData.location.pickup_hour_start)}${
+          parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12 !==
+          parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : ''
+        } - ${formatPickupTime(dropData.location.pickup_hour_end)}${
+          parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12 ===
+          parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : 'pm'
+        })`}
+        subtitle={`${dropData.location.name}, ${dropData.location.district}`}
+        showMapPin={true}
+        locationUrl={dropData.location.location_url || undefined}
+        onBackClick={handleBack}
+      />
 
-          <div className="text-center flex-1">
-            <div className="text-md font-semibold">
-              {formatDate(dropData.date)} (
-              {formatPickupTime(dropData.location.pickup_hour_start)}
-              {parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
-                12 !==
-              parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-                ? parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
-                  12
-                  ? 'am'
-                  : 'pm'
-                : ''}{' '}
-              - {formatPickupTime(dropData.location.pickup_hour_end)}
-              {parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
-                12 ===
-              parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-                ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-                  ? 'am'
-                  : 'pm'
-                : 'pm'}
-              )
+      <main className="px-5">
+        <div className="space-y-6 py-5">
+          {/* Menu Section */}
+          {hasNoDropProducts ? (
+            <div className="text-center py-8">
+              <div className="max-w-md mx-auto">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Menu not ready yet
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Products are being added to this drop. Please check back
+                    later or contact us for more information.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">
-              {dropData.location.name}, {dropData.location.district}
+          ) : availableProducts.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="max-w-md mx-auto">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No products available
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    All products for this drop are currently sold out.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="p-2"
-            onClick={() => {
-              if (dropData.location.location_url) {
-                window.open(dropData.location.location_url, '_blank');
-              }
-            }}
-          >
-            <MapPin className="w-5 h-5" />
-          </Button>
+          ) : (
+            <div className="space-y-5">
+              {availableProducts.map(dropProduct => (
+                <SandwichItem
+                  key={dropProduct.id}
+                  name={dropProduct.product.name}
+                  description={dropProduct.product.description || undefined}
+                  price={dropProduct.selling_price}
+                  availableStock={getAvailableStock(dropProduct.id)}
+                  images={dropProduct.product.product_images}
+                  onAddToCart={() => handleAddToCart(dropProduct.id)}
+                  onUpdateQuantity={newQuantity =>
+                    handleUpdateQuantity(dropProduct.id, newQuantity)
+                  }
+                  onRemoveFromCart={() => handleRemoveFromCart(dropProduct.id)}
+                  initialQuantity={getCurrentCartQuantity(dropProduct.id)}
+                />
+              ))}
+            </div>
+          )}
         </div>
+      </main>
 
-        <main className="px-5">
-          <div className="space-y-6 py-5">
-            {/* Menu Section */}
-            {hasNoDropProducts ? (
-              <div className="text-center py-8">
-                <div className="max-w-md mx-auto">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Menu not ready yet
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Products are being added to this drop. Please check back
-                      later or contact us for more information.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : availableProducts.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="max-w-md mx-auto">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No products available
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      All products for this drop are currently sold out.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {availableProducts.map(dropProduct => (
-                  <SandwichItem
-                    key={dropProduct.id}
-                    name={dropProduct.product.name}
-                    description={dropProduct.product.description || undefined}
-                    price={dropProduct.selling_price}
-                    availableStock={getAvailableStock(dropProduct.id)}
-                    images={dropProduct.product.product_images}
-                    onAddToCart={() => handleAddToCart(dropProduct.id)}
-                    onUpdateQuantity={newQuantity =>
-                      handleUpdateQuantity(dropProduct.id, newQuantity)
-                    }
-                    onRemoveFromCart={() =>
-                      handleRemoveFromCart(dropProduct.id)
-                    }
-                    initialQuantity={getCurrentCartQuantity(dropProduct.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </main>
-
-        {/* Sticky Basket Button */}
-        <StickyBasketButton />
-      </div>
-    </div>
+      {/* Sticky Basket Button */}
+      <StickyBasketButton />
+    </PageLayout>
   );
 }
