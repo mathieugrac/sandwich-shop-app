@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, Minus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { QuantitySelector } from '@/components/shared/QuantitySelector';
 import Image from 'next/image';
 import { useState } from 'react';
 
@@ -52,6 +53,7 @@ export function SandwichItem({
       setQuantity(newQuantity);
       setIsInCart(true);
       onAddToCart();
+      console.log('Added to cart, quantity:', newQuantity, 'isInCart:', true);
     }
   };
 
@@ -114,28 +116,15 @@ export function SandwichItem({
             <Plus className="h-4 w-4 text-black" />
           </Button>
         ) : !isSoldOut && isInCart ? (
-          <div className="absolute bottom-3 right-2 bg-white border border-gray-300 rounded-full flex items-center px-[3px] py-1 h-10">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-8 h-8 p-0 rounded-full hover:bg-gray-100"
-              onClick={handleDecreaseQuantity}
-              disabled={quantity <= 0}
-            >
-              <Minus className="h-3 w-3 text-black" />
-            </Button>
-            <span className="mx-2 text-sm font-medium text-black min-w-[1rem] text-center">
-              {quantity}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-8 h-8 p-0 rounded-full hover:bg-gray-100"
-              onClick={handleIncreaseQuantity}
-              disabled={quantity >= availableStock}
-            >
-              <Plus className="h-3 w-3 text-black" />
-            </Button>
+          <div className="absolute bottom-3 right-2">
+            <QuantitySelector
+              quantity={quantity}
+              onIncrease={handleIncreaseQuantity}
+              onDecrease={handleDecreaseQuantity}
+              maxQuantity={availableStock}
+              minQuantity={0}
+              size="md"
+            />
           </div>
         ) : null}
       </div>
