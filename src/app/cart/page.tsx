@@ -15,7 +15,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { X, Trash2, Plus, Minus, MapPin, Clock } from 'lucide-react';
+import { Plus, Minus, MapPin, Clock } from 'lucide-react';
+import { PageHeader, PageLayout } from '@/components/shared';
+
+// Interface for drop information
+interface DropInfo {
+  date: string;
+  location: {
+    name: string;
+    district: string;
+    location_url?: string;
+  };
+  pickup_hour_start: string;
+  pickup_hour_end: string;
+}
 
 // Mock data for pickup times (12:00 - 14:00 in 15-min intervals)
 const pickupTimes = [
@@ -40,6 +53,19 @@ export default function CartPage() {
   const [selectedTime, setSelectedTime] = useState('');
   const [comment, setComment] = useState('');
   const [isLoading] = useState(false);
+  const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
+
+  // Load drop information from localStorage
+  useEffect(() => {
+    const savedDrop = localStorage.getItem('currentDrop');
+    if (savedDrop) {
+      try {
+        setDropInfo(JSON.parse(savedDrop));
+      } catch (error) {
+        console.error('Error parsing drop info:', error);
+      }
+    }
+  }, []);
 
   // Handle back navigation
   const handleBack = () => {
@@ -49,6 +75,7 @@ export default function CartPage() {
   // Handle clear cart
   const handleClearCart = () => {
     clearCart();
+    localStorage.removeItem('currentDrop'); // Also clear drop info
     router.push('/');
   };
 
@@ -62,7 +89,7 @@ export default function CartPage() {
     // Save pickup time and special instructions to localStorage for checkout
     localStorage.setItem('pickupTime', selectedTime);
     localStorage.setItem('specialInstructions', comment);
-    
+
     // Navigate to checkout page
     router.push('/checkout');
   };
@@ -78,197 +105,214 @@ export default function CartPage() {
     return null; // Will redirect
   }
 
+  // Format functions for the header
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'long',
+      day: 'numeric',
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatPickupTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    if (minutes === '00') {
+      return `${displayHour}`;
+    } else {
+      return `${displayHour}:${minutes}`;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-[480px] mx-auto bg-white min-h-screen">
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="p-2"
-          >
-            <X className="h-5 w-5" />
-          </Button>
+    <PageLayout>
+      <PageHeader 
+        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
+          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
+          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : ''
+        } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
+          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
+          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : 'pm'
+        })` : "Your Order"}
+        subtitle={dropInfo ? `${dropInfo.location.name}, ${dropInfo.location.district}` : "Cart"}
+        showMapPin={!!dropInfo?.location?.location_url}
+        locationUrl={dropInfo?.location?.location_url}
+        onBackClick={handleBack}
+      />
 
-          <h1 className="text-lg font-semibold">Your Order</h1>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearCart}
-            className="p-2 text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <main className="px-5">
-          <div className="space-y-6 py-4">
-            {/* Items Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Items</h2>
-              <div className="space-y-3">
-                {items.map(item => (
-                  <Card key={item.id} className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-lg">{item.name}</h3>
-                        <p className="text-gray-600">
-                          €{item.price.toFixed(2)} each
-                        </p>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity - 1)
-                          }
-                          disabled={item.quantity <= 1}
-                          className="w-8 h-8 p-0"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-
-                        <span className="text-lg font-medium min-w-[2rem] text-center">
-                          {item.quantity}
-                        </span>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            updateQuantity(item.id, item.quantity + 1)
-                          }
-                          className="w-8 h-8 p-0"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
+      <main className="px-5">
+        <div className="space-y-6 py-4">
+          {/* Items Section */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Items</h2>
+            <div className="space-y-3">
+              {items.map(item => (
+                <Card key={item.id} className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-lg">{item.name}</h3>
+                      <p className="text-gray-600">
+                        €{item.price.toFixed(2)} each
+                      </p>
                     </div>
 
-                    <div className="mt-3 flex justify-between items-center">
-                      <span className="text-gray-600">
-                        Total: €{(item.price * item.quantity).toFixed(2)}
+                    <div className="flex items-center space-x-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity - 1)
+                        }
+                        disabled={item.quantity <= 1}
+                        className="w-8 h-8 p-0"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+
+                      <span className="text-lg font-medium min-w-[2rem] text-center">
+                        {item.quantity}
                       </span>
 
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-red-600 hover:text-red-700"
+                        onClick={() =>
+                          updateQuantity(item.id, item.quantity + 1)
+                        }
+                        className="w-8 h-8 p-0"
                       >
-                        Remove
+                        <Plus className="h-4 w-4" />
                       </Button>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            {/* Comment Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">
-                Special Instructions
-              </h2>
-              <Textarea
-                placeholder="Any special requests or dietary requirements?"
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </section>
-
-            <Separator />
-
-            {/* Delivery Section */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
-
-              {/* Pickup Time */}
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <span className="font-medium">Pickup Time</span>
                   </div>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="Select time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {pickupTimes.map(time => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              {/* Location */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-5 w-5 text-gray-600" />
-                  <span className="font-medium">Pickup Location</span>
-                </div>
-                <Card className="p-4">
-                  <p className="text-gray-700 mb-3">{shopAddress}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      window.open(
-                        `https://maps.google.com/?q=${encodeURIComponent(shopAddress)}`,
-                        '_blank'
-                      )
-                    }
-                    className="w-full"
-                  >
-                    Open in Google Maps
-                  </Button>
+                  <div className="mt-3 flex justify-between items-center">
+                    <span className="text-gray-600">
+                      Total: €{(item.price * item.quantity).toFixed(2)}
+                    </span>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeFromCart(item.id)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  </div>
                 </Card>
-              </div>
-            </section>
+              ))}
+            </div>
+          </section>
 
-            <Separator />
+          <Separator />
 
-            {/* Price Recap */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-              <Card className="p-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>€{totalPrice.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total:</span>
-                    <span>€{totalPrice.toFixed(2)}</span>
-                  </div>
+          {/* Comment Section */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Special Instructions</h2>
+            <Textarea
+              placeholder="Any special requests or dietary requirements?"
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </section>
+
+          <Separator />
+
+          {/* Delivery Section */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
+
+            {/* Pickup Time */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-5 w-5 text-gray-600" />
+                  <span className="font-medium">Pickup Time</span>
                 </div>
-              </Card>
-            </section>
-          </div>
-        </main>
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pickupTimes.map(time => (
+                      <SelectItem key={time} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-        {/* Sticky Place Order Button */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
-          <Button
-            onClick={handlePlaceOrder}
-            disabled={isLoading || !selectedTime}
-            className="w-full bg-black text-white py-4 text-lg font-medium"
-          >
-            {isLoading ? 'Processing...' : 'Place Order'}
-          </Button>
+            {/* Location */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="h-5 w-5 text-gray-600" />
+                <span className="font-medium">Pickup Location</span>
+              </div>
+              <Card className="p-4">
+                <p className="text-gray-700 mb-3">{shopAddress}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    window.open(
+                      `https://maps.google.com/?q=${encodeURIComponent(shopAddress)}`,
+                      '_blank'
+                    )
+                  }
+                  className="w-full"
+                >
+                  Open in Google Maps
+                </Button>
+              </Card>
+            </div>
+          </section>
+
+          <Separator />
+
+          {/* Price Recap */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+            <Card className="p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>€{totalPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-semibold text-lg">
+                  <span>Total:</span>
+                  <span>€{totalPrice.toFixed(2)}</span>
+                </div>
+              </div>
+            </Card>
+          </section>
         </div>
+      </main>
+
+      {/* Sticky Place Order Button */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+        <Button
+          onClick={handlePlaceOrder}
+          disabled={isLoading || !selectedTime}
+          className="w-full bg-black text-white py-4 text-lg font-medium"
+        >
+          {isLoading ? 'Processing...' : 'Place Order'}
+        </Button>
       </div>
-    </div>
+    </PageLayout>
   );
 }

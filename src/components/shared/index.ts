@@ -1,4 +1,6 @@
 export { Header } from './Header'
 export { Footer } from './Footer'
 export { MainLayout } from './MainLayout'
-export { Container } from './Container' 
+export { Container } from './Container'
+export { PageHeader } from './PageHeader'
+export { PageLayout } from './PageLayout' 

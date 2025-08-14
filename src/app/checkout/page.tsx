@@ -9,7 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { ArrowLeft } from 'lucide-react';
+
+import { PageHeader, PageLayout } from '@/components/shared';
+
+// Interface for drop information
+interface DropInfo {
+  date: string;
+  location: {
+    name: string;
+    district: string;
+    location_url?: string;
+  };
+  pickup_hour_start: string;
+  pickup_hour_end: string;
+}
 
 interface CustomerInfo {
   name: string;
@@ -29,6 +42,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pickupTime, setPickupTime] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
 
   // Load saved customer info and order details from localStorage
   useEffect(() => {
@@ -54,11 +68,43 @@ export default function CheckoutPage() {
     if (savedSpecialInstructions) {
       setSpecialInstructions(savedSpecialInstructions);
     }
+
+    // Load drop information from localStorage
+    const savedDrop = localStorage.getItem('currentDrop');
+    if (savedDrop) {
+      try {
+        setDropInfo(JSON.parse(savedDrop));
+      } catch (error) {
+        console.error('Error parsing drop info:', error);
+      }
+    }
   }, []);
 
   // Save customer info to localStorage
   const saveCustomerInfo = (info: CustomerInfo) => {
     localStorage.setItem('customerInfo', JSON.stringify(info));
+  };
+
+  // Format functions for the header
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'long',
+      day: 'numeric',
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatPickupTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'pm' : 'am';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    if (minutes === '00') {
+      return `${displayHour}`;
+    } else {
+      return `${displayHour}:${minutes}`;
+    }
   };
 
   // Validate form
@@ -188,6 +234,7 @@ export default function CheckoutPage() {
       clearCart();
       localStorage.removeItem('pickupTime');
       localStorage.removeItem('specialInstructions');
+      localStorage.removeItem('currentDrop'); // Also clear drop info
 
       // Redirect to confirmation
       const confirmationUrl = `/confirmation?orderId=${result.order.id}`;
@@ -258,143 +305,165 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-[480px] mx-auto bg-white min-h-screen">
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="p-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold ml-2">Customer Information</h1>
-        </div>
+    <PageLayout>
+      <PageHeader 
+        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
+          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
+          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : ''
+        } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
+          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
+          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+            ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+              ? 'am'
+              : 'pm'
+            : 'pm'
+        })` : "Customer Information"}
+        subtitle={dropInfo ? `${dropInfo.location.name}, ${dropInfo.location.district}` : undefined}
+        showMapPin={!!dropInfo?.location?.location_url}
+        locationUrl={dropInfo?.location?.location_url}
+        onBackClick={handleBack}
+      />
 
-        <main className="px-5">
-          <div className="space-y-6 py-4">
-            {/* Order Summary */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-              <Card className="p-4">
-                <div className="space-y-2">
-                  {items.map(item => (
-                    <div key={item.id} className="flex justify-between">
-                      <span>
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span>€{(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span>Total:</span>
-                    <span>€{totalPrice.toFixed(2)}</span>
+      <main className="px-5">
+        <div className="space-y-6 py-4">
+          {/* Order Summary */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+            <Card className="p-4">
+              <div className="space-y-2">
+                {items.map(item => (
+                  <div key={item.id} className="flex justify-between">
+                    <span>
+                      {item.quantity}x {item.name}
+                    </span>
+                    <span>€{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
+                ))}
+                <Separator />
+                <div className="flex justify-between">
+                  <span>Total:</span>
+                  <span>€{totalPrice.toFixed(2)}</span>
                 </div>
-              </Card>
-            </section>
+              </div>
+            </Card>
+          </section>
 
-            {/* Pickup Details */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
-              <Card className="p-4">
-                <div className="space-y-2">
+          {/* Pickup Details */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Pickup Details</h2>
+            <Card className="p-4">
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Pickup Time:</span>
+                  <span className="font-medium">{pickupTime}</span>
+                </div>
+                {specialInstructions && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Pickup Time:</span>
-                    <span className="font-medium">{pickupTime}</span>
+                    <span className="text-gray-600">
+                      Special Instructions:
+                    </span>
+                    <span className="font-medium">{specialInstructions}</span>
                   </div>
-                  {specialInstructions && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Special Instructions:
-                      </span>
-                      <span className="font-medium">{specialInstructions}</span>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </section>
+                )}
+              </div>
+            </Card>
+          </section>
 
-            <Separator />
+          <Separator />
 
-            {/* Customer Information Form */}
-            <section>
-              <h2 className="text-xl font-semibold mb-4">Your Information</h2>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    value={customerInfo.name}
-                    onChange={e => handleInputChange('name', e.target.value)}
-                    placeholder="Enter your full name"
-                    className={errors.name ? 'border-red-500' : ''}
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-600">{errors.name}</p>
-                  )}
-                </div>
+          {/* Customer Information Form */}
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Your Information</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name *</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={customerInfo.name}
+                  onChange={e => handleInputChange('name', e.target.value)}
+                  placeholder="Enter your full name"
+                  className={errors.name ? 'border-red-500' : ''}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-600">{errors.name}</p>
+                )}
+              </div>
 
-                {/* Email */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={customerInfo.email}
-                    onChange={e => handleInputChange('email', e.target.value)}
-                    placeholder="your.email@example.com"
-                    className={errors.email ? 'border-red-500' : ''}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-600">{errors.email}</p>
-                  )}
-                </div>
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={customerInfo.email}
+                  onChange={e => handleInputChange('email', e.target.value)}
+                  placeholder="your.email@example.com"
+                  className={errors.email ? 'border-red-500' : ''}
+                />
+                {errors.email && (
+                  <p className="text-sm text-red-600">{errors.email}</p>
+                )}
+              </div>
 
-                {/* Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number (Optional)</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={customerInfo.phone}
-                    onChange={e => handleInputChange('phone', e.target.value)}
-                    placeholder="+1 234 567 8900"
-                    className={errors.phone ? 'border-red-500' : ''}
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-red-600">{errors.phone}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    We&apos;ll use this to contact you if there are any issues
-                    with your order
-                  </p>
-                </div>
-              </form>
-            </section>
-          </div>
-        </main>
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number (Optional)</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={customerInfo.phone}
+                  onChange={e => handleInputChange('phone', e.target.value)}
+                  placeholder="+1 (555) 123-4567"
+                  className={errors.phone ? 'border-red-500' : ''}
+                />
+                {errors.phone && (
+                  <p className="text-sm text-red-600">{errors.phone}</p>
+                )}
+              </div>
 
-        {/* Sticky Submit Button */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="w-full bg-black text-white py-4 text-lg font-medium"
-          >
-            {isLoading ? (
-              <LoadingSpinner size={20} text="Processing your order..." />
-            ) : (
-              'Place Order'
-            )}
-          </Button>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-black text-white py-4 text-lg font-medium"
+              >
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <LoadingSpinner />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  'Place Order'
+                )}
+              </Button>
+            </form>
+          </section>
         </div>
+      </main>
+
+      {/* Sticky Submit Button */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+        <Button
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="w-full bg-black text-white py-4 text-lg font-medium"
+        >
+          {isLoading ? (
+            <div className="flex items-center space-x-2">
+              <LoadingSpinner />
+              <span>Processing...</span>
+            </div>
+          ) : (
+            'Place Order'
+          )}
+        </Button>
       </div>
-    </div>
+    </PageLayout>
   );
 }
