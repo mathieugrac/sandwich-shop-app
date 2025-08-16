@@ -866,7 +866,7 @@ export default function DropManagementPage() {
         {/* Upcoming Drops Table (upcoming + active) */}
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming & Active Drops</CardTitle>
+            <CardTitle>Upcoming Drops</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
