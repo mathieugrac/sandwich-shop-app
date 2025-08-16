@@ -29,10 +29,13 @@ export default function MenuPage() {
 
         const drop = await fetchDropWithProducts(dropId as string);
         console.log('✅ Drop data loaded:', drop);
-        console.log(
-          '✅ Drop data drop products count:',
-          drop?.drop_products?.length
-        );
+        console.log('✅ Drop data structure:', {
+          hasDropProducts: !!drop?.dropProducts,
+          dropProductsType: typeof drop?.dropProducts,
+          dropProductsIsArray: Array.isArray(drop?.dropProducts),
+          dropProductsLength: drop?.dropProducts?.length,
+          dropDataKeys: drop ? Object.keys(drop) : 'no drop data'
+        });
         setDropData(drop);
       } catch (err) {
         console.error('❌ Error loading drop data:', err);
@@ -53,7 +56,7 @@ export default function MenuPage() {
     loading,
     error,
     dropData: !!dropData,
-    dropProductsCount: dropData?.drop_products?.length,
+    dropProductsCount: dropData?.dropProducts?.length,
   });
 
   // Check if drop is completed
@@ -61,7 +64,12 @@ export default function MenuPage() {
     dropData?.status === 'completed' || dropData?.status === 'cancelled';
 
   const handleAddToCart = (dropProductId: string) => {
-    const dropProduct = dropData?.drop_products.find(
+    if (!dropData?.dropProducts) {
+      console.error('❌ handleAddToCart: dropProducts is undefined');
+      return;
+    }
+    
+    const dropProduct = dropData.dropProducts.find(
       item => item.id === dropProductId
     );
     if (dropProduct && dropData) {
@@ -104,7 +112,12 @@ export default function MenuPage() {
   };
 
   const getAvailableStock = (dropProductId: string) => {
-    const dropProductItem = dropData?.drop_products.find(
+    if (!dropData?.dropProducts) {
+      console.error('❌ getAvailableStock: dropProducts is undefined');
+      return 0;
+    }
+    
+    const dropProductItem = dropData.dropProducts.find(
       item => item.id === dropProductId
     );
     return dropProductItem?.available_quantity || 0;
@@ -192,17 +205,18 @@ export default function MenuPage() {
   }
 
   // Filter only products with available stock
-  console.log('🔍 Menu: dropData.drop_products:', dropData.drop_products);
+  console.log('🔍 Menu: dropData.dropProducts:', dropData.dropProducts);
   console.log(
-    '🔍 Menu: dropData.drop_products.length:',
-    dropData.drop_products?.length
+    '🔍 Menu: dropData.dropProducts.length:',
+    dropData.dropProducts?.length
   );
 
   // Temporarily show all products for debugging
-  const availableProducts = dropData.drop_products || [];
+  const availableProducts = dropData?.dropProducts || [];
 
   // If no drop products exist yet, show a message about setup
-  const hasNoDropProducts = dropData.drop_products.length === 0;
+  const hasNoDropProducts =
+    !availableProducts || availableProducts.length === 0;
 
   console.log('🔍 Menu: availableProducts:', availableProducts);
   console.log('🔍 Menu: availableProducts.length:', availableProducts.length);

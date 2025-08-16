@@ -157,7 +157,7 @@ export interface OrderProductWithDetails extends OrderProduct {
 
 export interface DropWithProducts extends Drop {
   location: Location;
-  drop_products: DropProductWithProduct[];
+  dropProducts: DropProductWithProduct[];
 }
 
 export interface ClientWithOrders extends Client {
