@@ -682,62 +682,7 @@ export default function DropManagementPage() {
     }
   };
 
-  // Test Phase 1 functions to see what's available
-  const testPhase1Functions = async () => {
-    try {
-      setMessage(null);
-      console.log('🧪 Testing Phase 1 functions...');
 
-      // Test 1: Check if enhanced functions exist
-      try {
-        const upcomingTest = await fetchAdminUpcomingDrops();
-        console.log('✅ fetchAdminUpcomingDrops works:', upcomingTest);
-      } catch (error) {
-        console.log('❌ fetchAdminUpcomingDrops failed:', error);
-      }
-
-      try {
-        const pastTest = await fetchAdminPastDrops();
-        console.log('✅ fetchAdminPastDrops works:', pastTest);
-      } catch (error) {
-        console.log('❌ fetchAdminPastDrops failed:', error);
-      }
-
-      // Test 2: Check direct database access
-      const { data: directDrops, error: directError } = await supabase
-        .from('drops')
-        .select('*')
-        .limit(5);
-
-      if (directError) {
-        console.log('❌ Direct database access failed:', directError);
-      } else {
-        console.log('✅ Direct database access works:', directDrops);
-      }
-
-      // Test 3: Check if pickup_deadline field exists
-      if (directDrops && directDrops.length > 0) {
-        const sampleDrop = directDrops[0];
-        console.log('📊 Sample drop structure:', sampleDrop);
-        console.log('📊 Has pickup_deadline:', 'pickup_deadline' in sampleDrop);
-        console.log(
-          '📊 Has status_changed_at:',
-          'status_changed_at' in sampleDrop
-        );
-      }
-
-      setMessage({
-        type: 'success',
-        text: 'Phase 1 function test completed. Check console for details.',
-      });
-    } catch (error) {
-      console.error('❌ Test failed:', error);
-      setMessage({
-        type: 'error',
-        text: 'Test failed. Check console for details.',
-      });
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -819,21 +764,12 @@ export default function DropManagementPage() {
               </h1>
             </div>
           </div>
-          <div className="flex space-x-2">
-            <Button
-              onClick={() => setShowCreateForm(true)}
-              className="bg-black hover:bg-gray-800"
-            >
-              Create Drop
-            </Button>
-            <Button
-              onClick={testPhase1Functions}
-              variant="outline"
-              className="border-orange-300 text-orange-700 hover:bg-orange-50"
-            >
-              Test Phase 1 Functions
-            </Button>
-          </div>
+          <Button
+            onClick={() => setShowCreateForm(true)}
+            className="bg-black hover:bg-gray-800"
+          >
+            Create Drop
+          </Button>
         </div>
 
         {/* Message */}
@@ -850,57 +786,6 @@ export default function DropManagementPage() {
             </AlertDescription>
           </Alert>
         )}
-
-        {/* Debug Information */}
-        <Card className="mb-6 border-orange-200 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="text-orange-800">Debug Information</CardTitle>
-            <CardDescription>
-              This section shows debugging info to help troubleshoot the
-              enhanced drop system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <div>
-                <strong>Upcoming Drops:</strong> {upcomingDrops.length}
-              </div>
-              <div>
-                <strong>Past Drops:</strong> {pastDrops.length}
-              </div>
-              <div>
-                <strong>Total Drops:</strong>{' '}
-                {upcomingDrops.length + pastDrops.length}
-              </div>
-              <div>
-                <strong>Loading State:</strong>{' '}
-                {loading ? 'Loading...' : 'Loaded'}
-              </div>
-              <div>
-                <strong>Locations:</strong> {locations.length}
-              </div>
-              <div>
-                <strong>Products:</strong> {products.length}
-              </div>
-            </div>
-            {upcomingDrops.length > 0 && (
-              <div className="mt-4">
-                <strong>Upcoming Drops Data:</strong>
-                <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
-                  {JSON.stringify(upcomingDrops, null, 2)}
-                </pre>
-              </div>
-            )}
-            {pastDrops.length > 0 && (
-              <div className="mt-4">
-                <strong>Past Drops Data:</strong>
-                <pre className="mt-2 p-2 bg-gray-2 rounded text-xs overflow-auto">
-                  {JSON.stringify(pastDrops, null, 2)}
-                </pre>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Create Drop Modal */}
         <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
