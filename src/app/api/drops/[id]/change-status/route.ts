@@ -20,69 +20,55 @@ export async function PUT(
       );
     }
 
-    // Get the current user (admin)
+    // Get the current user (admin) from request headers
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { error: 'Missing authorization header' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+
+    // Verify the token and get user
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Try to use the new enhanced function from Phase 1 first
-    let statusChanged = false;
-    try {
-      const { data, error } = await supabase.rpc('change_drop_status', {
-        p_drop_id: params.id,
-        p_new_status: newStatus,
-        p_admin_user_id: user.id,
-      });
-
-      if (error) {
-        console.error('Enhanced function error:', error);
-        console.error('Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-        // Fall back to direct update method
-        throw error;
-      }
-
-      if (data) {
-        statusChanged = true;
-      }
-    } catch (enhancedError) {
-      console.warn(
-        'Enhanced function not available, falling back to direct update:',
-        enhancedError
+      console.error('Auth error:', authError);
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
+        { status: 401 }
       );
-
-      // Fallback: Update status directly
-      const { error: updateError } = await supabase
-        .from('drops')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', params.id);
-
-      if (updateError) {
-        console.error('Direct update error:', updateError);
-        return NextResponse.json(
-          {
-            error: 'Failed to change drop status',
-            details: updateError.message || 'Direct update failed',
-          },
-          { status: 500 }
-        );
-      }
-
-      statusChanged = true;
     }
 
-    if (!statusChanged) {
+    // Use the enhanced function from Phase 1
+    const { data, error } = await supabase.rpc('change_drop_status', {
+      p_drop_id: params.id,
+      p_new_status: newStatus,
+      p_admin_user_id: user.id,
+    });
+
+    if (error) {
+      console.error('Enhanced function error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return NextResponse.json(
+        { 
+          error: 'Failed to change drop status',
+          details: error.message || 'Enhanced function failed'
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!data) {
       return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
     }
 

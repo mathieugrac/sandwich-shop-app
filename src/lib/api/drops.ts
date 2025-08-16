@@ -5,6 +5,7 @@ import {
   Product,
   DropWithProducts,
 } from '@/types/database';
+import { supabase } from '@/lib/supabase/client';
 
 export interface NextActiveDrop {
   drop: {
@@ -135,10 +136,19 @@ export async function changeDropStatus(
   dropId: string,
   newStatus: Drop['status']
 ): Promise<{ success: boolean; message: string }> {
+  // Get the current session token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('No active session');
+  }
+
   const response = await fetch(`/api/drops/${dropId}/change-status`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
     },
     body: JSON.stringify({ newStatus }),
   });
@@ -170,7 +180,9 @@ export async function calculatePickupDeadline(
   return response.json();
 }
 
-export async function isDropOrderable(dropId: string): Promise<{ orderable: boolean }> {
+export async function isDropOrderable(
+  dropId: string
+): Promise<{ orderable: boolean }> {
   const response = await fetch(`/api/drops/${dropId}/orderable`);
   if (!response.ok) {
     throw new Error('Failed to check if drop is orderable');
