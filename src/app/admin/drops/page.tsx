@@ -682,8 +682,6 @@ export default function DropManagementPage() {
     }
   };
 
-
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'upcoming':
@@ -869,10 +867,6 @@ export default function DropManagementPage() {
         <Card>
           <CardHeader>
             <CardTitle>Upcoming & Active Drops</CardTitle>
-            <CardDescription>
-              Drops that are upcoming (draft mode) or currently active
-              (customers can order)
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -881,8 +875,7 @@ export default function DropManagementPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Pickup Deadline</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -906,17 +899,8 @@ export default function DropManagementPage() {
                       {drop.location?.name || 'No location'}
                     </TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
-                    <TableCell>
-                      {drop.pickup_deadline ? (
-                        <span className="text-sm text-gray-600">
-                          {new Date(drop.pickup_deadline).toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">Not set</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
                         {/* Status Management Buttons */}
                         {drop.status === 'upcoming' && (
                           <Button
@@ -951,21 +935,8 @@ export default function DropManagementPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => openInventoryModal(drop)}
-                          className="flex items-center space-x-2"
                         >
-                          <Package className="w-4 h-4" />
-                          <span>Menu</span>
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            router.push(`/admin/orders?drop=${drop.id}`)
-                          }
-                          className="flex items-center space-x-2"
-                        >
-                          <span>Orders</span>
+                          Menu
                         </Button>
 
                         <Button
@@ -990,7 +961,7 @@ export default function DropManagementPage() {
                 {upcomingDrops.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={4}
                       className="text-center py-8 text-gray-500"
                     >
                       No upcoming or active drops found
@@ -1006,10 +977,6 @@ export default function DropManagementPage() {
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Past Drops</CardTitle>
-            <CardDescription>
-              Completed and cancelled drops. You can reopen completed drops if
-              needed.
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -1019,7 +986,7 @@ export default function DropManagementPage() {
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Completed At</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1045,8 +1012,8 @@ export default function DropManagementPage() {
                         <span className="text-sm text-gray-400">Unknown</span>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-2">
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
                         {/* Reopen Button for Completed Drops */}
                         {drop.status === 'completed' && (
                           <Button
