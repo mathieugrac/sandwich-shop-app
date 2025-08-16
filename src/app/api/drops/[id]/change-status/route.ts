@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { newStatus } = await request.json();
 
     // Validate the new status
@@ -46,7 +47,7 @@ export async function PUT(
 
     // Use the enhanced function from Phase 1
     console.log('🔍 Calling change_drop_status with params:', {
-      p_drop_id: params.id,
+      p_drop_id: id,
       p_new_status: newStatus,
       p_admin_user_id: user.id,
       user_email: user.email,
@@ -57,12 +58,42 @@ export async function PUT(
 
     // Test if the function exists first
     try {
+      // First, ensure the admin user exists in admin_users table
+      const { data: adminUser, error: adminError } = await supabase
+        .from('admin_users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+
+      if (adminError && adminError.code !== 'PGRST116') {
+        console.error('❌ Error checking admin user:', adminError);
+        // Create admin user if it doesn't exist
+        const { data: newAdminUser, error: createError } = await supabase
+          .from('admin_users')
+          .insert({
+            email: user.email,
+            name: user.user_metadata?.full_name || user.email,
+            role: 'admin',
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('❌ Error creating admin user:', createError);
+          throw createError;
+        }
+
+        console.log('✅ Created admin user:', newAdminUser);
+      }
+
+      const adminUserId = adminUser?.id || user.id;
+
       const { data: testData, error: testError } = await supabase.rpc(
         'change_drop_status',
         {
-          p_drop_id: params.id,
+          p_drop_id: id,
           p_new_status: newStatus,
-          p_admin_user_id: user.id,
+          p_admin_user_id: adminUserId,
         }
       );
 
