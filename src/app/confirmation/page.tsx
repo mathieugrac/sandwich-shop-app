@@ -7,6 +7,28 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Clock, MapPin, ArrowLeft } from 'lucide-react';
 
+interface CartItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  description?: string;
+}
+
+interface ParsedOrder {
+  items?: CartItem[];
+  comment?: string;
+  totalAmount?: number;
+  pickupTime?: string;
+  pickupDate?: string;
+  dropInfo?: {
+    location?: {
+      name?: string;
+      address?: string;
+    };
+  };
+}
+
 interface OrderItem {
   id: string;
   quantity: number;
@@ -86,19 +108,19 @@ function ConfirmationContent() {
 
           console.log('activeOrder:', activeOrder);
 
-          let cartItems = null;
+          let cartItems: CartItem[] | null = null;
           let cartComment = '';
           let totalAmount = 0;
 
           // Try to get cart data from activeOrder first
           if (activeOrder) {
             try {
-              const parsedOrder = JSON.parse(activeOrder);
+              const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
               console.log('Parsed activeOrder:', parsedOrder);
 
               // Handle the actual structure from activeOrder
               if (parsedOrder.items) {
-                cartItems = parsedOrder.items.map((item: any) => ({
+                cartItems = parsedOrder.items.map((item: CartItem) => ({
                   id: item.id || Math.random().toString(),
                   name: item.name,
                   price: item.price || 0,
@@ -119,10 +141,10 @@ function ConfirmationContent() {
 
           // Fallback to other possible keys
           if (!cartItems) {
-            cartItems = localStorage.getItem('cartItems');
-            if (cartItems) {
+            const storedCartItems = localStorage.getItem('cartItems');
+            if (storedCartItems) {
               try {
-                cartItems = JSON.parse(cartItems);
+                cartItems = JSON.parse(storedCartItems);
               } catch (e) {
                 cartItems = [];
               }
@@ -146,7 +168,7 @@ function ConfirmationContent() {
             pickup_time: (() => {
               if (activeOrder) {
                 try {
-                  const parsedOrder = JSON.parse(activeOrder);
+                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
                   return parsedOrder.pickupTime || cartPickupTime || '12:00';
                 } catch (e) {
                   return cartPickupTime || '12:00';
@@ -157,7 +179,7 @@ function ConfirmationContent() {
             pickup_date: (() => {
               if (activeOrder) {
                 try {
-                  const parsedOrder = JSON.parse(activeOrder);
+                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
                   return (
                     parsedOrder.pickupDate ||
                     new Date().toISOString().split('T')[0]
@@ -172,7 +194,7 @@ function ConfirmationContent() {
               totalAmount ||
               (cartItems && cartItems.length > 0
                 ? cartItems.reduce(
-                    (total: number, item: any) =>
+                    (total: number, item: CartItem) =>
                       total + item.price * item.quantity,
                     0
                   )
@@ -181,7 +203,7 @@ function ConfirmationContent() {
             created_at: new Date().toISOString(),
             order_items:
               cartItems && cartItems.length > 0
-                ? cartItems.map((item: any) => ({
+                ? cartItems.map((item: CartItem) => ({
                     id: item.id,
                     quantity: item.quantity,
                     unit_price: item.price,
@@ -359,7 +381,8 @@ function ConfirmationContent() {
 
                           if (activeOrder) {
                             try {
-                              const parsedOrder = JSON.parse(activeOrder);
+                              const parsedOrder: ParsedOrder =
+                                JSON.parse(activeOrder);
                               if (parsedOrder.dropInfo?.location?.name) {
                                 return parsedOrder.dropInfo.location.name;
                               }
@@ -393,7 +416,8 @@ function ConfirmationContent() {
 
                           if (activeOrder) {
                             try {
-                              const parsedOrder = JSON.parse(activeOrder);
+                              const parsedOrder: ParsedOrder =
+                                JSON.parse(activeOrder);
                               if (parsedOrder.dropInfo?.location?.address) {
                                 return parsedOrder.dropInfo.location.address;
                               }

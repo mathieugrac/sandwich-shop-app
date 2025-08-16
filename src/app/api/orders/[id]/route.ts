@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 
+interface OrderProduct {
+  id: string;
+  order_quantity: number;
+  drop_products?: {
+    selling_price?: number;
+    products?: {
+      name?: string;
+      description?: string;
+    };
+  };
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -63,7 +75,7 @@ export async function GET(
       total_amount: order.total_amount,
       special_instructions: order.special_instructions || '',
       created_at: order.created_at,
-      order_items: order.order_products?.map((op: any) => ({
+      order_items: order.order_products?.map((op: OrderProduct) => ({
         id: op.id,
         quantity: op.order_quantity,
         unit_price: op.drop_products?.selling_price || 0,
