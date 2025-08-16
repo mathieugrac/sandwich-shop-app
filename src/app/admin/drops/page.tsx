@@ -62,7 +62,13 @@ import {
   Pause,
   RotateCcw,
 } from 'lucide-react';
-import { Drop, DropWithLocation, Location, Product } from '@/types/database';
+import {
+  Drop,
+  DropWithLocation,
+  Location,
+  Product,
+  AdminDrop,
+} from '@/types/database';
 
 interface DropProduct {
   id: string;
@@ -78,8 +84,8 @@ interface DropProduct {
 }
 
 export default function DropManagementPage() {
-  const [upcomingDrops, setUpcomingDrops] = useState<DropWithLocation[]>([]);
-  const [pastDrops, setPastDrops] = useState<DropWithLocation[]>([]);
+  const [upcomingDrops, setUpcomingDrops] = useState<AdminDrop[]>([]);
+  const [pastDrops, setPastDrops] = useState<AdminDrop[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,14 +98,14 @@ export default function DropManagementPage() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedDrop, setSelectedDrop] = useState<
-    | (DropWithLocation & {
+    | (AdminDrop & {
         drop_products_count?: number;
         drop_products_total?: number;
       })
     | null
   >(null);
   const [editingDrop, setEditingDrop] = useState<
-    | (DropWithLocation & {
+    | (AdminDrop & {
         drop_products_count?: number;
         drop_products_total?: number;
       })
@@ -310,7 +316,7 @@ export default function DropManagementPage() {
   };
 
   const openInventoryModal = async (
-    drop: DropWithLocation & {
+    drop: AdminDrop & {
       drop_products_count?: number;
       drop_products_total?: number;
     }
@@ -367,7 +373,7 @@ export default function DropManagementPage() {
   };
 
   const openEditModal = (
-    drop: DropWithLocation & {
+    drop: AdminDrop & {
       drop_products_count?: number;
       drop_products_total?: number;
     }
@@ -402,7 +408,7 @@ export default function DropManagementPage() {
         });
 
       console.log(
-        `🔄 Updating drop menu for: ${selectedDrop.date} at ${selectedDrop.location?.name}`
+        `🔄 Updating drop menu for: ${selectedDrop.date} at ${selectedDrop.location_name}`
       );
       console.log(`📦 Products to include: ${productsToInclude.length}`);
 
@@ -896,7 +902,7 @@ export default function DropManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {drop.location?.name || 'No location'}
+                      {drop.location_name || 'No location'}
                     </TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
                     <TableCell className="text-right">
@@ -1000,7 +1006,7 @@ export default function DropManagementPage() {
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {drop.location?.name || 'No location'}
+                      {drop.location_name || 'No location'}
                     </TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
                     <TableCell>
@@ -1072,7 +1078,7 @@ export default function DropManagementPage() {
           <DialogContent className="w-[800px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                Manage Drop Menu - {selectedDrop?.location?.name}
+                Manage Drop Menu - {selectedDrop?.location_name}
               </DialogTitle>
               <DialogDescription>
                 Select which products to include in this drop&apos;s menu and

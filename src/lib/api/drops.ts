@@ -4,6 +4,7 @@ import {
   Location,
   Product,
   DropWithProducts,
+  AdminDrop,
 } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
 
@@ -116,7 +117,7 @@ export async function updateDropProducts(
 }
 
 // Enhanced drop management functions (Phase 2)
-export async function fetchAdminUpcomingDrops(): Promise<DropWithLocation[]> {
+export async function fetchAdminUpcomingDrops(): Promise<AdminDrop[]> {
   const response = await fetch('/api/drops/admin/upcoming');
   if (!response.ok) {
     throw new Error('Failed to fetch upcoming drops');
@@ -124,7 +125,7 @@ export async function fetchAdminUpcomingDrops(): Promise<DropWithLocation[]> {
   return response.json();
 }
 
-export async function fetchAdminPastDrops(): Promise<DropWithLocation[]> {
+export async function fetchAdminPastDrops(): Promise<AdminDrop[]> {
   const response = await fetch('/api/drops/admin/past');
   if (!response.ok) {
     throw new Error('Failed to fetch past drops');
