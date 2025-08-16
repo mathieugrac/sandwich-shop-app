@@ -52,34 +52,39 @@ export async function PUT(
       user_email: user.email,
     });
 
-    const { data, error } = await supabase.rpc('change_drop_status', {
-      p_drop_id: params.id,
-      p_new_status: newStatus,
-      p_admin_user_id: user.id,
-    });
+    // Temporary: Also log to a file or show in response for debugging
+    console.log('🚨 DEBUG: About to call RPC function');
 
-    if (error) {
-      console.error('❌ Enhanced function error:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-        fullError: error,
+    // Test if the function exists first
+    try {
+      const { data: testData, error: testError } = await supabase.rpc(
+        'change_drop_status',
+        {
+          p_drop_id: params.id,
+          p_new_status: newStatus,
+          p_admin_user_id: user.id,
+        }
+      );
+
+      if (testError) {
+        console.log('❌ RPC function error:', testError);
+        throw testError;
+      }
+
+      console.log('✅ RPC function call successful:', testData);
+      return NextResponse.json({
+        success: true,
+        message: `Drop status changed to ${newStatus} successfully`,
       });
+    } catch (rpcError: any) {
+      console.error('❌ RPC function failed:', rpcError);
       return NextResponse.json(
         {
-          error: 'Failed to change drop status',
-          details: error.message || 'Enhanced function failed',
+          error: 'RPC function failed',
+          details: rpcError?.message || 'Unknown RPC error',
         },
         { status: 500 }
       );
-    }
-
-    console.log('✅ Function call successful, result:', data);
-
-    if (!data) {
-      return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
     }
 
     return NextResponse.json({
