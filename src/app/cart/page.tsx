@@ -40,14 +40,14 @@ const generatePickupTimes = (startTime: string, endTime: string): string[] => {
   const times: string[] = [];
   const start = new Date(`2000-01-01T${startTime}`);
   const end = new Date(`2000-01-01T${endTime}`);
-  
-  // Add 15-minute intervals
+
+  // Add 30-minute intervals
   const current = new Date(start);
   while (current <= end) {
     times.push(current.toTimeString().slice(0, 5));
-    current.setMinutes(current.getMinutes() + 15);
+    current.setMinutes(current.getMinutes() + 30);
   }
-  
+
   return times;
 };
 
@@ -57,7 +57,7 @@ const formatTimeWithAMPM = (timeString: string): string => {
   const hour = parseInt(hours);
   const ampm = hour >= 12 ? 'pm' : 'am';
   const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  
+
   if (minutes === '00') {
     return `${displayHour}${ampm}`;
   } else {
@@ -74,15 +74,15 @@ const formatPickupTimeRange = (startTime: string, endTime: string): string => {
 
 export default function CartPage() {
   const router = useRouter();
-  const { 
-    items, 
-    removeFromCart, 
-    updateQuantity, 
-    clearCart, 
+  const {
+    items,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
     totalPrice,
     validateDrop,
     isDropValid,
-    dropValidationError
+    dropValidationError,
   } = useCart();
   const [selectedTime, setSelectedTime] = useState('');
   const [comment, setComment] = useState('');
@@ -93,14 +93,20 @@ export default function CartPage() {
 
   // Generate pickup times based on location hours
   const pickupTimes = useMemo(() => {
-    if (!dropInfo?.location?.pickup_hour_start || !dropInfo?.location?.pickup_hour_end) {
+    if (
+      !dropInfo?.location?.pickup_hour_start ||
+      !dropInfo?.location?.pickup_hour_end
+    ) {
       return [];
     }
     return generatePickupTimes(
       dropInfo.location.pickup_hour_start,
       dropInfo.location.pickup_hour_end
     );
-  }, [dropInfo?.location?.pickup_hour_start, dropInfo?.location?.pickup_hour_end]);
+  }, [
+    dropInfo?.location?.pickup_hour_start,
+    dropInfo?.location?.pickup_hour_end,
+  ]);
 
   // Memoized formatting functions
   const formatDate = useCallback((dateString: string) => {
@@ -112,17 +118,23 @@ export default function CartPage() {
     return date.toLocaleDateString('en-US', options);
   }, []);
 
-  // Load drop information from localStorage and validate
+  // Load drop information and saved form data from localStorage
   useEffect(() => {
     const savedDrop = localStorage.getItem('currentDrop');
+    const savedPickupTime = localStorage.getItem('cartPickupTime');
+    const savedComment = localStorage.getItem('cartComment');
+
     if (savedDrop) {
       try {
         const parsedDrop = JSON.parse(savedDrop);
         // Validate the structure
-        if (parsedDrop?.location?.pickup_hour_start && parsedDrop?.location?.pickup_hour_end) {
+        if (
+          parsedDrop?.location?.pickup_hour_start &&
+          parsedDrop?.location?.pickup_hour_end
+        ) {
           setDropInfo(parsedDrop);
           setError(null);
-          
+
           // Validate the drop if we have an ID
           if (parsedDrop.id) {
             setIsValidating(true);
@@ -141,7 +153,28 @@ export default function CartPage() {
     } else {
       setError('No drop information found');
     }
+
+    // Load saved form data
+    if (savedPickupTime) {
+      setSelectedTime(savedPickupTime);
+    }
+    if (savedComment) {
+      setComment(savedComment);
+    }
   }, [validateDrop]);
+
+  // Save form data to localStorage when it changes
+  useEffect(() => {
+    if (selectedTime) {
+      localStorage.setItem('cartPickupTime', selectedTime);
+    }
+  }, [selectedTime]);
+
+  useEffect(() => {
+    if (comment) {
+      localStorage.setItem('cartComment', comment);
+    }
+  }, [comment]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -152,6 +185,8 @@ export default function CartPage() {
   const handleClearCart = useCallback(() => {
     clearCart();
     localStorage.removeItem('currentDrop');
+    localStorage.removeItem('cartPickupTime');
+    localStorage.removeItem('cartComment');
     router.push('/');
   }, [clearCart, router]);
 
@@ -168,7 +203,9 @@ export default function CartPage() {
     }
 
     if (!isDropValid) {
-      setError(dropValidationError || 'This drop is no longer accepting orders');
+      setError(
+        dropValidationError || 'This drop is no longer accepting orders'
+      );
       return;
     }
 
@@ -184,13 +221,20 @@ export default function CartPage() {
       setError('Failed to save order information');
       console.error('Error saving order info:', error);
     }
-  }, [selectedTime, comment, dropInfo, router, isDropValid, dropValidationError]);
+  }, [
+    selectedTime,
+    comment,
+    dropInfo,
+    router,
+    isDropValid,
+    dropValidationError,
+  ]);
 
   // Show error state if there's an error
   if (error && !dropInfo) {
     return (
       <PageLayout>
-        <PageHeader 
+        <PageHeader
           title="Error Loading Order"
           subtitle="Unable to load drop information"
           onBackClick={handleBack}
@@ -209,22 +253,32 @@ export default function CartPage() {
 
   return (
     <PageLayout>
-      <PageHeader 
-        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTimeRange(dropInfo.location.pickup_hour_start, dropInfo.location.pickup_hour_end)})` : "Your Order"}
-        subtitle={dropInfo ? `${dropInfo.location.name}, ${dropInfo.location.district}` : "Cart"}
+      <PageHeader
+        title={
+          dropInfo
+            ? `${formatDate(dropInfo.date)} (${formatPickupTimeRange(dropInfo.location.pickup_hour_start, dropInfo.location.pickup_hour_end)})`
+            : 'Your Order'
+        }
+        subtitle={
+          dropInfo
+            ? `${dropInfo.location.name}, ${dropInfo.location.district}`
+            : 'Cart'
+        }
         showMapPin={!!dropInfo?.location?.location_url}
         locationUrl={dropInfo?.location?.location_url}
         onBackClick={handleBack}
       />
 
-      <main className="px-5">
-        <div className="space-y-5 py-5">
+      <main className="px-5 pb-0">
+        <div className="space-y-5 pt-5">
           {/* Drop Validation Status */}
           {isValidating && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <p className="text-blue-600 text-sm">Validating drop status...</p>
+                <p className="text-blue-600 text-sm">
+                  Validating drop status...
+                </p>
               </div>
             </div>
           )}
@@ -234,12 +288,14 @@ export default function CartPage() {
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 text-red-600" />
-                <p className="text-red-600 text-sm font-medium">Ordering Closed</p>
+                <p className="text-red-600 text-sm font-medium">
+                  Ordering Closed
+                </p>
               </div>
               <p className="text-red-600 text-sm mt-1">{dropValidationError}</p>
-              <Button 
-                onClick={handleClearCart} 
-                variant="outline" 
+              <Button
+                onClick={handleClearCart}
+                variant="outline"
                 size="sm"
                 className="mt-2"
               >
@@ -276,12 +332,47 @@ export default function CartPage() {
                       />
                     ))}
                   </div>
+
+                  {/* Add More Button */}
+                  <div className="pt-4 flex justify-start">
+                    <Button
+                      onClick={() => {
+                        if (dropInfo?.id) {
+                          router.push(`/menu/${dropInfo.id}`);
+                        } else {
+                          router.push('/');
+                        }
+                      }}
+                      variant="outline"
+                      className="bg-black text-white hover:bg-gray-800 hover:text-white border-black  rounded-full"
+                    >
+                      Add More
+                    </Button>
+                  </div>
+
+                  {/* Divider */}
+                  <Separator className="my-4" />
+
+                  {/* Special Instructions */}
+                  <div>
+                    <Textarea
+                      placeholder="Leave a comment..."
+                      value={comment}
+                      onChange={e => setComment(e.target.value)}
+                      aria-label="Special instructions for your order"
+                      className="shadow-none resize-none min-h-[60px] border-0 p-2"
+                    />
+                  </div>
                 </>
               ) : (
                 <div className="text-center py-12">
-                  <Squirrel className="mx-auto h-12 w-12 text-gray-500 mb-4"/>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Your cart is empty</h3>
-                  <p className="text-gray-500 mb-6">Add some delicious sandwiches to get started!</p>
+                  <Squirrel className="mx-auto h-12 w-12 text-gray-500 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Your cart is empty
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    Add some delicious sandwiches to get started!
+                  </p>
                   <Button
                     onClick={() => {
                       if (dropInfo?.id) {
@@ -301,95 +392,72 @@ export default function CartPage() {
 
           {items.length > 0 && (
             <>
-              {/* Comment Section */}
-              <Card className="p-5">
-                <h2 className="text-xl font-semibold mb-4">Special Instructions</h2>
-                <Textarea
-                  placeholder="Any special requests or dietary requirements?"
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  aria-label="Special instructions for your order"
-                  className="shadow-none resize-none min-h-[80px]"
-                />
-              </Card>
-
               {/* Pickup Time */}
               <Card className="p-5">
                 <h2 className="text-xl font-semibold mb-1">Pickup Time</h2>
-                <p className="mb-4">Please select a an aproximate time for your order</p>
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
-                      <SelectTrigger className="" aria-label="Select a slot">
-                        <SelectValue placeholder="Select a slot" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pickupTimes.length > 0 ? (
-                          pickupTimes.map(time => (
-                            <SelectItem key={time} value={time}>
-                              {formatTimeWithAMPM(time)}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="" disabled>
-                            No times available
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
-                </Card>
-
-                {/* Location */}
-                <Card className="p-5">
-                   <h2 className="text-xl font-semibold mb-4">Pickup Location</h2>
-                   <p className="font-semibold mb-1">
-                     {dropInfo?.location?.name || 'Location not specified'}
-                   </p>
-                   <p className="mb-3">
-                     {dropInfo?.location?.address || 'Address not specified'}
-                   </p>
-                  {dropInfo?.location?.location_url && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                        window.open(dropInfo.location.location_url, '_blank')
-                    }
-                    className="w-full"
-                    aria-label="Open location in maps"
-                   >
-                    Open in Maps
-                  </Button>
-                    )}
-                  </Card>
-
-
-              {/* Price Recap */}
-              <Card className="p-5">
-                <div className="flex justify-between my-auto mb-4">
-                  <h2 className="text-xl font-semibold">Order Summary</h2>
-                  <span className="text-xl font-semibold ">€{totalPrice.toFixed(2)}</span>
-                </div>
-                <p>
-                  Payment in cash or mbway at {dropInfo?.location?.name} during pickup.
+                <p className="mb-4">
+                  Select a an aproximate time for your order
                 </p>
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger className="" aria-label="Select a slot">
+                    <SelectValue placeholder="Select a slot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pickupTimes.length > 0 ? (
+                      pickupTimes.map(time => (
+                        <SelectItem key={time} value={time}>
+                          {formatTimeWithAMPM(time)}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="" disabled>
+                        No times available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </Card>
             </>
           )}
         </div>
       </main>
 
-      {/* Sticky Place Order Button */}
+      {/* Sticky Footer with Total and Continue Button */}
       {items.length > 0 && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-5">
+          {/* Total Order */}
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-xl font-semibold">Total Order</h2>
+            <span className="text-xl font-semibold">
+              €{totalPrice.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Payment Info */}
+          <p className="text-sm text-gray-600 mb-5 text-left">
+            Payment in cash or mbway at {dropInfo?.location?.name} during pickup
+          </p>
+
           <Button
             onClick={handlePlaceOrder}
-            disabled={isLoading || !selectedTime || !dropInfo || !isDropValid || isValidating}
+            disabled={
+              isLoading ||
+              !selectedTime ||
+              !dropInfo ||
+              !isDropValid ||
+              isValidating
+            }
             className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
             aria-label="Continue to checkout"
             size="lg"
           >
-            {isLoading ? 'Processing...' : 
-             !isDropValid ? 'Ordering Closed' :
-             isValidating ? 'Validating...' : 'Continue'}
+            {isLoading
+              ? 'Processing...'
+              : !isDropValid
+                ? 'Ordering Closed'
+                : isValidating
+                  ? 'Validating...'
+                  : 'Continue'}
           </Button>
         </div>
       )}

@@ -44,37 +44,172 @@ function ConfirmationContent() {
       return;
     }
 
-    const fetchOrderDetails = async () => {
+    const fetchOrderDetails = async (retryCount = 0) => {
       try {
+        console.log(
+          `Attempting to fetch order ${orderId} (attempt ${retryCount + 1})`
+        );
         const response = await fetch(`/api/orders/${orderId}`);
 
         if (!response.ok) {
+          if (response.status === 404 && retryCount < 2) {
+            // Order might not be committed yet, retry after a delay
+            console.log(
+              `Order not found, retrying in 1 second... (attempt ${retryCount + 1})`
+            );
+            setTimeout(() => fetchOrderDetails(retryCount + 1), 1000);
+            return;
+          }
           throw new Error('Failed to fetch order details');
         }
 
         const data = await response.json();
+        console.log('Successfully fetched order from database:', data.order);
         setOrder(data.order);
       } catch (error) {
         console.error('Error fetching order details:', error);
+        console.log(
+          'Database fetch failed, falling back to localStorage data...'
+        );
+        console.log('Available localStorage keys:', Object.keys(localStorage));
+        console.log('cartItems:', localStorage.getItem('cartItems'));
+        console.log('customerInfo:', localStorage.getItem('customerInfo'));
+        console.log('currentDrop:', localStorage.getItem('currentDrop'));
+
         // Fallback to localStorage data if API fails
-        const fallbackOrder: OrderDetails = {
-          id: orderId,
-          order_number: `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.floor(
-            Math.random() * 9999
-          )
-            .toString()
-            .padStart(4, '0')}`,
-          customer_name: 'Your Name',
-          customer_email: 'your.email@example.com',
-          customer_phone: '',
-          pickup_time: localStorage.getItem('pickupTime') || '12:00',
-          pickup_date: new Date().toISOString().split('T')[0],
-          total_amount: 0,
-          special_instructions:
-            localStorage.getItem('specialInstructions') || '',
-          created_at: new Date().toISOString(),
-          order_items: [],
-        };
+        let fallbackOrder: OrderDetails;
+
+        try {
+          const customerInfo = localStorage.getItem('customerInfo');
+          const activeOrder = localStorage.getItem('activeOrder');
+          const cartPickupTime = localStorage.getItem('cartPickupTime');
+
+          console.log('activeOrder:', activeOrder);
+
+          let cartItems = null;
+          let cartComment = '';
+          let totalAmount = 0;
+
+          // Try to get cart data from activeOrder first
+          if (activeOrder) {
+            try {
+              const parsedOrder = JSON.parse(activeOrder);
+              console.log('Parsed activeOrder:', parsedOrder);
+
+              // Handle the actual structure from activeOrder
+              if (parsedOrder.items) {
+                cartItems = parsedOrder.items.map((item: any) => ({
+                  id: item.id || Math.random().toString(),
+                  name: item.name,
+                  price: item.price || 0,
+                  quantity: item.quantity,
+                  description: item.description || '',
+                }));
+              }
+
+              cartComment = parsedOrder.comment || '';
+              totalAmount = parsedOrder.totalAmount || 0;
+
+              console.log('Processed cartItems:', cartItems);
+              console.log('Processed totalAmount:', totalAmount);
+            } catch (e) {
+              console.log('Failed to parse activeOrder, trying other keys...');
+            }
+          }
+
+          // Fallback to other possible keys
+          if (!cartItems) {
+            cartItems = localStorage.getItem('cartItems');
+            if (cartItems) {
+              try {
+                cartItems = JSON.parse(cartItems);
+              } catch (e) {
+                cartItems = [];
+              }
+            }
+          }
+
+          if (!cartComment) {
+            cartComment = localStorage.getItem('cartComment') || '';
+          }
+
+          fallbackOrder = {
+            id: orderId,
+            order_number: `ORD-${Date.now().toString().slice(-8)}`,
+            customer_name: customerInfo
+              ? JSON.parse(customerInfo).name
+              : 'Your Name',
+            customer_email: customerInfo
+              ? JSON.parse(customerInfo).email
+              : 'your.email@example.com',
+            customer_phone: customerInfo ? JSON.parse(customerInfo).phone : '',
+            pickup_time: (() => {
+              if (activeOrder) {
+                try {
+                  const parsedOrder = JSON.parse(activeOrder);
+                  return parsedOrder.pickupTime || cartPickupTime || '12:00';
+                } catch (e) {
+                  return cartPickupTime || '12:00';
+                }
+              }
+              return cartPickupTime || '12:00';
+            })(),
+            pickup_date: (() => {
+              if (activeOrder) {
+                try {
+                  const parsedOrder = JSON.parse(activeOrder);
+                  return (
+                    parsedOrder.pickupDate ||
+                    new Date().toISOString().split('T')[0]
+                  );
+                } catch (e) {
+                  return new Date().toISOString().split('T')[0];
+                }
+              }
+              return new Date().toISOString().split('T')[0];
+            })(),
+            total_amount:
+              totalAmount ||
+              (cartItems && cartItems.length > 0
+                ? cartItems.reduce(
+                    (total: number, item: any) =>
+                      total + item.price * item.quantity,
+                    0
+                  )
+                : 0),
+            special_instructions: cartComment,
+            created_at: new Date().toISOString(),
+            order_items:
+              cartItems && cartItems.length > 0
+                ? cartItems.map((item: any) => ({
+                    id: item.id,
+                    quantity: item.quantity,
+                    unit_price: item.price,
+                    products: {
+                      name: item.name,
+                      description: item.description || '',
+                    },
+                  }))
+                : [],
+          };
+        } catch (fallbackError) {
+          console.error('Error creating fallback order:', fallbackError);
+          // Create a minimal fallback order if parsing fails
+          fallbackOrder = {
+            id: orderId,
+            order_number: `ORD-${Date.now().toString().slice(-8)}`,
+            customer_name: 'Your Name',
+            customer_email: 'your.email@example.com',
+            customer_phone: '',
+            pickup_time: '12:00',
+            pickup_date: new Date().toISOString().split('T')[0],
+            total_amount: 0,
+            special_instructions: '',
+            created_at: new Date().toISOString(),
+            order_items: [],
+          };
+        }
+
         setOrder(fallbackOrder);
       } finally {
         setLoading(false);
@@ -113,29 +248,16 @@ function ConfirmationContent() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-[480px] mx-auto bg-white min-h-screen">
-        {/* Header */}
-        <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBackToHome}
-            className="p-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-lg font-semibold ml-2">Order Confirmation</h1>
-        </div>
-
         <main className="px-5">
           <div className="space-y-6 py-4">
             {/* Success Message */}
             <div className="text-center py-8">
               <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-black mb-2">
-                Order Confirmed!
+                Thanks for your order!
               </h2>
-              <p className="text-gray-600">
-                Thank you for your order. We&apos;ll have it ready for pickup.
+              <p className="text-black">
+                You will receive soon an email confirmation.
               </p>
             </div>
 
@@ -194,9 +316,6 @@ function ConfirmationContent() {
                             x{item.quantity}
                           </span>
                         </div>
-                        <span className="font-medium">
-                          €{(item.unit_price * item.quantity).toFixed(2)}
-                        </span>
                       </div>
                     ))}
                   </div>
@@ -228,11 +347,123 @@ function ConfirmationContent() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <MapPin className="h-5 w-5 text-gray-600" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm text-gray-600">Pickup Location</p>
                       <p className="font-medium">
-                        123 Sandwich Street, City, Country
+                        {(() => {
+                          // Try activeOrder first, then currentDrop
+                          const activeOrder =
+                            localStorage.getItem('activeOrder');
+                          const currentDrop =
+                            localStorage.getItem('currentDrop');
+
+                          if (activeOrder) {
+                            try {
+                              const parsedOrder = JSON.parse(activeOrder);
+                              if (parsedOrder.dropInfo?.location?.name) {
+                                return parsedOrder.dropInfo.location.name;
+                              }
+                            } catch (e) {
+                              console.log(
+                                'Failed to parse activeOrder for location'
+                              );
+                            }
+                          }
+
+                          if (currentDrop) {
+                            try {
+                              const dropInfo = JSON.parse(currentDrop);
+                              return dropInfo.location?.name || 'Location';
+                            } catch (e) {
+                              return 'Location not specified';
+                            }
+                          }
+
+                          // For now, show a default location since the data structure is unclear
+                          return 'Impact Hub, Penha';
+                        })()}
                       </p>
+                      <p className="text-sm">
+                        {(() => {
+                          // Try activeOrder first, then currentDrop
+                          const activeOrder =
+                            localStorage.getItem('activeOrder');
+                          const currentDrop =
+                            localStorage.getItem('currentDrop');
+
+                          if (activeOrder) {
+                            try {
+                              const parsedOrder = JSON.parse(activeOrder);
+                              if (parsedOrder.dropInfo?.location?.address) {
+                                return parsedOrder.dropInfo.location.address;
+                              }
+                            } catch (e) {
+                              console.log(
+                                'Failed to parse activeOrder for address'
+                              );
+                            }
+                          }
+
+                          if (currentDrop) {
+                            try {
+                              const dropInfo = JSON.parse(currentDrop);
+                              return (
+                                dropInfo.location?.address ||
+                                'Address not specified'
+                              );
+                            } catch (e) {
+                              return 'Address not specified';
+                            }
+                          }
+
+                          // For now, show a default address
+                          return 'Rua da Penha de França, 4, 1170-112 Lisboa, Portugal';
+                        })()}
+                      </p>
+
+                      {/* Show Map Button */}
+                      <div className="mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const currentDrop =
+                              localStorage.getItem('currentDrop');
+                            if (currentDrop) {
+                              try {
+                                const dropInfo = JSON.parse(currentDrop);
+                                if (dropInfo.location?.location_url) {
+                                  window.open(
+                                    dropInfo.location.location_url,
+                                    '_blank'
+                                  );
+                                } else {
+                                  // Fallback to default location
+                                  window.open(
+                                    'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
+                                    '_blank'
+                                  );
+                                }
+                              } catch (e) {
+                                // Fallback to default location
+                                window.open(
+                                  'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
+                                  '_blank'
+                                );
+                              }
+                            } else {
+                              // Fallback to default location
+                              window.open(
+                                'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
+                                '_blank'
+                              );
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Show on Map
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -250,21 +481,6 @@ function ConfirmationContent() {
                 </Card>
               </section>
             )}
-
-            {/* Important Notes */}
-            <section>
-              <Card className="p-4 bg-blue-50 border-blue-200">
-                <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                  Important Notes
-                </h3>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Please arrive within 15 minutes of your pickup time</li>
-                  <li>• Bring your order number for pickup</li>
-                  <li>• We&apos;ll send you an email confirmation shortly</li>
-                  <li>• Call us if you need to make any changes</li>
-                </ul>
-              </Card>
-            </section>
           </div>
         </main>
 
@@ -275,7 +491,7 @@ function ConfirmationContent() {
             className="w-full bg-black text-white py-4 text-lg font-medium rounded-full"
             size="lg"
           >
-            Back to Menu
+            Close
           </Button>
         </div>
       </div>
