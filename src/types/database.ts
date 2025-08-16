@@ -124,6 +124,7 @@ export interface DropWithLocation extends Drop {
 // Interface for admin drops returned by new database functions
 export interface AdminDrop extends Drop {
   location_name: string;
+  status_changed_at?: string | null;
 }
 
 export interface OrderWithDetails extends Order {
