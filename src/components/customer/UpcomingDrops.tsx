@@ -2,7 +2,7 @@
 
 import { DropWithLocation } from '@/types/database';
 import { Button } from '@/components/ui/button';
-import { Calendar, MapPin, Package } from 'lucide-react';
+import { Calendar, MapPin, Package, Clock, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { fetchDrops } from '@/lib/api/drops';
@@ -37,6 +37,51 @@ export function UpcomingDrops() {
       day: date.getDate(),
       month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
     };
+  };
+
+  const formatPickupDeadline = (deadlineString: string | null) => {
+    if (!deadlineString) return null;
+
+    const deadline = new Date(deadlineString);
+    const now = new Date();
+    const diffMs = deadline.getTime() - now.getTime();
+
+    if (diffMs <= 0) return 'Closed';
+
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (diffHours > 0) {
+      return `${diffHours}h ${diffMinutes}m left`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes}m left`;
+    } else {
+      return 'Closing soon';
+    }
+  };
+
+  const getStatusColor = (status: string, deadline: string | null) => {
+    if (status === 'completed' || status === 'cancelled')
+      return 'text-gray-500';
+    if (status === 'active') {
+      if (deadline && new Date(deadline) <= new Date()) {
+        return 'text-red-600';
+      }
+      return 'text-black';
+    }
+    return 'text-black';
+  };
+
+  const getStatusIcon = (status: string, deadline: string | null) => {
+    if (status === 'completed' || status === 'cancelled')
+      return <Calendar className="w-4 h-4" />;
+    if (status === 'active') {
+      if (deadline && new Date(deadline) <= new Date()) {
+        return <AlertCircle className="w-4 h-4" />;
+      }
+      return <Package className="w-4 h-4" />;
+    }
+    return <Clock className="w-4 h-4" />;
   };
 
   const handlePreOrder = (drop: DropWithLocation) => {
@@ -83,8 +128,11 @@ export function UpcomingDrops() {
     );
   }
 
-  // Filter out drops that don't have location data
-  const validDrops = drops.filter(drop => drop.location);
+  // Filter out drops that don't have location data and only show upcoming/active
+  const validDrops = drops.filter(
+    drop =>
+      drop.location && (drop.status === 'upcoming' || drop.status === 'active')
+  );
 
   if (validDrops.length === 0) {
     return (
@@ -111,6 +159,9 @@ export function UpcomingDrops() {
           const { day, month } = formatDate(drop.date);
           const isActive = drop.status === 'active';
           const isUpcoming = drop.status === 'upcoming';
+          const timeRemaining = formatPickupDeadline(drop.pickup_deadline);
+          const statusColor = getStatusColor(drop.status, drop.pickup_deadline);
+          const statusIcon = getStatusIcon(drop.status, drop.pickup_deadline);
 
           // Debug: Log the drop data to see what's actually being returned
           console.log('🔍 Drop data:', drop);
@@ -138,13 +189,26 @@ export function UpcomingDrops() {
                       </div>
 
                       {/* Location Info */}
-                      <div className="">
+                      <div className="flex-1">
                         <p className="text-md font-semibold text-black">
-                          {drop.location.name}
+                          {drop.location.name}, {drop.location.district}
                         </p>
-                        <p className="text-md text-gray-600">
-                          {drop.location.district}
-                        </p>
+                        {/* Status and Time Remaining */}
+                        <div className="flex items-center space-x-2 mt-1">
+                          <span
+                            className={`text-md font-normal ${statusColor}`}
+                          >
+                            {drop.status === 'active'
+                              ? `${drop.total_available || 0} left 🥪`
+                              : 'Coming Soon'}
+                          </span>
+                          {timeRemaining && drop.status === 'active' && (
+                            <span className="text-xs text-gray-500 flex items-center space-x-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{timeRemaining}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -156,8 +220,17 @@ export function UpcomingDrops() {
                         onClick={() => handlePreOrder(drop)}
                         className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
                         size="lg"
+                        disabled={
+                          !!(
+                            drop.pickup_deadline &&
+                            new Date(drop.pickup_deadline) <= new Date()
+                          )
+                        }
                       >
-                        Pre-Order
+                        {drop.pickup_deadline &&
+                        new Date(drop.pickup_deadline) <= new Date()
+                          ? 'Closed'
+                          : 'Pre-Order'}
                       </Button>
                     ) : drop.status === 'upcoming' ? (
                       <Button

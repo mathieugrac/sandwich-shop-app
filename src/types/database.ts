@@ -119,12 +119,14 @@ export interface OrderFormData {
 // Extended interfaces for API responses
 export interface DropWithLocation extends Drop {
   location: Location;
+  total_available?: number;
 }
 
 // Interface for admin drops returned by new database functions
 export interface AdminDrop extends Drop {
   location_name: string;
   status_changed_at?: string | null;
+  total_available: number;
 }
 
 export interface OrderWithDetails extends Order {

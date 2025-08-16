@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Clock, Squirrel } from 'lucide-react';
+import { MapPin, Clock, Squirrel, AlertCircle } from 'lucide-react';
 import { PageHeader, PageLayout } from '@/components/shared';
 import { CartItem } from '@/components/customer';
 
@@ -74,13 +74,22 @@ const formatPickupTimeRange = (startTime: string, endTime: string): string => {
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeFromCart, updateQuantity, clearCart, totalPrice } =
-    useCart();
+  const { 
+    items, 
+    removeFromCart, 
+    updateQuantity, 
+    clearCart, 
+    totalPrice,
+    validateDrop,
+    isDropValid,
+    dropValidationError
+  } = useCart();
   const [selectedTime, setSelectedTime] = useState('');
   const [comment, setComment] = useState('');
   const [isLoading] = useState(false);
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Generate pickup times based on location hours
   const pickupTimes = useMemo(() => {
@@ -103,7 +112,7 @@ export default function CartPage() {
     return date.toLocaleDateString('en-US', options);
   }, []);
 
-  // Load drop information from localStorage
+  // Load drop information from localStorage and validate
   useEffect(() => {
     const savedDrop = localStorage.getItem('currentDrop');
     if (savedDrop) {
@@ -113,6 +122,14 @@ export default function CartPage() {
         if (parsedDrop?.location?.pickup_hour_start && parsedDrop?.location?.pickup_hour_end) {
           setDropInfo(parsedDrop);
           setError(null);
+          
+          // Validate the drop if we have an ID
+          if (parsedDrop.id) {
+            setIsValidating(true);
+            validateDrop(parsedDrop.id).finally(() => {
+              setIsValidating(false);
+            });
+          }
         } else {
           setError('Invalid drop information format');
           console.error('Drop info missing required fields:', parsedDrop);
@@ -124,7 +141,7 @@ export default function CartPage() {
     } else {
       setError('No drop information found');
     }
-  }, []);
+  }, [validateDrop]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -150,6 +167,11 @@ export default function CartPage() {
       return;
     }
 
+    if (!isDropValid) {
+      setError(dropValidationError || 'This drop is no longer accepting orders');
+      return;
+    }
+
     try {
       // Save pickup time and special instructions to localStorage for checkout
       localStorage.setItem('pickupTime', selectedTime);
@@ -162,9 +184,7 @@ export default function CartPage() {
       setError('Failed to save order information');
       console.error('Error saving order info:', error);
     }
-  }, [selectedTime, comment, dropInfo, router]);
-
-
+  }, [selectedTime, comment, dropInfo, router, isDropValid, dropValidationError]);
 
   // Show error state if there's an error
   if (error && !dropInfo) {
@@ -199,7 +219,36 @@ export default function CartPage() {
 
       <main className="px-5">
         <div className="space-y-5 py-5">
-          {/* Error Display */}
+          {/* Drop Validation Status */}
+          {isValidating && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <p className="text-blue-600 text-sm">Validating drop status...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Drop Validation Error */}
+          {!isValidating && !isDropValid && dropValidationError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <p className="text-red-600 text-sm font-medium">Ordering Closed</p>
+              </div>
+              <p className="text-red-600 text-sm mt-1">{dropValidationError}</p>
+              <Button 
+                onClick={handleClearCart} 
+                variant="outline" 
+                size="sm"
+                className="mt-2"
+              >
+                Clear Cart & Return Home
+              </Button>
+            </div>
+          )}
+
+          {/* General Error Display */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <p className="text-red-600 text-sm">{error}</p>
@@ -333,12 +382,14 @@ export default function CartPage() {
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
           <Button
             onClick={handlePlaceOrder}
-            disabled={isLoading || !selectedTime || !dropInfo}
-            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full"
+            disabled={isLoading || !selectedTime || !dropInfo || !isDropValid || isValidating}
+            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
             aria-label="Continue to checkout"
             size="lg"
           >
-            {isLoading ? 'Processing...' : 'Continue'}
+            {isLoading ? 'Processing...' : 
+             !isDropValid ? 'Ordering Closed' :
+             isValidating ? 'Validating...' : 'Continue'}
           </Button>
         </div>
       )}

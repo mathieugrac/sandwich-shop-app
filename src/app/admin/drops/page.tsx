@@ -872,7 +872,7 @@ export default function DropManagementPage() {
         {/* Upcoming Drops Table (upcoming + active) */}
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming Drops</CardTitle>
+            <CardTitle className="pb-2">Upcoming Drops</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -881,13 +881,14 @@ export default function DropManagementPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Total Items</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {upcomingDrops.map(drop => (
                   <TableRow key={drop.id}>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       <div className="flex flex-col">
                         <span
                           className={isToday(drop.date) ? 'font-semibold' : ''}
@@ -901,10 +902,9 @@ export default function DropManagementPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {drop.location_name || 'No location'}
-                    </TableCell>
+                    <TableCell>{drop.location_name || 'No location'}</TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
+                    <TableCell>{drop.total_available || 0}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
                         {/* Status Management Buttons */}
@@ -982,7 +982,7 @@ export default function DropManagementPage() {
         {/* Past Drops Table (completed + cancelled) */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Past Drops</CardTitle>
+            <CardTitle className="pb-2">Past Drops</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -991,33 +991,21 @@ export default function DropManagementPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Completed At</TableHead>
+                  <TableHead>Total Items</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pastDrops.map(drop => (
                   <TableRow key={drop.id}>
-                    <TableCell>
+                    <TableCell className="font-medium">
                       <div className="flex flex-col">
-                        <span className="text-gray-600">
-                          {formatDate(drop.date)}
-                        </span>
+                        <span>{formatDate(drop.date)}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {drop.location_name || 'No location'}
-                    </TableCell>
+                    <TableCell>{drop.location_name || 'No location'}</TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
-                    <TableCell>
-                      {drop.status_changed_at ? (
-                        <span className="text-sm text-gray-600">
-                          {new Date(drop.status_changed_at).toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">Unknown</span>
-                      )}
-                    </TableCell>
+                    <TableCell>{drop.total_available || 0}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
                         {/* Reopen Button for Completed Drops */}

@@ -1,5 +1,4 @@
 import { Header } from './Header';
-import { Footer } from './Footer';
 import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 
 interface MainLayoutProps {
@@ -12,7 +11,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="max-w-[480px] mx-auto bg-white min-h-screen">
         <Header />
         <main className="px-5">{children}</main>
-        <Footer />
         <StickyBasketButton />
       </div>
     </div>

@@ -13,6 +13,8 @@ export interface NextActiveDrop {
     id: string;
     date: string;
     status: string;
+    pickup_deadline: string | null;
+    time_until_deadline: string | null;
     location: Location;
   };
   products: Array<{

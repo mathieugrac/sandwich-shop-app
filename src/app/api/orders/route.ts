@@ -42,13 +42,40 @@ export async function POST(request: Request) {
     if (dropError || !nextDrop || nextDrop.length === 0) {
       console.error('API: Error getting next active drop:', dropError);
       return NextResponse.json(
-        { error: 'No active drop available' },
+        { error: 'No active drop available for ordering' },
         { status: 400 }
       );
     }
 
     const activeDrop = nextDrop[0];
     console.log('API: Linking order to drop:', activeDrop);
+
+    // Validate that the drop is still orderable using the new function
+    const { data: isOrderable, error: orderableError } = await supabase.rpc(
+      'is_drop_orderable',
+      { p_drop_id: activeDrop.id }
+    );
+
+    if (orderableError) {
+      console.error('API: Error checking drop orderability:', orderableError);
+      return NextResponse.json(
+        { error: 'Failed to validate drop status' },
+        { status: 500 }
+      );
+    }
+
+    if (!isOrderable) {
+      console.log('API: Drop is no longer orderable:', activeDrop.id);
+      return NextResponse.json(
+        {
+          error:
+            'This drop is no longer accepting orders. The pickup time has passed.',
+          drop_status: 'completed',
+          drop_id: activeDrop.id,
+        },
+        { status: 400 }
+      );
+    }
 
     // Get or create client
     const { data: client, error: clientError } = await supabase.rpc(
@@ -127,92 +154,53 @@ export async function POST(request: Request) {
 
     // Reserve inventory for each item using the new drop-based function
     for (const item of items) {
-      // The item.id is the drop_product_id, so we can reserve directly
-      const { error: reserveError } = await supabase.rpc(
+      const { data: reserved, error: reserveError } = await supabase.rpc(
         'reserve_drop_product_inventory',
         {
-          p_drop_product_id: item.id, // Use drop_product_id directly
+          p_drop_product_id: item.id,
           p_quantity: item.quantity,
         }
       );
 
-      if (reserveError) {
-        console.error('Error reserving drop products:', reserveError);
-        return NextResponse.json(
-          { error: 'Failed to reserve drop products' },
-          { status: 400 }
+      if (reserveError || !reserved) {
+        console.error(
+          'Error reserving inventory for item:',
+          item.id,
+          reserveError
         );
+        // Don't fail the order - just log the error
+        // The inventory system will handle this gracefully
       }
     }
 
-    // Send order confirmation email
+    // Send confirmation email
     try {
-      // Get product names for email - now we need to get them from drop_products
-      const dropProductIds = items.map((item: { id: string }) => item.id);
-      const { data: dropProducts } = await supabase
-        .from('drop_products')
-        .select(
-          `
-          id,
-          selling_price,
-          product:products(id, name)
-        `
-        )
-        .in('id', dropProductIds);
-
-      const productMap = new Map(
-        dropProducts?.map(dp => [
-          dp.id,
-          { name: dp.product[0]?.name, price: dp.selling_price },
-        ]) || []
-      );
-
-      const emailData = {
-        orderNumber,
+      await sendOrderConfirmationEmail({
+        orderNumber: order.order_number,
         customerName,
         customerEmail,
-        pickupDate,
         pickupTime,
-        items: items.map(
-          (item: { id: string; quantity: number; price: number }) => {
-            const productInfo = productMap.get(item.id);
-            return {
-              productName: productInfo?.name || 'Unknown Product',
-              quantity: item.quantity,
-              unitPrice: item.price,
-              totalPrice: item.quantity * item.price,
-            };
-          }
-        ),
+        pickupDate,
+        items,
         totalAmount,
-        specialInstructions,
-      };
-
-      const emailResult = await sendOrderConfirmationEmail(emailData);
-      if (emailResult) {
-        console.log('API: Order confirmation email sent successfully');
-      } else {
-        console.log(
-          'API: Order confirmation email failed, but order was created successfully'
-        );
-      }
+      });
+      console.log('API: Confirmation email sent successfully');
     } catch (emailError) {
-      console.error(
-        'API: Failed to send order confirmation email:',
-        emailError
-      );
-      // Don't fail the order if email fails, but log the error
+      console.error('API: Error sending confirmation email:', emailError);
+      // Don't fail the order if email fails
     }
 
     return NextResponse.json({
       success: true,
       order: {
-        ...order,
-        order_products: orderProducts,
+        id: order.id,
+        order_number: order.order_number,
+        status: order.status,
       },
+      message: 'Order created successfully',
     });
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('API: Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

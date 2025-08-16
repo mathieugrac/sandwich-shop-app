@@ -3,29 +3,10 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    // Get the next active drop
-    const { data: drops, error: dropsError } = await supabase
-      .from('drops')
-      .select(
-        `
-        id,
-        date,
-        status,
-        location_id,
-        locations (
-          id,
-          name,
-          address,
-          location_url,
-          pickup_hour_start,
-          pickup_hour_end
-        )
-      `
-      )
-      .eq('status', 'active')
-      .gte('date', new Date().toISOString().split('T')[0])
-      .order('date', { ascending: true })
-      .limit(1);
+    // Use the new enhanced function from Phase 1
+    const { data: drops, error: dropsError } = await supabase.rpc(
+      'get_next_active_drop'
+    );
 
     if (dropsError) {
       console.error('Error fetching next active drop:', dropsError);
@@ -40,6 +21,37 @@ export async function GET() {
     }
 
     const drop = drops[0];
+
+    // Get the full drop details including pickup_deadline
+    const { data: dropDetails, error: dropDetailsError } = await supabase
+      .from('drops')
+      .select(
+        `
+        id,
+        date,
+        status,
+        pickup_deadline,
+        location_id,
+        locations (
+          id,
+          name,
+          address,
+          location_url,
+          pickup_hour_start,
+          pickup_hour_end
+        )
+      `
+      )
+      .eq('id', drop.id)
+      .single();
+
+    if (dropDetailsError || !dropDetails) {
+      console.error('Error fetching drop details:', dropDetailsError);
+      return NextResponse.json(
+        { error: 'Failed to fetch drop details' },
+        { status: 500 }
+      );
+    }
 
     // Get products with inventory for this drop
     const { data: dropProducts, error: inventoryError } = await supabase
@@ -86,12 +98,33 @@ export async function GET() {
         availableStock: dp.available_quantity,
       })) || [];
 
+    // Calculate time until pickup deadline
+    let timeUntilDeadline = null;
+    if (dropDetails.pickup_deadline) {
+      const deadline = new Date(dropDetails.pickup_deadline);
+      const now = new Date();
+      const diffMs = deadline.getTime() - now.getTime();
+      
+      if (diffMs > 0) {
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        if (diffHours > 0) {
+          timeUntilDeadline = `${diffHours}h ${diffMinutes}m`;
+        } else {
+          timeUntilDeadline = `${diffMinutes}m`;
+        }
+      }
+    }
+
     const result = {
       drop: {
-        id: drop.id,
-        date: drop.date,
-        status: drop.status,
-        location: drop.locations,
+        id: dropDetails.id,
+        date: dropDetails.date,
+        status: dropDetails.status,
+        pickup_deadline: dropDetails.pickup_deadline,
+        time_until_deadline: timeUntilDeadline,
+        location: dropDetails.locations,
       },
       products,
     };

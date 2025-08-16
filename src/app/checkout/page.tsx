@@ -32,7 +32,14 @@ interface CustomerInfo {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalPrice, clearCart } = useCart();
+  const {
+    items,
+    totalPrice,
+    clearCart,
+    validateDrop,
+    isDropValid,
+    dropValidationError,
+  } = useCart();
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     email: '',
@@ -43,6 +50,7 @@ export default function CheckoutPage() {
   const [pickupTime, setPickupTime] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
+  const [isValidatingDrop, setIsValidatingDrop] = useState(false);
 
   // Load saved customer info and order details from localStorage
   useEffect(() => {
@@ -73,12 +81,21 @@ export default function CheckoutPage() {
     const savedDrop = localStorage.getItem('currentDrop');
     if (savedDrop) {
       try {
-        setDropInfo(JSON.parse(savedDrop));
+        const parsedDrop = JSON.parse(savedDrop);
+        setDropInfo(parsedDrop);
+
+        // Validate the drop if we have an ID
+        if (parsedDrop.id) {
+          setIsValidatingDrop(true);
+          validateDrop(parsedDrop.id).finally(() => {
+            setIsValidatingDrop(false);
+          });
+        }
       } catch (error) {
         console.error('Error parsing drop info:', error);
       }
     }
-  }, []);
+  }, [validateDrop]);
 
   // Save customer info to localStorage
   const saveCustomerInfo = (info: CustomerInfo) => {
@@ -161,6 +178,14 @@ export default function CheckoutPage() {
     e.preventDefault();
 
     if (!validateForm()) {
+      return;
+    }
+
+    if (!isDropValid) {
+      alert(
+        dropValidationError ||
+          'This drop is no longer accepting orders. Please return to the menu to check availability.'
+      );
       return;
     }
 
@@ -306,23 +331,31 @@ export default function CheckoutPage() {
 
   return (
     <PageLayout>
-      <PageHeader 
-        title={dropInfo ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
-          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
-          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : ''
-        } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
-          parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
-          parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : 'pm'
-        })` : "Customer Information"}
-        subtitle={dropInfo ? `${dropInfo.location.name}, ${dropInfo.location.district}` : undefined}
+      <PageHeader
+        title={
+          dropInfo
+            ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
+                parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
+                parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+                  ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
+                    ? 'am'
+                    : 'pm'
+                  : ''
+              } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
+                parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
+                parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+                  ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
+                    ? 'am'
+                    : 'pm'
+                  : 'pm'
+              })`
+            : 'Customer Information'
+        }
+        subtitle={
+          dropInfo
+            ? `${dropInfo.location.name}, ${dropInfo.location.district}`
+            : undefined
+        }
         showMapPin={!!dropInfo?.location?.location_url}
         locationUrl={dropInfo?.location?.location_url}
         onBackClick={handleBack}
@@ -330,16 +363,59 @@ export default function CheckoutPage() {
 
       <main className="px-5">
         <div className="space-y-6 py-5">
+          {/* Drop Validation Status */}
+          {isValidatingDrop && (
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-blue-600 text-sm">
+                  Validating drop status...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Drop Validation Error */}
+          {!isValidatingDrop && !isDropValid && dropValidationError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4">
+              <div className="flex items-center space-x-2">
+                <svg
+                  className="w-4 h-4 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-red-600 text-sm font-medium">
+                  Ordering Closed
+                </span>
+              </div>
+              <p className="text-red-600 text-sm mt-1">{dropValidationError}</p>
+              <Button
+                onClick={() => router.push('/')}
+                variant="outline"
+                size="sm"
+                className="mt-2"
+              >
+                Return to Home
+              </Button>
+            </div>
+          )}
+
           {/* Customer Information Form */}
           <Card className="p-5">
             <h2 className="text-xl font-semibold mb-5">Your Information</h2>
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Name */}
               <div className="space-y-2">
-                <Label 
-                  htmlFor="name"
-                  className="mb-2"
-                >Full Name
+                <Label htmlFor="name" className="mb-2">
+                  Full Name
                 </Label>
                 <Input
                   id="name"
@@ -356,10 +432,8 @@ export default function CheckoutPage() {
 
               {/* Email */}
               <div className="space-y-2">
-                <Label 
-                  htmlFor="email"
-                  className="mb-2"
-                >Email
+                <Label htmlFor="email" className="mb-2">
+                  Email
                 </Label>
                 <Input
                   id="email"
@@ -376,10 +450,8 @@ export default function CheckoutPage() {
 
               {/* Phone */}
               <div className="space-y-2">
-                <Label 
-                  htmlFor="phone"
-                  className="mb-2"
-                >Phone (Optional)
+                <Label htmlFor="phone" className="mb-2">
+                  Phone (Optional)
                 </Label>
                 <Input
                   id="phone"
@@ -400,62 +472,64 @@ export default function CheckoutPage() {
           <Card className="p-5">
             <h2 className="text-xl font-semibold mb-5">Order Summary</h2>
             <div className="space-y-4">
-                <div className="space-y-2">
+              <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Total:</span>
-                  <span className="font-semibold">€{totalPrice.toFixed(2)}</span>
+                  <span className="font-semibold">
+                    €{totalPrice.toFixed(2)}
+                  </span>
                 </div>
-                  {items.map(item => (
-                    <div key={item.id} className="flex justify-between">
-                      <span className="text-gray-500 text-sm">
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span className="text-gray-500 text-sm">
-                        €{(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <Separator />
-                {/* Pickup Time and Special Instructions */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="">Pickup Time:</span>
-                    <span className="font-semibold">{pickupTime}</span>
+                {items.map(item => (
+                  <div key={item.id} className="flex justify-between">
+                    <span className="text-gray-500 text-sm">
+                      {item.quantity}x {item.name}
+                    </span>
+                    <span className="text-gray-500 text-sm">
+                      €{(item.price * item.quantity).toFixed(2)}
+                    </span>
                   </div>
-                  {specialInstructions && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Special Instructions:
-                      </span>
-                      <span className="font-medium">{specialInstructions}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-black text-white py-4 text-lg font-medium mt-4 rounded-full"
-                  onClick={handleSubmit}
-                  size="lg"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center space-x-2">
-                      <LoadingSpinner />
-                      <span>Processing...</span>
-                    </div>
-                  ) : (
-                    'Place Order'
-                  )}
-                </Button>
+                ))}
               </div>
+              <Separator />
+              {/* Pickup Time and Special Instructions */}
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="">Pickup Time:</span>
+                  <span className="font-semibold">{pickupTime}</span>
+                </div>
+                {specialInstructions && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Special Instructions:</span>
+                    <span className="font-medium">{specialInstructions}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isLoading || !isDropValid || isValidatingDrop}
+                className="w-full bg-black text-white py-4 text-lg font-medium mt-4 rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={handleSubmit}
+                size="lg"
+              >
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <LoadingSpinner />
+                    <span>Processing...</span>
+                  </div>
+                ) : !isDropValid ? (
+                  'Ordering Closed'
+                ) : isValidatingDrop ? (
+                  'Validating...'
+                ) : (
+                  'Place Order'
+                )}
+              </Button>
+            </div>
           </Card>
         </div>
       </main>
-
-
     </PageLayout>
   );
 }
