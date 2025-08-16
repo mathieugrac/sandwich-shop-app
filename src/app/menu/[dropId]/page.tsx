@@ -83,6 +83,7 @@ export default function MenuPage() {
         price: dropProduct.selling_price,
         availableStock: dropProduct.available_quantity, // Store available stock
         dropProductId: dropProduct.id, // Store reference to drop_product
+        dropId: dropData.id, // Store reference to the actual drop (for validation)
         productId: dropProduct.product.id, // Store reference to original product
         imageUrl: dropProduct.product.product_images?.[0]?.image_url, // Get first product image
       });
