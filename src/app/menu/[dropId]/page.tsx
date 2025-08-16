@@ -36,6 +36,14 @@ export default function MenuPage() {
           dropProductsLength: drop?.dropProducts?.length,
           dropDataKeys: drop ? Object.keys(drop) : 'no drop data'
         });
+        
+        // Additional safety check: ensure drop has required properties
+        if (drop && (!drop.location || !drop.date || !drop.status)) {
+          console.error('❌ Drop data missing required properties:', drop);
+          setError('Invalid drop data received from server');
+          return;
+        }
+        
         setDropData(drop);
       } catch (err) {
         console.error('❌ Error loading drop data:', err);
@@ -64,11 +72,13 @@ export default function MenuPage() {
     dropData?.status === 'completed' || dropData?.status === 'cancelled';
 
   const handleAddToCart = (dropProductId: string) => {
-    if (!dropData?.dropProducts) {
-      console.error('❌ handleAddToCart: dropProducts is undefined');
+    if (!dropData?.dropProducts || !Array.isArray(dropData.dropProducts)) {
+      console.error(
+        '❌ handleAddToCart: dropProducts is undefined or not an array'
+      );
       return;
     }
-    
+
     const dropProduct = dropData.dropProducts.find(
       item => item.id === dropProductId
     );
@@ -112,8 +122,8 @@ export default function MenuPage() {
   };
 
   const getAvailableStock = (dropProductId: string) => {
-    if (!dropData?.dropProducts) {
-      console.error('❌ getAvailableStock: dropProducts is undefined');
+    if (!dropData?.dropProducts || !Array.isArray(dropData.dropProducts)) {
+      console.error('❌ getAvailableStock: dropProducts is undefined or not an array');
       return 0;
     }
     
@@ -211,12 +221,13 @@ export default function MenuPage() {
     dropData.dropProducts?.length
   );
 
-  // Temporarily show all products for debugging
-  const availableProducts = dropData?.dropProducts || [];
+  // Defensive check: Ensure dropProducts is always an array
+  const availableProducts = Array.isArray(dropData?.dropProducts)
+    ? dropData.dropProducts
+    : [];
 
   // If no drop products exist yet, show a message about setup
-  const hasNoDropProducts =
-    !availableProducts || availableProducts.length === 0;
+  const hasNoDropProducts = availableProducts.length === 0;
 
   console.log('🔍 Menu: availableProducts:', availableProducts);
   console.log('🔍 Menu: availableProducts.length:', availableProducts.length);

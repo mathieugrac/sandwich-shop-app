@@ -9,6 +9,12 @@ export async function GET(
     const { id } = await params;
     console.log('🔍 API: Fetching drop products for drop ID:', id);
 
+    // Validate drop ID
+    if (!id || typeof id !== 'string' || id.trim() === '') {
+      console.error('❌ API: Invalid drop ID:', id);
+      return NextResponse.json({ error: 'Invalid drop ID' }, { status: 400 });
+    }
+
     // First get the drop with location information
     const { data: drop, error: dropError } = await supabase
       .from('drops')
@@ -35,6 +41,16 @@ export async function GET(
     }
 
     console.log('✅ API: Drop found:', drop.id, drop.date);
+
+    // Check if drop is accessible (not completed or cancelled)
+    if (drop.status === 'completed' || drop.status === 'cancelled') {
+      console.log('⚠️ API: Drop is not active:', drop.status);
+      // Still return the drop data but with empty products
+      return NextResponse.json({
+        ...drop,
+        dropProducts: [],
+      });
+    }
 
     // Then get the drop products with product information and images
     const { data: dropProducts, error: dropProductsError } = await supabase
@@ -66,6 +82,10 @@ export async function GET(
       count: dropProducts?.length || 0,
       error: dropProductsError,
       dropProducts: dropProducts,
+      dropProductsType: typeof dropProducts,
+      dropProductsIsArray: Array.isArray(dropProducts),
+      dropProductsIsNull: dropProducts === null,
+      dropProductsIsUndefined: dropProducts === undefined,
     });
 
     // If there's an error fetching drop products, log it but don't fail
@@ -74,15 +94,39 @@ export async function GET(
       // Don't return an error, just use empty drop products
     }
 
+    // Ensure dropProducts is always an array - handle null, undefined, and non-array cases
+    let safeDropProducts: typeof dropProducts = [];
+    if (Array.isArray(dropProducts)) {
+      safeDropProducts = dropProducts;
+    } else if (dropProducts === null || dropProducts === undefined) {
+      safeDropProducts = [];
+    } else {
+      console.warn('⚠️ API: dropProducts is not an array, converting to array:', dropProducts);
+      safeDropProducts = [dropProducts];
+    }
+
+    console.log('🔍 API: Safe drop products:', {
+      original: dropProducts,
+      safe: safeDropProducts,
+      safeLength: safeDropProducts.length,
+    });
+
     // Return the complete structure
     const result = {
       ...drop,
-      dropProducts: dropProducts || [],
+      dropProducts: safeDropProducts,
     };
 
     console.log(
       '✅ API: Returning result with drop products count:',
-      result.dropProducts.length
+      result.dropProducts.length,
+      'Result structure:',
+      {
+        hasDropProducts: !!result.dropProducts,
+        dropProductsType: typeof result.dropProducts,
+        dropProductsIsArray: Array.isArray(result.dropProducts),
+        dropProductsLength: result.dropProducts?.length,
+      }
     );
     return NextResponse.json(result);
   } catch (error) {
