@@ -45,6 +45,13 @@ export async function PUT(
     }
 
     // Use the enhanced function from Phase 1
+    console.log('🔍 Calling change_drop_status with params:', {
+      p_drop_id: params.id,
+      p_new_status: newStatus,
+      p_admin_user_id: user.id,
+      user_email: user.email,
+    });
+
     const { data, error } = await supabase.rpc('change_drop_status', {
       p_drop_id: params.id,
       p_new_status: newStatus,
@@ -52,21 +59,24 @@ export async function PUT(
     });
 
     if (error) {
-      console.error('Enhanced function error:', error);
-      console.error('Error details:', {
+      console.error('❌ Enhanced function error:', error);
+      console.error('❌ Error details:', {
         message: error.message,
         details: error.details,
         hint: error.hint,
         code: error.code,
+        fullError: error,
       });
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to change drop status',
-          details: error.message || 'Enhanced function failed'
+          details: error.message || 'Enhanced function failed',
         },
         { status: 500 }
       );
     }
+
+    console.log('✅ Function call successful, result:', data);
 
     if (!data) {
       return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
