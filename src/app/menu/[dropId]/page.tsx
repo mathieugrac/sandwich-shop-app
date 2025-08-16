@@ -31,7 +31,7 @@ export default function MenuPage() {
         console.log('✅ Drop data loaded:', drop);
         console.log(
           '✅ Drop data drop products count:',
-          drop?.dropProducts?.length
+          drop?.drop_products?.length
         );
         setDropData(drop);
       } catch (err) {
@@ -53,7 +53,7 @@ export default function MenuPage() {
     loading,
     error,
     dropData: !!dropData,
-    dropProductsCount: dropData?.dropProducts?.length,
+    dropProductsCount: dropData?.drop_products?.length,
   });
 
   // Check if drop is completed
@@ -61,7 +61,7 @@ export default function MenuPage() {
     dropData?.status === 'completed' || dropData?.status === 'cancelled';
 
   const handleAddToCart = (dropProductId: string) => {
-    const dropProduct = dropData?.dropProducts.find(
+    const dropProduct = dropData?.drop_products.find(
       item => item.id === dropProductId
     );
     if (dropProduct && dropData) {
@@ -104,7 +104,7 @@ export default function MenuPage() {
   };
 
   const getAvailableStock = (dropProductId: string) => {
-    const dropProductItem = dropData?.dropProducts.find(
+    const dropProductItem = dropData?.drop_products.find(
       item => item.id === dropProductId
     );
     return dropProductItem?.available_quantity || 0;
@@ -192,17 +192,17 @@ export default function MenuPage() {
   }
 
   // Filter only products with available stock
-  console.log('🔍 Menu: dropData.dropProducts:', dropData.dropProducts);
+  console.log('🔍 Menu: dropData.drop_products:', dropData.drop_products);
   console.log(
-    '🔍 Menu: dropData.dropProducts.length:',
-    dropData.dropProducts?.length
+    '🔍 Menu: dropData.drop_products.length:',
+    dropData.drop_products?.length
   );
 
   // Temporarily show all products for debugging
-  const availableProducts = dropData.dropProducts || [];
+  const availableProducts = dropData.drop_products || [];
 
   // If no drop products exist yet, show a message about setup
-  const hasNoDropProducts = dropData.dropProducts.length === 0;
+  const hasNoDropProducts = dropData.drop_products.length === 0;
 
   console.log('🔍 Menu: availableProducts:', availableProducts);
   console.log('🔍 Menu: availableProducts.length:', availableProducts.length);

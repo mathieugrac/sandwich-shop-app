@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Admin upcoming drops API response:', {
       dataCount: data?.length || 0,
       firstDrop: data?.[0],
-      sampleData: data?.slice(0, 2).map(d => ({
+      sampleData: data?.slice(0, 2).map((d: { id: string; date: string; status: string; total_available: number }) => ({
         id: d.id,
         date: d.date,
         status: d.status,

@@ -75,7 +75,7 @@ export async function PUT(
         } else {
           throw new Error('No admin user found');
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Admin user doesn't exist, create one
         console.log('🔄 Creating new admin user for:', user.email);
 
@@ -117,12 +117,13 @@ export async function PUT(
         success: true,
         message: `Drop status changed to ${newStatus} successfully`,
       });
-    } catch (rpcError: any) {
+    } catch (rpcError: unknown) {
       console.error('❌ RPC function failed:', rpcError);
+      const errorMessage = rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
       return NextResponse.json(
         {
           error: 'RPC function failed',
-          details: rpcError?.message || 'Unknown RPC error',
+          details: errorMessage,
         },
         { status: 500 }
       );

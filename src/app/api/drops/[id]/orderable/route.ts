@@ -3,8 +3,10 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  
   try {
     // Get the drop details to provide more context
     const { data: drop, error: dropError } = await supabase
@@ -20,7 +22,7 @@ export async function GET(
           pickup_hour_end
         )
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
 
     if (dropError || !drop) {
@@ -33,7 +35,7 @@ export async function GET(
 
     // Use the new enhanced function from Phase 1
     const { data: isOrderable, error: orderableError } = await supabase.rpc('is_drop_orderable', {
-      p_drop_id: params.id,
+      p_drop_id: id,
     });
 
     if (orderableError) {
