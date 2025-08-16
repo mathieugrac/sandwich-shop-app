@@ -46,7 +46,7 @@ export async function sendOrderConfirmationEmail(
     );
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Use Resend's verified sender for testing
+      from: 'orders@fome-sandwiches.com', // Use verified domain for production
       to: data.customerEmail,
       subject: `Order Confirmation - ${data.orderNumber}`,
       html: generateOrderConfirmationEmailHTML(data),
@@ -268,7 +268,7 @@ export async function sendOrderStatusUpdateEmail(
       'Your order status has been updated.';
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Use Resend's verified sender for testing
+      from: 'orders@fome-sandwiches.com', // Use verified domain for production
       to: customerEmail,
       subject: `Order Status Update - ${orderNumber}`,
       html: `
