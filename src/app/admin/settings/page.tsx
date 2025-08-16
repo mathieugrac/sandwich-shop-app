@@ -307,7 +307,7 @@ export default function SettingsPage() {
                     Menu Management
                   </h4>
                   <p className="text-sm text-green-700">
-                    Create sells with custom menus by adding products and
+                    Create drops with custom menus by adding products and
                     setting quantities for each event.
                   </p>
                 </div>

@@ -40,6 +40,9 @@ export interface Drop {
   location_id: string;
   status: 'upcoming' | 'active' | 'completed' | 'cancelled';
   notes: string | null;
+  pickup_deadline: string | null;
+  last_modified_by: string | null;
+  status_changed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -116,15 +119,6 @@ export interface OrderFormData {
 // Extended interfaces for API responses
 export interface DropWithLocation extends Drop {
   location: Location;
-}
-
-export interface DropWithProducts extends Drop {
-  location: Location;
-  dropProducts: Array<
-    DropProduct & {
-      product: Product;
-    }
-  >;
 }
 
 export interface OrderWithDetails extends Order {

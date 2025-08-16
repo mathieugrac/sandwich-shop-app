@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -56,7 +51,7 @@ interface Client {
 interface Order {
   id: string;
   order_number: string;
-  sell_date: string;
+  order_date: string;
   status: string;
   total_amount: number;
   created_at: string;
@@ -94,7 +89,7 @@ export default function ClientsPage() {
   const loadClients = async () => {
     try {
       console.log('🔄 Loading clients...');
-      
+
       // Load clients with order statistics
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
@@ -110,14 +105,17 @@ export default function ClientsPage() {
 
       // For each client, get order statistics
       const clientsWithStats = await Promise.all(
-        (clientsData || []).map(async (client) => {
+        (clientsData || []).map(async client => {
           const { data: ordersData, error: ordersError } = await supabase
             .from('orders')
             .select('id, total_amount')
             .eq('client_id', client.id);
 
           if (ordersError) {
-            console.error(`❌ Error loading orders for client ${client.id}:`, ordersError);
+            console.error(
+              `❌ Error loading orders for client ${client.id}:`,
+              ordersError
+            );
             return {
               ...client,
               total_orders: 0,
@@ -126,7 +124,11 @@ export default function ClientsPage() {
           }
 
           const totalOrders = ordersData?.length || 0;
-          const totalSpent = ordersData?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0;
+          const totalSpent =
+            ordersData?.reduce(
+              (sum, order) => sum + parseFloat(order.total_amount),
+              0
+            ) || 0;
 
           return {
             ...client,
@@ -193,9 +195,7 @@ export default function ClientsPage() {
         if (error) throw error;
       } else {
         // Create new client
-        const { error } = await supabase
-          .from('clients')
-          .insert(clientData);
+        const { error } = await supabase.from('clients').insert(clientData);
 
         if (error) throw error;
       }
@@ -230,17 +230,19 @@ export default function ClientsPage() {
     try {
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
+        .select(
+          `
           id,
-          order_number,
-          sell_date,
-          status,
-          total_amount,
-          created_at,
-          sells (
-            sell_date
-          )
-        `)
+                  order_number,
+        order_date,
+        status,
+        total_amount,
+        created_at,
+        drops (
+          date
+        )
+        `
+        )
         .eq('client_id', client.id)
         .order('created_at', { ascending: false });
 
@@ -282,10 +284,15 @@ export default function ClientsPage() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-              <p className="text-gray-600">Manage customer information and history</p>
+              <p className="text-gray-600">
+                Manage customer information and history
+              </p>
             </div>
           </div>
-          <Button onClick={openCreateModal} className="bg-black hover:bg-gray-800">
+          <Button
+            onClick={openCreateModal}
+            className="bg-black hover:bg-gray-800"
+          >
             <Plus className="w-5 h-5 mr-2" />
             Add Client
           </Button>
@@ -310,7 +317,7 @@ export default function ClientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {clients.map((client) => (
+                {clients.map(client => (
                   <TableRow key={client.id}>
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>
@@ -330,7 +337,9 @@ export default function ClientsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{client.total_orders || 0}</Badge>
+                      <Badge variant="outline">
+                        {client.total_orders || 0}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -374,14 +383,19 @@ export default function ClientsPage() {
         </Card>
 
         {/* Create/Edit Modal */}
-        <Dialog open={showCreateModal || !!editingClient} onOpenChange={closeModal}>
+        <Dialog
+          open={showCreateModal || !!editingClient}
+          onOpenChange={closeModal}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editingClient ? 'Edit Client' : 'Create Client'}
               </DialogTitle>
               <DialogDescription>
-                {editingClient ? 'Update client information' : 'Add a new client'}
+                {editingClient
+                  ? 'Update client information'
+                  : 'Add a new client'}
               </DialogDescription>
             </DialogHeader>
 
@@ -391,7 +405,9 @@ export default function ClientsPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="Client name"
                 />
               </div>
@@ -402,7 +418,9 @@ export default function ClientsPage() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   placeholder="client@example.com"
                 />
               </div>
@@ -412,7 +430,9 @@ export default function ClientsPage() {
                 <Input
                   id="phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={e =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                   placeholder="+1234567890"
                 />
               </div>
@@ -423,7 +443,10 @@ export default function ClientsPage() {
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
-              <Button onClick={saveClient} className="bg-black hover:bg-gray-800">
+              <Button
+                onClick={saveClient}
+                className="bg-black hover:bg-gray-800"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 {editingClient ? 'Update' : 'Create'}
               </Button>
@@ -435,9 +458,7 @@ export default function ClientsPage() {
         <Dialog open={showOrdersModal} onOpenChange={setShowOrdersModal}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>
-                Order History - {selectedClient?.name}
-              </DialogTitle>
+              <DialogTitle>Order History - {selectedClient?.name}</DialogTitle>
               <DialogDescription>
                 View all orders for this client
               </DialogDescription>
@@ -455,9 +476,11 @@ export default function ClientsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {clientOrders.map((order) => (
+                    {clientOrders.map(order => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.order_number}</TableCell>
+                        <TableCell className="font-medium">
+                          {order.order_number}
+                        </TableCell>
                         <TableCell>
                           {new Date(order.created_at).toLocaleDateString()}
                         </TableCell>

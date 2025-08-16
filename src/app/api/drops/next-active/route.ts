@@ -79,7 +79,7 @@ export async function GET() {
         id: dp.products[0]?.id,
         name: dp.products[0]?.name,
         description: dp.products[0]?.description,
-        sell_price: dp.selling_price,
+        selling_price: dp.selling_price,
         category: dp.products[0]?.category,
         active: dp.products[0]?.active,
         sort_order: dp.products[0]?.sort_order,

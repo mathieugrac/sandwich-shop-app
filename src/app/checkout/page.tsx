@@ -260,7 +260,7 @@ export default function CheckoutPage() {
       // More user-friendly error message
       let errorMessage = 'Failed to place order. Please try again.';
       if (error instanceof Error) {
-        if (error.message.includes('No active sell available')) {
+        if (error.message.includes('No active drop available')) {
           errorMessage =
             'Sorry, there are no active orders at the moment. Please try again later.';
         } else if (error.message.includes('Failed to reserve drop products')) {

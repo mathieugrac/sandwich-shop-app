@@ -40,6 +40,12 @@ import {
 
 import { supabase } from '@/lib/supabase/client';
 import {
+  fetchAdminUpcomingDrops,
+  fetchAdminPastDrops,
+  changeDropStatus,
+  calculatePickupDeadline,
+} from '@/lib/api/drops';
+import {
   ArrowLeft,
   Plus,
   Calendar,
@@ -52,6 +58,9 @@ import {
   Package,
   Trash2,
   Edit,
+  Play,
+  Pause,
+  RotateCcw,
 } from 'lucide-react';
 import { Drop, DropWithLocation, Location, Product } from '@/types/database';
 
@@ -69,12 +78,8 @@ interface DropProduct {
 }
 
 export default function DropManagementPage() {
-  const [drops, setDrops] = useState<
-    (DropWithLocation & {
-      drop_products_count?: number;
-      drop_products_total?: number;
-    })[]
-  >([]);
+  const [upcomingDrops, setUpcomingDrops] = useState<DropWithLocation[]>([]);
+  const [pastDrops, setPastDrops] = useState<DropWithLocation[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,77 +137,71 @@ export default function DropManagementPage() {
 
   const loadData = async () => {
     try {
-      console.log('🔄 Loading data...');
+      console.log('🔄 Loading enhanced drop management data...');
 
-      // First, let's check what tables exist
-      console.log('🔍 Checking database structure...');
-
-      // Test basic table access
+      // Try to load drops using enhanced functions first
       try {
-        const { data: testData, error: testError } = await supabase
+        console.log('🔄 Attempting to load drops using enhanced functions...');
+
+        // Load upcoming drops (upcoming + active) using new enhanced function
+        console.log('🔄 Loading upcoming drops...');
+        const upcomingDropsData = await fetchAdminUpcomingDrops();
+        setUpcomingDrops(upcomingDropsData);
+        console.log(
+          '✅ Upcoming drops loaded via enhanced function:',
+          upcomingDropsData
+        );
+
+        // Load past drops (completed + cancelled) using new enhanced function
+        console.log('🔄 Loading past drops...');
+        const pastDropsData = await fetchAdminPastDrops();
+        setPastDrops(pastDropsData);
+        console.log(
+          '✅ Past drops loaded via enhanced function:',
+          pastDropsData
+        );
+      } catch (enhancedError) {
+        console.warn(
+          '⚠️ Enhanced functions not available, falling back to direct database queries:',
+          enhancedError
+        );
+
+        // Fallback: Load all drops directly from database
+        console.log('🔄 Loading drops directly from database...');
+        const { data: allDropsData, error: dropsError } = await supabase
           .from('drops')
-          .select('id')
-          .limit(1);
+          .select(
+            `
+            *,
+            location:locations(*)
+          `
+          )
+          .order('date', { ascending: true });
 
-        if (testError) {
-          console.error('❌ Drops table test failed:', testError);
-        } else {
-          console.log(
-            '✅ Drops table accessible, found rows:',
-            testData?.length || 0
-          );
+        if (dropsError) {
+          console.error('❌ Error loading drops directly:', dropsError);
+          throw dropsError;
         }
-      } catch (testErr) {
-        console.error('❌ Drops table test exception:', testErr);
-      }
 
-      // Load drops with location information
-      console.log('🔄 Loading drops...');
-      const { data: dropsData, error: dropsError } = await supabase
-        .from('drops')
-        .select('*')
-        .order('date', { ascending: true });
+        console.log('✅ All drops loaded directly:', allDropsData);
 
-      // Load inventory counts and totals for each drop
-      let dropsWithInventoryCount = dropsData || [];
-      if (dropsData && dropsData.length > 0) {
-        const { data: dropProductData } = await supabase
-          .from('drop_products')
-          .select('drop_id, stock_quantity');
+        // Separate drops into upcoming/active vs past
+        const upcoming =
+          allDropsData?.filter(
+            drop => drop.status === 'upcoming' || drop.status === 'active'
+          ) || [];
+        const past =
+          allDropsData?.filter(
+            drop => drop.status === 'completed' || drop.status === 'cancelled'
+          ) || [];
 
-        if (dropProductData) {
-          const countMap: { [key: string]: number } = {};
-          const totalMap: { [key: string]: number } = {};
+        setUpcomingDrops(upcoming);
+        setPastDrops(past);
 
-          dropProductData.forEach(item => {
-            if (!countMap[item.drop_id]) {
-              countMap[item.drop_id] = 0;
-              totalMap[item.drop_id] = 0;
-            }
-            if (item.stock_quantity > 0) {
-              countMap[item.drop_id]++;
-            }
-            totalMap[item.drop_id] += item.stock_quantity;
-          });
-
-          dropsWithInventoryCount = dropsData.map(drop => ({
-            ...drop,
-            drop_products_count: countMap[drop.id] || 0,
-            drop_products_total: totalMap[drop.id] || 0,
-          }));
-        }
-      }
-
-      if (dropsError) {
-        console.error('❌ Error loading drops:', dropsError);
-        console.error('❌ Error details:', {
-          message: dropsError.message,
-          details: dropsError.details,
-          hint: dropsError.hint,
-          code: dropsError.code,
+        console.log('✅ Drops separated:', {
+          upcoming: upcoming.length,
+          past: past.length,
         });
-      } else {
-        console.log('✅ Drops loaded:', dropsData);
       }
 
       // Load locations
@@ -215,14 +214,9 @@ export default function DropManagementPage() {
 
       if (locationsError) {
         console.error('❌ Error loading locations:', locationsError);
-        console.error('❌ Error details:', {
-          message: locationsError.message,
-          details: locationsError.details,
-          hint: locationsError.hint,
-          code: locationsError.code,
-        });
       } else {
         console.log('✅ Locations loaded:', locationsData);
+        setLocations(locationsData || []);
       }
 
       // Load products
@@ -235,40 +229,16 @@ export default function DropManagementPage() {
 
       if (productsError) {
         console.error('❌ Error loading products:', productsError);
-        console.error('❌ Error details:', {
-          message: productsError.message,
-          details: productsError.details,
-          hint: productsError.hint,
-          code: productsError.code,
-        });
       } else {
         console.log('✅ Products loaded:', productsData);
+        setProducts(productsData || []);
       }
-
-      // Combine drops with location information
-      if (dropsWithInventoryCount && locationsData) {
-        const dropsWithLocations = dropsWithInventoryCount.map(drop => {
-          const location = locationsData.find(
-            loc => loc.id === drop.location_id
-          );
-          return {
-            ...drop,
-            location: location || null,
-          };
-        });
-        console.log(
-          '✅ Combined drops with locations and inventory counts:',
-          dropsWithLocations
-        );
-        setDrops(dropsWithLocations);
-      } else {
-        setDrops(dropsWithInventoryCount || []);
-      }
-
-      setLocations(locationsData || []);
-      setProducts(productsData || []);
     } catch (error) {
       console.error('❌ Unexpected error in loadData:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to load drop data. Please refresh the page.',
+      });
     } finally {
       setLoading(false);
     }
@@ -293,12 +263,19 @@ export default function DropManagementPage() {
         status: newDropStatus,
       });
 
+      // Calculate pickup deadline automatically
+      const { deadline } = await calculatePickupDeadline(
+        newDropDate,
+        newDropLocation
+      );
+
       const { data: drop, error } = await supabase
         .from('drops')
         .insert({
           date: newDropDate,
           location_id: newDropLocation,
           status: newDropStatus,
+          pickup_deadline: deadline,
         })
         .select()
         .single();
@@ -309,9 +286,6 @@ export default function DropManagementPage() {
       }
 
       console.log('Drop created successfully:', drop);
-
-      // Don't automatically create drop products - let admin manage menu manually
-      // This ensures only selected products are attached to drops
 
       setMessage({
         type: 'success',
@@ -680,23 +654,88 @@ export default function DropManagementPage() {
     }
   };
 
-  const updateDropStatus = async (dropId: string, newStatus: string) => {
+  // Enhanced status change function using new API
+  const handleStatusChange = async (
+    dropId: string,
+    newStatus: Drop['status']
+  ) => {
     try {
-      await supabase
-        .from('drops')
-        .update({ status: newStatus })
-        .eq('id', dropId);
+      setMessage(null);
 
-      // Update local state
-      setDrops(
-        drops.map(drop =>
-          drop.id === dropId
-            ? { ...drop, status: newStatus as Drop['status'] }
-            : drop
-        )
-      );
+      const result = await changeDropStatus(dropId, newStatus);
+
+      if (result.success) {
+        setMessage({
+          type: 'success',
+          text: result.message,
+        });
+
+        // Reload data to reflect changes
+        await loadData();
+      }
     } catch (error) {
-      console.error('Error updating drop status:', error);
+      console.error('Error changing drop status:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to change drop status. Please try again.',
+      });
+    }
+  };
+
+  // Test Phase 1 functions to see what's available
+  const testPhase1Functions = async () => {
+    try {
+      setMessage(null);
+      console.log('🧪 Testing Phase 1 functions...');
+
+      // Test 1: Check if enhanced functions exist
+      try {
+        const upcomingTest = await fetchAdminUpcomingDrops();
+        console.log('✅ fetchAdminUpcomingDrops works:', upcomingTest);
+      } catch (error) {
+        console.log('❌ fetchAdminUpcomingDrops failed:', error);
+      }
+
+      try {
+        const pastTest = await fetchAdminPastDrops();
+        console.log('✅ fetchAdminPastDrops works:', pastTest);
+      } catch (error) {
+        console.log('❌ fetchAdminPastDrops failed:', error);
+      }
+
+      // Test 2: Check direct database access
+      const { data: directDrops, error: directError } = await supabase
+        .from('drops')
+        .select('*')
+        .limit(5);
+
+      if (directError) {
+        console.log('❌ Direct database access failed:', directError);
+      } else {
+        console.log('✅ Direct database access works:', directDrops);
+      }
+
+      // Test 3: Check if pickup_deadline field exists
+      if (directDrops && directDrops.length > 0) {
+        const sampleDrop = directDrops[0];
+        console.log('📊 Sample drop structure:', sampleDrop);
+        console.log('📊 Has pickup_deadline:', 'pickup_deadline' in sampleDrop);
+        console.log(
+          '📊 Has status_changed_at:',
+          'status_changed_at' in sampleDrop
+        );
+      }
+
+      setMessage({
+        type: 'success',
+        text: 'Phase 1 function test completed. Check console for details.',
+      });
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+      setMessage({
+        type: 'error',
+        text: 'Test failed. Check console for details.',
+      });
     }
   };
 
@@ -780,12 +819,21 @@ export default function DropManagementPage() {
               </h1>
             </div>
           </div>
-          <Button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-black hover:bg-gray-800"
-          >
-            Create Drop
-          </Button>
+          <div className="flex space-x-2">
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              className="bg-black hover:bg-gray-800"
+            >
+              Create Drop
+            </Button>
+            <Button
+              onClick={testPhase1Functions}
+              variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              Test Phase 1 Functions
+            </Button>
+          </div>
         </div>
 
         {/* Message */}
@@ -802,6 +850,57 @@ export default function DropManagementPage() {
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Debug Information */}
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">Debug Information</CardTitle>
+            <CardDescription>
+              This section shows debugging info to help troubleshoot the
+              enhanced drop system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              <div>
+                <strong>Upcoming Drops:</strong> {upcomingDrops.length}
+              </div>
+              <div>
+                <strong>Past Drops:</strong> {pastDrops.length}
+              </div>
+              <div>
+                <strong>Total Drops:</strong>{' '}
+                {upcomingDrops.length + pastDrops.length}
+              </div>
+              <div>
+                <strong>Loading State:</strong>{' '}
+                {loading ? 'Loading...' : 'Loaded'}
+              </div>
+              <div>
+                <strong>Locations:</strong> {locations.length}
+              </div>
+              <div>
+                <strong>Products:</strong> {products.length}
+              </div>
+            </div>
+            {upcomingDrops.length > 0 && (
+              <div className="mt-4">
+                <strong>Upcoming Drops Data:</strong>
+                <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                  {JSON.stringify(upcomingDrops, null, 2)}
+                </pre>
+              </div>
+            )}
+            {pastDrops.length > 0 && (
+              <div className="mt-4">
+                <strong>Past Drops Data:</strong>
+                <pre className="mt-2 p-2 bg-gray-2 rounded text-xs overflow-auto">
+                  {JSON.stringify(pastDrops, null, 2)}
+                </pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Create Drop Modal */}
         <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
@@ -881,10 +980,14 @@ export default function DropManagementPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Drops Table */}
+        {/* Upcoming Drops Table (upcoming + active) */}
         <Card>
           <CardHeader>
-            <CardTitle>All Drops</CardTitle>
+            <CardTitle>Upcoming & Active Drops</CardTitle>
+            <CardDescription>
+              Drops that are upcoming (draft mode) or currently active
+              (customers can order)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -893,12 +996,12 @@ export default function DropManagementPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Products</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>Pickup Deadline</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {drops.map(drop => (
+                {upcomingDrops.map(drop => (
                   <TableRow key={drop.id}>
                     <TableCell>
                       <div className="flex flex-col">
@@ -919,20 +1022,56 @@ export default function DropManagementPage() {
                     </TableCell>
                     <TableCell>{getStatusBadge(drop.status)}</TableCell>
                     <TableCell>
-                      <span className="text-gray-600">
-                        {drop.drop_products_total || 0} items
-                      </span>
+                      {drop.pickup_deadline ? (
+                        <span className="text-sm text-gray-600">
+                          {new Date(drop.pickup_deadline).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Not set</span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Status Management Buttons */}
+                        {drop.status === 'upcoming' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() =>
+                              handleStatusChange(drop.id, 'active')
+                            }
+                            className="flex items-center space-x-2"
+                          >
+                            <Play className="w-4 h-4" />
+                            <span>Activate</span>
+                          </Button>
+                        )}
+
+                        {drop.status === 'active' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleStatusChange(drop.id, 'completed')
+                            }
+                            className="flex items-center space-x-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Complete</span>
+                          </Button>
+                        )}
+
+                        {/* Standard Action Buttons */}
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => openInventoryModal(drop)}
                           className="flex items-center space-x-2"
                         >
-                          <span>Manage Menu</span>
+                          <Package className="w-4 h-4" />
+                          <span>Menu</span>
                         </Button>
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -941,8 +1080,9 @@ export default function DropManagementPage() {
                           }
                           className="flex items-center space-x-2"
                         >
-                          <span>View Orders</span>
+                          <span>Orders</span>
                         </Button>
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -950,6 +1090,7 @@ export default function DropManagementPage() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+
                         <Button
                           size="sm"
                           variant="destructive"
@@ -961,6 +1102,114 @@ export default function DropManagementPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {upcomingDrops.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      No upcoming or active drops found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Past Drops Table (completed + cancelled) */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Past Drops</CardTitle>
+            <CardDescription>
+              Completed and cancelled drops. You can reopen completed drops if
+              needed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Completed At</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pastDrops.map(drop => (
+                  <TableRow key={drop.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="text-gray-600">
+                          {formatDate(drop.date)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {drop.location?.name || 'No location'}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(drop.status)}</TableCell>
+                    <TableCell>
+                      {drop.status_changed_at ? (
+                        <span className="text-sm text-gray-600">
+                          {new Date(drop.status_changed_at).toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Unknown</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {/* Reopen Button for Completed Drops */}
+                        {drop.status === 'completed' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              handleStatusChange(drop.id, 'active')
+                            }
+                            className="flex items-center space-x-2"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                            <span>Reopen</span>
+                          </Button>
+                        )}
+
+                        {/* View Orders Button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            router.push(`/admin/orders?drop=${drop.id}`)
+                          }
+                          className="flex items-center space-x-2"
+                        >
+                          <span>View Orders</span>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openEditModal(drop)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {pastDrops.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-8 text-gray-500"
+                    >
+                      No past drops found
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
