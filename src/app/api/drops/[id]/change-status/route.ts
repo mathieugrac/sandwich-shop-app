@@ -59,15 +59,26 @@ export async function PUT(
     // Test if the function exists first
     try {
       // First, ensure the admin user exists in admin_users table
-      const { data: adminUser, error: adminError } = await supabase
-        .from('admin_users')
-        .select('id')
-        .eq('email', user.email)
-        .single();
+      let adminUserId: string;
 
-      if (adminError && adminError.code !== 'PGRST116') {
-        console.error('❌ Error checking admin user:', adminError);
-        // Create admin user if it doesn't exist
+      try {
+        const { data: adminUser, error: adminError } = await supabase
+          .from('admin_users')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+
+        if (adminUser) {
+          // Admin user exists, use their ID
+          adminUserId = adminUser.id;
+          console.log('✅ Found existing admin user:', adminUserId);
+        } else {
+          throw new Error('No admin user found');
+        }
+      } catch (error: any) {
+        // Admin user doesn't exist, create one
+        console.log('🔄 Creating new admin user for:', user.email);
+
         const { data: newAdminUser, error: createError } = await supabase
           .from('admin_users')
           .insert({
@@ -83,10 +94,9 @@ export async function PUT(
           throw createError;
         }
 
-        console.log('✅ Created admin user:', newAdminUser);
+        adminUserId = newAdminUser.id;
+        console.log('✅ Created new admin user:', adminUserId);
       }
-
-      const adminUserId = adminUser?.id || user.id;
 
       const { data: testData, error: testError } = await supabase.rpc(
         'change_drop_status',
