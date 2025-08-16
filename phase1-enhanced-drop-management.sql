@@ -132,10 +132,10 @@ $$ LANGUAGE plpgsql;
 
 -- Get upcoming drops for admin (upcoming + active)
 CREATE OR REPLACE FUNCTION get_admin_upcoming_drops()
-RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID, location_name VARCHAR(100)) AS $$
+RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID, location_name VARCHAR(100), status_changed_at TIMESTAMP WITH TIME ZONE) AS $$
 BEGIN
   RETURN QUERY
-  SELECT d.id, d.date, d.status, d.location_id, l.name as location_name
+  SELECT d.id, d.date, d.status, d.location_id, l.name as location_name, d.status_changed_at
   FROM drops d
   JOIN locations l ON d.location_id = l.id
   WHERE d.status IN ('upcoming', 'active')
@@ -145,10 +145,10 @@ $$ LANGUAGE plpgsql;
 
 -- Get past drops for admin (completed + cancelled)
 CREATE OR REPLACE FUNCTION get_admin_past_drops()
-RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID, location_name VARCHAR(100)) AS $$
+RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID, location_name VARCHAR(100), status_changed_at TIMESTAMP WITH TIME ZONE) AS $$
 BEGIN
   RETURN QUERY
-  SELECT d.id, d.date, d.status, d.location_id, l.name as location_name
+  SELECT d.id, d.date, d.status, d.location_id, l.name as location_name, d.status_changed_at
   FROM drops d
   JOIN locations l ON d.location_id = l.id
   WHERE d.status IN ('completed', 'cancelled')

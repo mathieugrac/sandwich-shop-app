@@ -1047,13 +1047,16 @@ export default function DropManagementPage() {
                           <span>View Orders</span>
                         </Button>
 
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEditModal(drop)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                        {/* Edit Button - Only for non-completed drops */}
+                        {drop.status !== 'completed' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEditModal(drop)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
