@@ -5,6 +5,7 @@
   "installCommand": "npm install",
   "outputDirectory": ".next",
   "regions": ["iad1"],
+  "nodeVersion": "22",
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
@@ -29,4 +30,4 @@
       ]
     }
   ]
-} 
+}
