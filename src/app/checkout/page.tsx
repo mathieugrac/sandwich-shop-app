@@ -358,21 +358,7 @@ export default function CheckoutPage() {
       <PageHeader
         title={
           dropInfo
-            ? `${formatDate(dropInfo.date)} (${formatPickupTime(dropInfo.pickup_hour_start)}${
-                parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 !==
-                parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-                  ? parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12
-                    ? 'am'
-                    : 'pm'
-                  : ''
-              } - ${formatPickupTime(dropInfo.pickup_hour_end)}${
-                parseInt(dropInfo.pickup_hour_start.split(':')[0]) < 12 ===
-                parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-                  ? parseInt(dropInfo.pickup_hour_end.split(':')[0]) < 12
-                    ? 'am'
-                    : 'pm'
-                  : 'pm'
-              })`
+            ? `${formatDate(dropInfo.date)} (${pickupTime || 'Select pickup time'})`
             : 'Customer Information'
         }
         subtitle={
@@ -386,7 +372,7 @@ export default function CheckoutPage() {
       />
 
       <main className="px-5">
-        <div className="space-y-6 py-5">
+        <div className="space-y-5 py-5">
           {/* Drop Validation Status */}
           {isValidatingDrop && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -432,33 +418,32 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Customer Information Form */}
-          <Card className="p-5">
-            <h2 className="text-xl font-semibold mb-5">Your Information</h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="mb-2">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={customerInfo.name}
-                  onChange={e => handleInputChange('name', e.target.value)}
-                  placeholder="Enter your full name"
-                  className={errors.name ? 'border-red-500' : ''}
-                />
-                {errors.name && (
-                  <p className="text-sm text-red-600">{errors.name}</p>
-                )}
-              </div>
+          {/* Name for Order */}
+          <Card className="p-5 shadow-none">
+            <h2 className="text-xl font-semibold mb-4">
+              Which name on your order?
+            </h2>
+            <Input
+              id="name"
+              type="text"
+              value={customerInfo.name}
+              onChange={e => handleInputChange('name', e.target.value)}
+              placeholder="Enter your full name"
+              className={errors.name ? 'border-red-500' : ''}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-600">{errors.name}</p>
+            )}
+          </Card>
 
+          {/* Order Information */}
+          <Card className="p-5 shadow-none">
+            <h2 className="text-xl font-semibold mb-4">
+              Where should we send your confirmation?
+            </h2>
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="mb-2">
-                  Email
-                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -474,66 +459,64 @@ export default function CheckoutPage() {
 
               {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="phone" className="mb-2">
-                  Phone (Optional)
-                </Label>
                 <Input
                   id="phone"
                   type="tel"
                   value={customerInfo.phone}
                   onChange={e => handleInputChange('phone', e.target.value)}
-                  placeholder="+1 (555) 123-4567"
+                  placeholder="+351 912 345 678 (optional)"
                   className={errors.phone ? 'border-red-500' : ''}
                 />
                 {errors.phone && (
                   <p className="text-sm text-red-600">{errors.phone}</p>
                 )}
+                {/* Description */}
+                <p className="text-sm text-gray-600">
+                  Just in case we need to reach you for the order
+                </p>
               </div>
             </form>
           </Card>
 
           {/* Order Summary */}
-          <Card className="p-5">
+          <Card className="p-5 shadow-none">
             <h2 className="text-xl font-semibold mb-5">Order Summary</h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span>Total:</span>
-                  <span className="font-semibold">
-                    €{(totalPrice || 0).toFixed(2)}
-                  </span>
-                </div>
+            <div className="space-y-5">
+              <div className="space-y-3">
                 {(items || []).map(item => (
                   <div key={item.id} className="flex justify-between">
-                    <span className="text-gray-500 text-sm">
+                    <span className="">
                       {item.quantity}x {item.name}
                     </span>
-                    <span className="text-gray-500 text-sm">
+                    <span className="">
                       €{(item.price * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 ))}
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-xl">Total:</span>
+                  <span className="text-xl font-semibold">
+                    €{(totalPrice || 0).toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <Separator />
-              {/* Pickup Time and Special Instructions */}
+
+              {/* Payment Information and Special Instructions */}
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="">Pickup Time:</span>
-                  <span className="font-semibold">{pickupTime}</span>
+                  <span className="text-gray-600 text-sm">
+                    Payment in cash or mbway {dropInfo?.location?.name} during
+                    pickup
+                  </span>
                 </div>
-                {specialInstructions && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Special Instructions:</span>
-                    <span className="font-medium">{specialInstructions}</span>
-                  </div>
-                )}
               </div>
 
               {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading || !isDropValid || isValidatingDrop}
-                className="w-full bg-black text-white py-4 text-lg font-medium mt-4 rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
                 size="lg"
               >

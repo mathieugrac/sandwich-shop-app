@@ -128,6 +128,7 @@ export async function POST(request: Request) {
     }
 
     console.log('API: Order created successfully:', order);
+    console.log('API: Order ID for confirmation:', order.id);
 
     // Create order products linked to drop_products
     const orderProducts = [];
@@ -190,7 +191,7 @@ export async function POST(request: Request) {
       // Don't fail the order if email fails
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       order: {
         id: order.id,
@@ -198,7 +199,10 @@ export async function POST(request: Request) {
         status: order.status,
       },
       message: 'Order created successfully',
-    });
+    };
+
+    console.log('API: Sending response:', response);
+    return NextResponse.json(response);
   } catch (error) {
     console.error('API: Unexpected error:', error);
     return NextResponse.json(
