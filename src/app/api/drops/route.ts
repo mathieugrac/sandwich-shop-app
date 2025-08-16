@@ -31,10 +31,36 @@ export async function GET() {
       );
     }
 
-    console.log('✅ API: Drops fetched successfully:', drops);
-    console.log('✅ API: First drop location data:', drops?.[0]?.location);
+    // Calculate total available quantity for each drop
+    const dropsWithTotal = await Promise.all(
+      drops.map(async drop => {
+        const { data: dropProducts, error: inventoryError } = await supabase
+          .from('drop_products')
+          .select('available_quantity')
+          .eq('drop_id', drop.id);
 
-    return NextResponse.json(drops);
+        if (inventoryError) {
+          console.error('Error fetching drop products:', inventoryError);
+          return { ...drop, total_available: 0 };
+        }
+
+        const total_available =
+          dropProducts?.reduce(
+            (sum, dp) => sum + (dp.available_quantity || 0),
+            0
+          ) || 0;
+
+        return { ...drop, total_available };
+      })
+    );
+
+    console.log('✅ API: Drops fetched successfully:', dropsWithTotal);
+    console.log(
+      '✅ API: First drop location data:',
+      dropsWithTotal?.[0]?.location
+    );
+
+    return NextResponse.json(dropsWithTotal);
   } catch (error) {
     console.error('❌ API: Unexpected error:', error);
     return NextResponse.json(

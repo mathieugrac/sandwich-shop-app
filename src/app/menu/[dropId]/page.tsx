@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { SandwichItem } from '@/components/customer/SandwichItem';
 import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
+import { OrderBanner } from '@/components/customer/OrderBanner';
 import { useCart } from '@/lib/cart-context';
 import { fetchDropWithProducts } from '@/lib/api/drops';
 import { DropWithProducts } from '@/types/database';
@@ -55,20 +56,27 @@ export default function MenuPage() {
     dropProductsCount: dropData?.dropProducts?.length,
   });
 
+  // Check if drop is completed
+  const isDropCompleted =
+    dropData?.status === 'completed' || dropData?.status === 'cancelled';
+
   const handleAddToCart = (dropProductId: string) => {
     const dropProduct = dropData?.dropProducts.find(
       item => item.id === dropProductId
     );
     if (dropProduct && dropData) {
       // Store drop information in localStorage for Cart and Checkout pages
-      localStorage.setItem('currentDrop', JSON.stringify({
-        id: dropData.id, // Store the drop ID for navigation
-        date: dropData.date,
-        location: dropData.location,
-        pickup_hour_start: dropData.location.pickup_hour_start,
-        pickup_hour_end: dropData.location.pickup_hour_end
-      }));
-      
+      localStorage.setItem(
+        'currentDrop',
+        JSON.stringify({
+          id: dropData.id, // Store the drop ID for navigation
+          date: dropData.date,
+          location: dropData.location,
+          pickup_hour_start: dropData.location.pickup_hour_start,
+          pickup_hour_end: dropData.location.pickup_hour_end,
+        })
+      );
+
       addToCart({
         id: dropProduct.id, // Use drop_product.id as cart item ID
         name: dropProduct.product.name,
@@ -202,21 +210,30 @@ export default function MenuPage() {
   return (
     <PageLayout>
       <PageHeader
-        title={`${formatDate(dropData.date)} (${formatPickupTime(dropData.location.pickup_hour_start)}${
-          parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12 !==
-          parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : ''
-        } - ${formatPickupTime(dropData.location.pickup_hour_end)}${
-          parseInt(dropData.location.pickup_hour_start.split(':')[0]) < 12 ===
-          parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-            ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-              ? 'am'
-              : 'pm'
-            : 'pm'
-        })`}
+        title={
+          isDropCompleted
+            ? `${formatDate(dropData.date)}`
+            : `${formatDate(dropData.date)} (${formatPickupTime(dropData.location.pickup_hour_start)}${
+                parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
+                  12 !==
+                parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+                  ? parseInt(
+                      dropData.location.pickup_hour_start.split(':')[0]
+                    ) < 12
+                    ? 'am'
+                    : 'pm'
+                  : ''
+              } - ${formatPickupTime(dropData.location.pickup_hour_end)}${
+                parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
+                  12 ===
+                parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
+                  ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) <
+                    12
+                    ? 'am'
+                    : 'pm'
+                  : 'pm'
+              })`
+        }
         subtitle={`${dropData.location.name}, ${dropData.location.district}`}
         showMapPin={true}
         locationUrl={dropData.location.location_url || undefined}
@@ -225,8 +242,46 @@ export default function MenuPage() {
 
       <main className="px-5">
         <div className="space-y-6 py-5">
+          {/* Order Status Banner - Only show for active drops */}
+          {!isDropCompleted && <OrderBanner dropId={dropId as string} />}
+
           {/* Menu Section */}
-          {hasNoDropProducts ? (
+          {isDropCompleted ? (
+            <div className="text-center py-8">
+              <div className="max-w-md mx-auto">
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-8 h-8 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Drop Finished
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    This drop has finished. You can no longer add items to your
+                    cart.
+                  </p>
+                  <Button
+                    onClick={() => router.push('/')}
+                    className="bg-black text-white hover:bg-gray-800"
+                  >
+                    See upcoming drops
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : hasNoDropProducts ? (
             <div className="text-center py-8">
               <div className="max-w-md mx-auto">
                 <div className="text-center">
@@ -306,8 +361,8 @@ export default function MenuPage() {
         </div>
       </main>
 
-      {/* Sticky Basket Button */}
-      <StickyBasketButton />
+      {/* Sticky Basket Button - Only show for active drops */}
+      {!isDropCompleted && <StickyBasketButton />}
     </PageLayout>
   );
 }
