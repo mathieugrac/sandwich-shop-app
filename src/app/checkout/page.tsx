@@ -39,7 +39,17 @@ export default function CheckoutPage() {
     validateDrop,
     isDropValid,
     dropValidationError,
+    isInitialized,
   } = useCart();
+
+  // Debug logging
+  console.log('Checkout: Cart context values:', {
+    items,
+    totalPrice,
+    isInitialized,
+    isDropValid,
+    dropValidationError,
+  });
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     email: '',
@@ -84,8 +94,8 @@ export default function CheckoutPage() {
         const parsedDrop = JSON.parse(savedDrop);
         setDropInfo(parsedDrop);
 
-        // Validate the drop if we have an ID
-        if (parsedDrop.id) {
+        // Validate the drop if we have an ID and cart is initialized
+        if (parsedDrop.id && isInitialized && validateDrop) {
           setIsValidatingDrop(true);
           validateDrop(parsedDrop.id).finally(() => {
             setIsValidatingDrop(false);
@@ -95,7 +105,7 @@ export default function CheckoutPage() {
         console.error('Error parsing drop info:', error);
       }
     }
-  }, [validateDrop]);
+  }, [validateDrop, isInitialized]);
 
   // Save customer info to localStorage
   const saveCustomerInfo = (info: CustomerInfo) => {
@@ -203,13 +213,13 @@ export default function CheckoutPage() {
         customerPhone: formattedPhone,
         pickupTime: pickupTime,
         pickupDate: new Date().toISOString().split('T')[0],
-        items: items.map(item => ({
+        items: (items || []).map(item => ({
           id: item.dropProductId, // Use drop_product_id for the API
           quantity: item.quantity,
           price: item.price,
         })),
         specialInstructions: specialInstructions,
-        totalAmount: totalPrice,
+        totalAmount: totalPrice || 0,
       };
 
       console.log('Checkout: Sending order data:', orderData);
@@ -246,17 +256,19 @@ export default function CheckoutPage() {
         orderNumber: result.order.order_number,
         pickupTime: pickupTime,
         pickupDate: new Date().toISOString().split('T')[0], // Today's date
-        items: items.map(item => ({
+        items: (items || []).map(item => ({
           name: item.name,
           quantity: item.quantity,
         })),
-        totalAmount: totalPrice,
+        totalAmount: totalPrice || 0,
       };
       console.log('Checkout: Saving active order:', activeOrder);
       localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
 
       // Clear cart and localStorage
-      clearCart();
+      if (clearCart) {
+        clearCart();
+      }
       localStorage.removeItem('pickupTime');
       localStorage.removeItem('specialInstructions');
       localStorage.removeItem('currentDrop'); // Also clear drop info
@@ -320,12 +332,24 @@ export default function CheckoutPage() {
 
   // If cart is empty, redirect to home
   useEffect(() => {
-    if (items.length === 0) {
+    if (isInitialized && items && items.length === 0) {
       router.push('/');
     }
-  }, [items.length, router]);
+  }, [isInitialized, items, router]);
 
-  if (items.length === 0) {
+  // Wait for cart to be initialized and items to be loaded before rendering
+  if (!isInitialized) {
+    return (
+      <PageLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <LoadingSpinner />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // If cart is empty, redirect to home
+  if (!items || items.length === 0) {
     return null; // Will redirect
   }
 
@@ -476,10 +500,10 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span>Total:</span>
                   <span className="font-semibold">
-                    €{totalPrice.toFixed(2)}
+                    €{(totalPrice || 0).toFixed(2)}
                   </span>
                 </div>
-                {items.map(item => (
+                {(items || []).map(item => (
                   <div key={item.id} className="flex justify-between">
                     <span className="text-gray-500 text-sm">
                       {item.quantity}x {item.name}

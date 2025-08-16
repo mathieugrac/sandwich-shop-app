@@ -38,16 +38,26 @@ interface CartContextType {
   validateDrop: (dropId: string) => Promise<DropValidation>;
   isDropValid: boolean;
   dropValidationError?: string;
+  isInitialized: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
   // Initialize cart from localStorage if available
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window !== 'undefined') {
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Initialize cart after component mounts to avoid SSR issues
+  React.useEffect(() => {
+    console.log('🔄 Cart context: Initializing cart...');
+    if (typeof window !== 'undefined' && !isInitialized) {
       try {
         const savedCart = localStorage.getItem('sandwich-shop-cart');
+        console.log(
+          '🔄 Cart context: Saved cart from localStorage:',
+          savedCart
+        );
         if (savedCart) {
           const parsedCart = JSON.parse(savedCart);
 
@@ -73,16 +83,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
           });
 
           console.log('📦 Cart loaded from localStorage:', migratedCart);
-          return migratedCart;
+          setItems(migratedCart);
+        } else {
+          console.log(
+            '📦 Cart context: No saved cart found, starting with empty cart'
+          );
         }
-        return [];
+        setIsInitialized(true);
+        console.log('✅ Cart context: Initialization complete');
       } catch (error) {
-        console.error('Error loading cart from localStorage:', error);
-        return [];
+        console.error(
+          '❌ Cart context: Error loading cart from localStorage:',
+          error
+        );
+        setIsInitialized(true);
       }
+    } else {
+      console.log(
+        '🔄 Cart context: Skipping initialization - window not available or already initialized'
+      );
     }
-    return [];
-  });
+  }, [isInitialized]);
 
   const [isDropValid, setIsDropValid] = useState(true);
   const [dropValidationError, setDropValidationError] = useState<
@@ -91,7 +112,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Helper function to save cart to localStorage
   const saveCartToStorage = useCallback((cartItems: CartItem[]) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && cartItems) {
       try {
         localStorage.setItem('sandwich-shop-cart', JSON.stringify(cartItems));
       } catch (error) {
@@ -102,16 +123,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = (newItem: Omit<CartItem, 'quantity'>) => {
     setItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === newItem.id);
+      const currentItems = prevItems || [];
+      const existingItem = currentItems.find(item => item.id === newItem.id);
       let newItems;
       if (existingItem) {
-        newItems = prevItems.map(item =>
+        newItems = currentItems.map(item =>
           item.id === newItem.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
-        newItems = [...prevItems, { ...newItem, quantity: 1 }];
+        newItems = [...currentItems, { ...newItem, quantity: 1 }];
       }
       // Save to localStorage
       saveCartToStorage(newItems);
@@ -121,7 +143,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = (id: string) => {
     setItems(prevItems => {
-      const newItems = prevItems.filter(item => item.id !== id);
+      const currentItems = prevItems || [];
+      const newItems = currentItems.filter(item => item.id !== id);
       saveCartToStorage(newItems);
       return newItems;
     });
@@ -130,14 +153,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
       setItems(prevItems => {
-        const newItems = prevItems.filter(item => item.id !== id);
+        const currentItems = prevItems || [];
+        const newItems = currentItems.filter(item => item.id !== id);
         saveCartToStorage(newItems);
         return newItems;
       });
       return;
     }
     setItems(prevItems => {
-      const newItems = prevItems.map(item =>
+      const currentItems = prevItems || [];
+      const newItems = currentItems.map(item =>
         item.id === id ? { ...item, quantity } : item
       );
       saveCartToStorage(newItems);
@@ -197,7 +222,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Clean up expired cart items on mount
   React.useEffect(() => {
-    if (items.length > 0) {
+    if (items && items.length > 0) {
       // Check if any items are from expired drops
       const checkExpiredItems = async () => {
         try {
@@ -228,36 +253,45 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, validateDrop]);
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce(
+  const totalItems = (items || []).reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
+  const totalPrice = (items || []).reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
+  const contextValue = {
+    items: items || [],
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    totalItems,
+    totalPrice,
+    validateDrop,
+    isDropValid,
+    dropValidationError,
+    isInitialized,
+  };
+
+  console.log('🔄 Cart context: Providing context value:', contextValue);
+
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        totalItems,
-        totalPrice,
-        validateDrop,
-        isDropValid,
-        dropValidationError,
-      }}
-    >
-      {children}
-    </CartContext.Provider>
+    <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>
   );
 }
 
 export function useCart() {
   const context = useContext(CartContext);
+  console.log('🔄 useCart hook called, context:', context);
   if (context === undefined) {
+    console.error(
+      '❌ useCart hook: Context is undefined - not within CartProvider'
+    );
     throw new Error('useCart must be used within a CartProvider');
   }
+  console.log('✅ useCart hook: Returning context:', context);
   return context;
 }
