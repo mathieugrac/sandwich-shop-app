@@ -52,7 +52,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const parsedCart = JSON.parse(savedCart);
 
           // Handle backward compatibility for cart items without dropId
-          const migratedCart = parsedCart.map((item: any) => {
+          const migratedCart = parsedCart.map((item: CartItem) => {
             if (!item.dropId && item.dropProductId) {
               // For backward compatibility, try to get dropId from currentDrop in localStorage
               try {
