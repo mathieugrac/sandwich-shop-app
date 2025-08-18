@@ -181,12 +181,14 @@ export async function POST(request: Request) {
     console.log('🔍 Debug: Sending confirmation email...');
     try {
       // Transform items to match email function expectations
-      const emailItems = items.map((item: any) => ({
-        productName: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        totalPrice: item.price * item.quantity,
-      }));
+      const emailItems = items.map(
+        (item: { name: string; quantity: number; price: number }) => ({
+          productName: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.price * item.quantity,
+        })
+      );
 
       await sendOrderConfirmationEmail({
         orderNumber: order.order_number,
