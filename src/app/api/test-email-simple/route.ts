@@ -9,7 +9,7 @@ export async function GET() {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { data, error } = await resend.emails.send({
-      from: 'orders@fome-sandes.pt', // Use your verified domain
+      from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
       to: 'mathieugrac@gmail.com', // Your admin email
       subject: 'Test Email from Fomé - ' + new Date().toISOString(),
       html: `
@@ -35,7 +35,7 @@ export async function GET() {
       message: 'Test email sent successfully',
       emailId: data?.id,
       to: 'mathieugrac@gmail.com',
-      from: 'orders@fome-sandes.pt',
+      from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
     });
   } catch (error) {
     console.error('❌ Unexpected error:', error);

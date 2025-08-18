@@ -75,7 +75,7 @@ function generateOrderConfirmationEmailHTML(
   const shopName = process.env.NEXT_PUBLIC_SHOP_NAME || 'Your Sandwich Shop';
   const shopPhone = process.env.NEXT_PUBLIC_SHOP_PHONE || '+1234567890';
   const shopEmail =
-    process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@yourdomain.com';
+    process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt';
 
   return `
     <!DOCTYPE html>
@@ -268,7 +268,7 @@ export async function sendOrderStatusUpdateEmail(
       'Your order status has been updated.';
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'orders@fome-sandwiches.com', // Use verified domain for production
+      from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
       to: customerEmail,
       subject: `Order Status Update - ${orderNumber}`,
       html: `

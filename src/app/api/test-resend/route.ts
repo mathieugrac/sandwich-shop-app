@@ -6,23 +6,29 @@ export async function GET() {
     console.log('Testing Resend configuration...');
     console.log('API Key present:', !!process.env.RESEND_API_KEY);
     console.log('API Key length:', process.env.RESEND_API_KEY?.length);
-    console.log('API Key starts with:', process.env.RESEND_API_KEY?.substring(0, 10));
-    
+    console.log(
+      'API Key starts with:',
+      process.env.RESEND_API_KEY?.substring(0, 10)
+    );
+
     if (!process.env.RESEND_API_KEY) {
-      return NextResponse.json({ 
-        error: 'RESEND_API_KEY is missing',
-        envCheck: {
-          RESEND_API_KEY: 'Missing',
-          NODE_ENV: process.env.NODE_ENV
-        }
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'RESEND_API_KEY is missing',
+          envCheck: {
+            RESEND_API_KEY: 'Missing',
+            NODE_ENV: process.env.NODE_ENV,
+          },
+        },
+        { status: 500 }
+      );
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Test with a simple email
     const { data, error } = await resend.emails.send({
-      from: 'orders@fome-sandes.pt', // Use your verified domain
+      from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
       to: 'mathieugrac@gmail.com', // Your admin email
       subject: 'Test Email from Fomé - ' + new Date().toISOString(),
       html:
