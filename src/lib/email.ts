@@ -53,7 +53,13 @@ export async function sendOrderConfirmationEmail(
     });
 
     if (error) {
-      console.error('Failed to send email:', error);
+      console.error('❌ Email sending failed:', error);
+      console.error('❌ Email details:', {
+        from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
+        to: data.customerEmail,
+        subject: `Order Confirmation - ${data.orderNumber}`,
+        errorMessage: error.message,
+      });
       // Don't throw error, just log it and return null
       // This prevents order creation from failing due to email issues
       return null;

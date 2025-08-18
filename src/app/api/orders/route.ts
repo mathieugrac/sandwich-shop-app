@@ -112,10 +112,47 @@ export async function POST(request: Request) {
 
     console.log('✅ Debug: Order created successfully:', order);
 
-    // Create order products
-    console.log('🔍 Debug: Creating order products...');
+    // Create order products and reserve inventory
+    console.log('🔍 Debug: Creating order products and reserving inventory...');
     const orderProducts = [];
+
+    // First, reserve inventory for each item
     for (const item of items) {
+      console.log(
+        `🔍 Debug: Reserving ${item.quantity} units for drop_product_id: ${item.id}`
+      );
+
+      const { data: reservationResult, error: reservationError } =
+        await supabase.rpc('reserve_drop_product_inventory', {
+          p_drop_product_id: item.id,
+          p_quantity: item.quantity,
+        });
+
+      if (reservationError) {
+        console.error(
+          '❌ Debug: Inventory reservation error:',
+          reservationError
+        );
+        return NextResponse.json(
+          { error: 'Insufficient inventory available' },
+          { status: 400 }
+        );
+      }
+
+      if (!reservationResult) {
+        console.error(
+          '❌ Debug: Inventory reservation failed - insufficient stock'
+        );
+        return NextResponse.json(
+          { error: 'Insufficient inventory available' },
+          { status: 400 }
+        );
+      }
+
+      console.log(
+        `✅ Debug: Inventory reserved successfully for item ${item.id}`
+      );
+
       orderProducts.push({
         order_id: order.id,
         drop_product_id: item.id,
