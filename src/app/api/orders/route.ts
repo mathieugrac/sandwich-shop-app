@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 
+// Working order creation with real drop product IDs
 export async function POST(request: Request) {
   try {
     console.log('🔍 Debug: Starting order creation...');
