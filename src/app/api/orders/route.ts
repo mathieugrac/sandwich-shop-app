@@ -138,10 +138,8 @@ export async function POST(request: Request) {
 
     if (orderProductsError) {
       console.error('Error creating order products:', orderProductsError);
-      return NextResponse.json(
-        { error: 'Failed to create order products' },
-        { status: 500 }
-      );
+      // Temporarily bypass this error for debugging
+      console.log('Bypassing order products error for debugging');
     }
 
     // Reserve inventory for each item using the new drop-based function
@@ -160,8 +158,8 @@ export async function POST(request: Request) {
           item.id,
           reserveError
         );
-        // Don't fail the order - just log the error
-        // The inventory system will handle this gracefully
+        // Temporarily bypass inventory reservation for debugging
+        console.log('Bypassing inventory reservation error for debugging');
       }
     }
 
