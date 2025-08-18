@@ -581,3 +581,25 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 - **Test Emails:** Can only send test emails to `mathieugrac@gmail.com` (verified email)
 - **Production Setup:** Update `from` address in `src/lib/email.ts` to use verified domain
 - **Error Handling:** Need to improve error handling for email failures (currently logs but doesn’t fail orders)
+
+
+### **🚨 CRITICAL SECURITY TASK - ROTATE API KEYS:**
+
+**URGENT:** API keys were exposed in Git history and need to be rotated:
+
+1. **Supabase API Keys:**
+   - Go to Supabase Dashboard → Settings → API
+   - Generate new anon key and service role key
+   - Update `.env.local` and Vercel environment variables
+
+2. **Resend API Key:**
+   - Go to Resend Dashboard → API Keys
+   - Generate new API key
+   - Update `.env.local` and Vercel environment variables
+
+3. **After rotation:**
+   - Test email functionality
+   - Test order creation
+   - Verify admin dashboard works
+
+**⚠️ DO NOT FORGET:** This is critical for security - rotate keys ASAP!
