@@ -46,7 +46,7 @@ export async function sendOrderConfirmationEmail(
     );
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'orders@fome-sandwiches.com', // Use verified domain for production
+      from: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt', // Use verified domain for production
       to: data.customerEmail,
       subject: `Order Confirmation - ${data.orderNumber}`,
       html: generateOrderConfirmationEmailHTML(data),
