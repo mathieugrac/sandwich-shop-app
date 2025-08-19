@@ -1,12 +1,12 @@
 'use client';
 
-import { DropWithLocation } from '@/types/database';
+import { DropWithCalculatedFields } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface DropItemProps {
-  drop: DropWithLocation;
+  drop: DropWithCalculatedFields;
   formatDate: (dateString: string) => { day: number; month: string };
   formatPickupDeadline: (deadlineString: string | null) => string | null;
   getStatusColor: (status: string, deadline: string | null) => string;

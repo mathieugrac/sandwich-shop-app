@@ -1,7 +1,40 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 
-export async function GET() {
+// Types for Supabase response structure
+interface DropProductWithProduct {
+  id: string;
+  stock_quantity: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  selling_price: number;
+  products: {
+    id: string;
+    name: string;
+    description: string | null;
+    category: 'sandwich' | 'side' | 'dessert' | 'beverage';
+    active: boolean;
+    sort_order: number;
+  }[];
+}
+
+interface DropWithProductsAndLocation {
+  id: string;
+  date: string;
+  status: string;
+  pickup_deadline: string | null;
+  locations: {
+    id: string;
+    name: string;
+    address: string;
+    location_url: string | null;
+    pickup_hour_start: string;
+    pickup_hour_end: string;
+  };
+  drop_products: DropProductWithProduct[];
+}
+
+export async function GET(request: NextRequest) {
   try {
     // Single query to get next active drop with all related data
     const { data: dropData, error: dropError } = await supabase
@@ -58,17 +91,17 @@ export async function GET() {
 
     // Filter active products and transform data
     const products = dropData.drop_products
-      .filter(dp => dp.products.active)
-      .sort((a, b) => a.products.sort_order - b.products.sort_order)
-      .map(dp => ({
+      .filter((dp: DropProductWithProduct) => dp.products?.[0]?.active)
+      .sort((a: DropProductWithProduct, b: DropProductWithProduct) => (a.products?.[0]?.sort_order || 0) - (b.products?.[0]?.sort_order || 0))
+      .map((dp: DropProductWithProduct) => ({
         id: dp.id,
-        name: dp.products.name,
-        description: dp.products.description,
+        name: dp.products?.[0]?.name || '',
+        description: dp.products?.[0]?.description || null,
         selling_price: dp.selling_price,
-        category: dp.products.category,
-        active: dp.products.active,
-        sort_order: dp.products.sort_order,
-        availableStock: dp.available_quantity,
+        category: dp.products?.[0]?.category || 'sandwich',
+        active: dp.products?.[0]?.active || false,
+        sort_order: dp.products?.[0]?.sort_order || 0,
+        availableStock: dp.available_quantity || 0,
       }));
 
     // Calculate time until pickup deadline

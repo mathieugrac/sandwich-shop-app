@@ -1,6 +1,6 @@
 'use client';
 
-import { DropWithLocation } from '@/types/database';
+import { DropWithCalculatedFields } from '@/types/database';
 import { Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { fetchDrops } from '@/lib/api/drops';
@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { DropItem } from './DropItem';
 
 export function UpcomingDrops() {
-  const [drops, setDrops] = useState<DropWithLocation[]>([]);
+  const [drops, setDrops] = useState<DropWithCalculatedFields[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

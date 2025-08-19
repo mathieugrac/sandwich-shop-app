@@ -1,3 +1,4 @@
+// Core database types - these match the actual database schema
 export interface Product {
   id: string;
   name: string;
@@ -98,34 +99,23 @@ export interface AdminUser {
   created_at: string;
 }
 
-export interface CartItem {
-  product: Product;
-  quantity: number;
-}
-
-export interface OrderFormData {
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  pickupTime: string;
-  items: Array<{
-    productId: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-  specialInstructions?: string;
-}
-
-// Extended interfaces for API responses
+// Extended types for specific use cases - simplified and consolidated
 export interface DropWithLocation extends Drop {
   location: Location;
-  total_available?: number;
 }
 
-// Interface for admin drops returned by new database functions
-export interface AdminDrop extends Drop {
-  location_name: string;
+// Type for drops with calculated fields from API responses
+export interface DropWithCalculatedFields extends DropWithLocation {
   total_available: number;
+}
+
+export interface DropWithProducts extends Drop {
+  location: Location;
+  dropProducts: Array<DropProduct & {
+    product: Product & {
+      product_images?: ProductImage[];
+    };
+  }>;
 }
 
 export interface OrderWithDetails extends Order {
@@ -140,30 +130,8 @@ export interface OrderWithDetails extends Order {
   >;
 }
 
-export interface ProductWithImages extends Product {
-  images: ProductImage[];
-}
-
-// New interfaces for the improved data model
-export interface DropProductWithProduct extends DropProduct {
-  product: Product & {
-    product_images?: ProductImage[];
-  };
-}
-
-export interface OrderProductWithDetails extends OrderProduct {
-  drop_product: DropProductWithProduct;
-}
-
-export interface DropWithProducts extends Drop {
-  location: Location;
-  dropProducts: DropProductWithProduct[];
-}
-
-export interface ClientWithOrders extends Client {
-  orders: Order[];
-}
-
-export interface LocationWithDrops extends Location {
-  drops: Drop[];
+// Admin-specific types - simplified from complex extended types
+export interface AdminDrop extends Drop {
+  location_name: string;
+  total_available: number;
 }

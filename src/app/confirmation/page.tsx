@@ -7,7 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Clock, MapPin, ArrowLeft } from 'lucide-react';
 
-interface CartItem {
+// Simple type for confirmation page cart items
+interface ConfirmationCartItem {
   id: string;
   name: string;
   price: number;
@@ -16,7 +17,7 @@ interface CartItem {
 }
 
 interface ParsedOrder {
-  items?: CartItem[];
+  items?: ConfirmationCartItem[];
   comment?: string;
   totalAmount?: number;
   pickupTime?: string;
@@ -108,7 +109,7 @@ function ConfirmationContent() {
 
           console.log('activeOrder:', activeOrder);
 
-          let cartItems: CartItem[] | null = null;
+          let cartItems: ConfirmationCartItem[] | null = null;
           let cartComment = '';
           let totalAmount = 0;
 
@@ -120,13 +121,15 @@ function ConfirmationContent() {
 
               // Handle the actual structure from activeOrder
               if (parsedOrder.items) {
-                cartItems = parsedOrder.items.map((item: CartItem) => ({
-                  id: item.id || Math.random().toString(),
-                  name: item.name,
-                  price: item.price || 0,
-                  quantity: item.quantity,
-                  description: item.description || '',
-                }));
+                cartItems = parsedOrder.items.map(
+                  (item: ConfirmationCartItem) => ({
+                    id: item.id || Math.random().toString(),
+                    name: item.name,
+                    price: item.price || 0,
+                    quantity: item.quantity,
+                    description: item.description || '',
+                  })
+                );
               }
 
               cartComment = parsedOrder.comment || '';
@@ -194,7 +197,7 @@ function ConfirmationContent() {
               totalAmount ||
               (cartItems && cartItems.length > 0
                 ? cartItems.reduce(
-                    (total: number, item: CartItem) =>
+                    (total: number, item: ConfirmationCartItem) =>
                       total + item.price * item.quantity,
                     0
                   )
@@ -203,7 +206,7 @@ function ConfirmationContent() {
             created_at: new Date().toISOString(),
             order_items:
               cartItems && cartItems.length > 0
-                ? cartItems.map((item: CartItem) => ({
+                ? cartItems.map((item: ConfirmationCartItem) => ({
                     id: item.id,
                     quantity: item.quantity,
                     unit_price: item.price,

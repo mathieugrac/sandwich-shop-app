@@ -8,7 +8,7 @@ import React, {
   useCallback,
 } from 'react';
 
-interface CartItem {
+export interface CartItem {
   id: string; // This will be the drop_product.id
   name: string;
   price: number;

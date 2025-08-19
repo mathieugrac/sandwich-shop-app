@@ -1,22 +1,21 @@
 import {
   Drop,
-  DropWithLocation,
-  Location,
-  Product,
   DropWithProducts,
   AdminDrop,
+  DropWithCalculatedFields,
 } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
 
-export interface NextActiveDrop {
-  drop: {
-    id: string;
-    date: string;
-    status: string;
-    pickup_deadline: string | null;
-    time_until_deadline: string | null;
-    location: Location;
-  };
+export async function fetchDrops(): Promise<DropWithCalculatedFields[]> {
+  const response = await fetch('/api/drops');
+  if (!response.ok) {
+    throw new Error('Failed to fetch drops');
+  }
+  return response.json();
+}
+
+export async function fetchNextActiveDrop(): Promise<{
+  drop: DropWithCalculatedFields;
   products: Array<{
     id: string;
     name: string;
@@ -27,17 +26,7 @@ export interface NextActiveDrop {
     sort_order: number;
     availableStock: number;
   }>;
-}
-
-export async function fetchDrops(): Promise<DropWithLocation[]> {
-  const response = await fetch('/api/drops');
-  if (!response.ok) {
-    throw new Error('Failed to fetch drops');
-  }
-  return response.json();
-}
-
-export async function fetchNextActiveDrop(): Promise<NextActiveDrop | null> {
+} | null> {
   const response = await fetch('/api/drops/next-active');
   if (!response.ok) {
     throw new Error('Failed to fetch next active drop');
@@ -193,9 +182,7 @@ export async function isDropOrderable(
   return response.json();
 }
 
-export async function fetchFutureDrops(): Promise<
-  Array<DropWithLocation & { total_available: number }>
-> {
+export async function fetchFutureDrops(): Promise<DropWithCalculatedFields[]> {
   const response = await fetch('/api/drops/future');
   if (!response.ok) {
     throw new Error('Failed to fetch future drops');
