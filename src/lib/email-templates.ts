@@ -48,6 +48,7 @@ function handleLoops(template: string, data: TemplateData): string {
   
   return template.replace(eachRegex, (match, arrayName, content) => {
     const array = data[arrayName];
+    
     if (!Array.isArray(array)) {
       return '';
     }

@@ -215,6 +215,7 @@ export default function CheckoutPage() {
         pickupDate: new Date().toISOString().split('T')[0],
         items: (items || []).map(item => ({
           id: item.dropProductId, // Use drop_product_id for the API
+          name: item.name, // Add the missing name field
           quantity: item.quantity,
           price: item.price,
         })),
