@@ -3,27 +3,8 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    // Use the new enhanced function from Phase 1
-    const { data: drops, error: dropsError } = await supabase.rpc(
-      'get_next_active_drop'
-    );
-
-    if (dropsError) {
-      console.error('Error fetching next active drop:', dropsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch next active drop' },
-        { status: 500 }
-      );
-    }
-
-    if (!drops || drops.length === 0) {
-      return NextResponse.json(null);
-    }
-
-    const drop = drops[0];
-
-    // Get the full drop details including pickup_deadline
-    const { data: dropDetails, error: dropDetailsError } = await supabase
+    // Single query to get next active drop with all related data
+    const { data: dropData, error: dropError } = await supabase
       .from('drops')
       .select(
         `
@@ -39,69 +20,61 @@ export async function GET() {
           location_url,
           pickup_hour_start,
           pickup_hour_end
+        ),
+        drop_products!inner (
+          id,
+          stock_quantity,
+          reserved_quantity,
+          available_quantity,
+          selling_price,
+          products!inner (
+            id,
+            name,
+            description,
+            category,
+            active,
+            sort_order
+          )
         )
       `
       )
-      .eq('id', drop.id)
+      .eq('status', 'active')
+      .gte('date', new Date().toISOString().split('T')[0])
+      .order('date', { ascending: true })
+      .limit(1)
       .single();
 
-    if (dropDetailsError || !dropDetails) {
-      console.error('Error fetching drop details:', dropDetailsError);
+    if (dropError || !dropData) {
+      if (dropError.code === 'PGRST116') {
+        // No active drops found
+        return NextResponse.json(null);
+      }
+      console.error('Error fetching next active drop:', dropError);
       return NextResponse.json(
-        { error: 'Failed to fetch drop details' },
+        { error: 'Failed to fetch next active drop' },
         { status: 500 }
       );
     }
 
-    // Get products with inventory for this drop
-    const { data: dropProducts, error: inventoryError } = await supabase
-      .from('drop_products')
-      .select(
-        `
-        id,
-        stock_quantity,
-        reserved_quantity,
-        available_quantity,
-        selling_price,
-        products (
-          id,
-          name,
-          description,
-          category,
-          active,
-          sort_order
-        )
-      `
-      )
-      .eq('drop_id', drop.id)
-      .eq('products.active', true)
-      .order('products.sort_order', { ascending: true });
-
-    if (inventoryError) {
-      console.error('Error fetching drop inventory:', inventoryError);
-      return NextResponse.json(
-        { error: 'Failed to fetch drop inventory' },
-        { status: 500 }
-      );
-    }
-
-    // Transform the data to match the expected format
-    const products =
-      dropProducts?.map(dp => ({
-        id: dp.products[0]?.id,
-        name: dp.products[0]?.name,
-        description: dp.products[0]?.description,
+    // Filter active products and transform data
+    const products = dropData.drop_products
+      .filter(dp => dp.products.active)
+      .sort((a, b) => a.products.sort_order - b.products.sort_order)
+      .map(dp => ({
+        id: dp.id,
+        name: dp.products.name,
+        description: dp.products.description,
         selling_price: dp.selling_price,
-        category: dp.products[0]?.category,
-        active: dp.products[0]?.active,
-        sort_order: dp.products[0]?.sort_order,
+        category: dp.products.category,
+        active: dp.products.active,
+        sort_order: dp.products.sort_order,
         availableStock: dp.available_quantity,
-      })) || [];
+      }));
 
     // Calculate time until pickup deadline
     let timeUntilDeadline = null;
-    if (dropDetails.pickup_deadline) {
-      const deadline = new Date(dropDetails.pickup_deadline);
+    if (dropData.pickup_deadline) {
+      const deadline = new Date(dropData.pickup_deadline);
       const now = new Date();
       const diffMs = deadline.getTime() - now.getTime();
       
@@ -119,12 +92,12 @@ export async function GET() {
 
     const result = {
       drop: {
-        id: dropDetails.id,
-        date: dropDetails.date,
-        status: dropDetails.status,
-        pickup_deadline: dropDetails.pickup_deadline,
+        id: dropData.id,
+        date: dropData.date,
+        status: dropData.status,
+        pickup_deadline: dropData.pickup_deadline,
         time_until_deadline: timeUntilDeadline,
-        location: dropDetails.locations,
+        location: dropData.locations,
       },
       products,
     };

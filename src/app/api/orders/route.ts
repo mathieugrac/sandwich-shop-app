@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 
-// Working order creation with real drop product IDs
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-
     const {
       customerName,
       customerEmail,
@@ -24,8 +22,7 @@ export async function POST(request: Request) {
       !customerEmail ||
       !pickupTime ||
       !pickupDate ||
-      !items ||
-      items.length === 0
+      !items?.length
     ) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -33,41 +30,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the next active drop
-    const { data: nextDrop, error: dropError } = await supabase.rpc(
-      'get_next_active_drop'
-    );
+    // Get active drop with location in single query
+    const { data: activeDrop, error: dropError } = await supabase
+      .from('drops')
+      .select(
+        `
+        id,
+        location_id,
+        locations (
+          name,
+          address,
+          location_url
+        )
+      `
+      )
+      .eq('status', 'active')
+      .gte('date', new Date().toISOString().split('T')[0])
+      .order('date', { ascending: true })
+      .limit(1)
+      .single();
 
-    if (dropError || !nextDrop || nextDrop.length === 0) {
-      console.error('Error getting next active drop:', dropError);
+    if (dropError || !activeDrop) {
       return NextResponse.json(
         { error: 'No active drop available for ordering' },
         { status: 400 }
       );
     }
 
-    const activeDrop = nextDrop[0];
-
-    // Get location information for the drop
-    const { data: location, error: locationError } = await supabase
-      .from('locations')
-      .select('name, address, location_url')
-      .eq('id', activeDrop.location_id)
-      .single();
-
-    if (locationError) {
-      console.error('Error fetching location:', locationError);
-      // Don't fail the order if location fetch fails, just log it
-    }
-
     // Get or create client
-    const { data: client, error: clientError } = await supabase.rpc(
+    const { data: clientId, error: clientError } = await supabase.rpc(
       'get_or_create_client',
-      {
-        p_name: customerName,
-        p_email: customerEmail,
-        p_phone: customerPhone,
-      }
+      { p_name: customerName, p_email: customerEmail, p_phone: customerPhone }
     );
 
     if (clientError) {
@@ -78,26 +71,32 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate simple order number
-    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 9999)
-      .toString()
-      .padStart(4, '0');
-    const orderNumber = `ORD-${timestamp}-${random}`;
+    // Generate order number using database function
+    const { data: orderNumber, error: orderNumberError } = await supabase.rpc(
+      'generate_order_number'
+    );
 
-    // Create order linked to the active drop
+    if (orderNumberError) {
+      console.error('Error generating order number:', orderNumberError);
+      return NextResponse.json(
+        { error: 'Failed to generate order number' },
+        { status: 500 }
+      );
+    }
+
+    // Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         order_number: orderNumber,
         drop_id: activeDrop.id,
-        client_id: client,
+        client_id: clientId,
         pickup_time: pickupTime,
         order_date: pickupDate,
         total_amount: totalAmount,
         special_instructions: specialInstructions,
       })
-      .select()
+      .select('id, order_number, status')
       .single();
 
     if (orderError) {
@@ -108,43 +107,50 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create order products and reserve inventory
-    const orderProducts = [];
+    // Batch create order products and reserve inventory
+    const orderProducts = items.map(
+      (item: { id: string; quantity: number }) => ({
+        drop_product_id: item.id, // Map to the field name the database function expects
+        order_quantity: item.quantity,
+      })
+    );
 
-    // First, reserve inventory for each item
-    for (const item of items) {
-      const { data: reservationResult, error: reservationError } =
-        await supabase.rpc('reserve_drop_product_inventory', {
-          p_drop_product_id: item.id,
-          p_quantity: item.quantity,
-        });
+    console.log('🔍 Debug: Attempting to reserve inventory for:', {
+      items: items,
+      orderProducts: orderProducts,
+      activeDropId: activeDrop.id,
+    });
 
-      if (reservationError) {
-        console.error('Inventory reservation error:', reservationError);
-        return NextResponse.json(
-          { error: 'Insufficient inventory available' },
-          { status: 400 }
-        );
-      }
+    // Reserve inventory for all items at once
+    const { error: reservationError } = await supabase.rpc(
+      'reserve_multiple_drop_products',
+      { p_order_items: orderProducts }
+    );
 
-      if (!reservationResult) {
-        console.error('Inventory reservation failed - insufficient stock');
-        return NextResponse.json(
-          { error: 'Insufficient inventory available' },
-          { status: 400 }
-        );
-      }
+    if (reservationError) {
+      console.error('❌ Inventory reservation error:', {
+        error: reservationError,
+        items: items,
+        orderProducts: orderProducts,
+      });
+      return NextResponse.json(
+        { error: 'Insufficient inventory available' },
+        { status: 400 }
+      );
+    }
 
-      orderProducts.push({
+    // Create order products with the correct structure
+    const orderProductsForInsert = items.map(
+      (item: { id: string; quantity: number }) => ({
         order_id: order.id,
         drop_product_id: item.id,
         order_quantity: item.quantity,
-      });
-    }
+      })
+    );
 
     const { error: orderProductsError } = await supabase
       .from('order_products')
-      .insert(orderProducts);
+      .insert(orderProductsForInsert);
 
     if (orderProductsError) {
       console.error('Error creating order products:', orderProductsError);
@@ -154,9 +160,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send confirmation email
+    // Send confirmation email (non-blocking)
     try {
-      // Transform items to match email function expectations
       const emailItems = items.map(
         (item: { name: string; quantity: number; price: number }) => ({
           productName: item.name,
@@ -166,7 +171,6 @@ export async function POST(request: Request) {
         })
       );
 
-      // Format pickup date for email (e.g., "August 19th")
       const pickupDateObj = new Date(pickupDate);
       const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
         month: 'long',
@@ -182,15 +186,15 @@ export async function POST(request: Request) {
         items: emailItems,
         totalAmount,
         specialInstructions,
-        locationName: location?.name || 'Pickup Location',
-        locationUrl: location?.location_url || '#',
+        locationName: activeDrop.locations?.[0]?.name || 'Pickup Location',
+        locationUrl: activeDrop.locations?.[0]?.location_url || '#',
       });
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError);
       // Don't fail the order if email fails
     }
 
-    const response = {
+    return NextResponse.json({
       success: true,
       order: {
         id: order.id,
@@ -198,11 +202,9 @@ export async function POST(request: Request) {
         status: order.status,
       },
       message: 'Order created successfully',
-    };
-
-    return NextResponse.json(response);
+    });
   } catch (error) {
-    console.error('❌ Debug: Unexpected error:', error);
+    console.error('❌ API: Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

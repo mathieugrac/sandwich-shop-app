@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
+    // Single query with JOIN to get drops, locations, and total available quantities
     const { data: drops, error } = await supabase
       .from('drops')
       .select(
@@ -16,6 +17,9 @@ export async function GET() {
           location_url,
           pickup_hour_start,
           pickup_hour_end
+        ),
+        drop_products!inner (
+          available_quantity
         )
       `
       )
@@ -29,28 +33,19 @@ export async function GET() {
       );
     }
 
-    // Calculate total available quantity for each drop
-    const dropsWithTotal = await Promise.all(
-      drops.map(async drop => {
-        const { data: dropProducts, error: inventoryError } = await supabase
-          .from('drop_products')
-          .select('available_quantity')
-          .eq('drop_id', drop.id);
+    // Transform data to include total_available using database view
+    const dropsWithTotal = drops.map(drop => {
+      const total_available =
+        drop.drop_products?.reduce(
+          (sum: number, dp: { available_quantity: number | null }) =>
+            sum + (dp.available_quantity || 0),
+          0
+        ) || 0;
 
-        if (inventoryError) {
-          console.error('Error fetching drop products:', inventoryError);
-          return { ...drop, total_available: 0 };
-        }
-
-        const total_available =
-          dropProducts?.reduce(
-            (sum, dp) => sum + (dp.available_quantity || 0),
-            0
-          ) || 0;
-
-        return { ...drop, total_available };
-      })
-    );
+      // Remove drop_products from response, keep only total
+      const { drop_products, ...dropData } = drop;
+      return { ...dropData, total_available };
+    });
 
     return NextResponse.json(dropsWithTotal);
   } catch (error) {
