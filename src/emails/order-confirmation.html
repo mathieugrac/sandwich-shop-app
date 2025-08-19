@@ -12,54 +12,41 @@
     <div class="container">
       <div class="header">
         <h1>
-          All set! Your Fomé order is confirmed — see you at {{pickupTime}}!
+          All set! Your Fomé order is confirmed, see you at {{pickupTime}}!
         </h1>
       </div>
 
       <div class="email-content">
         <p>Hi {{customerName}},</p>
-
         <p>
           Thanks for choosing Fomé! Your order is all set and we're excited to
           prepare it for you.
         </p>
 
         <div class="order-summary">
-          <h2>Order #{{orderNumber}}</h2>
-
-          <div class="order-items">
+          <h3>Order #{{orderNumber}}</h3>
+          <ul class="order-items">
             {{#each items}}
-            <div class="order-item">
+            <li class="order-item">
               <span>{{productName}} × {{quantity}}</span>
-            </div>
+            </li>
             {{/each}}
-          </div>
-
-          <div class="order-total">
-            <strong>Total: {{totalAmount}}€</strong>
-          </div>
-
-          <div class="pickup-info">
-            <strong
-              >Ready for pickup: *{{pickupDate}} at {{pickupTime}}*</strong
-            >
-          </div>
-
-          <div class="location-info">
-            <strong>Where?</strong>
-            <a href="{{locationUrl}}" class="location-link">{{locationName}}</a>
-          </div>
+            <li class="order-total">Total: {{totalAmount}}€</li>
+            <li class="pickup-info">
+              Ready for pickup:
+              <strong>{{pickupDate}} at {{pickupTime}}</strong>
+            </li>
+            <li class="location-info">
+              Where?
+              <a href="{{locationUrl}}" class="location-link">
+                <strong>{{locationName}}</strong>
+              </a>
+            </li>
+          </ul>
         </div>
-
-        {{#if specialInstructions}}
-        <div class="special-instructions">
-          <h3>Special Instructions</h3>
-          <p>{{specialInstructions}}</p>
-        </div>
-        {{/if}}
 
         <div class="reminders">
-          <h3>*Quick reminders*</h3>
+          <h3>Quick reminders</h3>
           <p>
             Please plan to arrive within 10 minutes of your pickup time, and
             bring cash for payment. Mbway is accepted.
@@ -67,14 +54,13 @@
         </div>
 
         <div class="contact-info">
-          <h3>*Questions?*</h3>
-          <p><strong>WhatsApp:</strong> +33 6 52 41 39 01</p>
-          <p><strong>Email:</strong> {{shopEmail}}</p>
+          <h3>Questions?</h3>
+          <p>WhatsApp: +33 6 52 41 39 01</p>
+          <p>Email: {{shopEmail}}</p>
         </div>
 
         <div class="footer">
-          <p>See you soon!</p>
-          <p>The Fomé team</p>
+          <p>See you soon! The Fomé team</p>
         </div>
       </div>
     </div>
