@@ -3,15 +3,34 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } | Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  
   try {
-    // Get the drop details to provide more context
+    // Handle both sync and async params
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+    console.log('API called with drop ID:', id);
+
+    // Test basic drop fetch first
     const { data: drop, error: dropError } = await supabase
       .from('drops')
-      .select(`
+      .select('id, status, pickup_deadline, date')
+      .eq('id', id)
+      .single();
+
+    if (dropError || !drop) {
+      console.error('Error fetching drop:', dropError);
+      return NextResponse.json(
+        { error: 'Drop not found', details: dropError?.message },
+        { status: 404 }
+      );
+    }
+
+    // Get full drop details with location info
+    const { data: fullDrop, error: fullDropError } = await supabase
+      .from('drops')
+      .select(
+        `
         id,
         status,
         pickup_deadline,
@@ -21,43 +40,62 @@ export async function GET(
           name,
           pickup_hour_end
         )
-      `)
+      `
+      )
       .eq('id', id)
       .single();
 
-    if (dropError || !drop) {
-      console.error('Error fetching drop:', dropError);
-      return NextResponse.json(
-        { error: 'Drop not found' },
-        { status: 404 }
-      );
+    if (fullDropError || !fullDrop) {
+      console.error('Error fetching full drop details:', fullDropError);
+      return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
     }
 
-    // Use the new enhanced function from Phase 1
-    const { data: isOrderable, error: orderableError } = await supabase.rpc('is_drop_orderable', {
-      p_drop_id: id,
-    });
+    // Use the database function to check if drop is orderable
+    const { data: isOrderable, error: functionError } = await supabase.rpc(
+      'is_drop_orderable',
+      { p_drop_id: id }
+    );
 
-    if (orderableError) {
-      console.error('Error checking if drop is orderable:', orderableError);
-      return NextResponse.json(
-        { error: 'Failed to check drop orderability' },
-        { status: 500 }
-      );
+    if (functionError) {
+      console.error('Database function error:', functionError);
+      // Fallback to basic logic
+      const fallbackOrderable =
+        fullDrop.status === 'active' &&
+        (!fullDrop.pickup_deadline ||
+          new Date(fullDrop.pickup_deadline) > new Date());
+
+      return NextResponse.json({
+        orderable: fallbackOrderable,
+        drop: {
+          id: fullDrop.id,
+          status: fullDrop.status,
+          date: fullDrop.date,
+          pickup_deadline: fullDrop.pickup_deadline,
+          location: fullDrop.locations,
+        },
+        reason: fallbackOrderable ? null : 'Drop is not orderable',
+        time_until_deadline: null,
+        grace_period_active: false,
+        note: 'Using fallback logic due to function error',
+      });
     }
 
     // Apply grace period logic (15 minutes after pickup deadline)
     let finalOrderable = isOrderable;
     let gracePeriodActive = false;
-    
-    if (drop.pickup_deadline && !isOrderable && drop.status === 'active') {
-      const deadline = new Date(drop.pickup_deadline);
-      const graceDeadline = new Date(deadline.getTime() + (15 * 60 * 1000)); // 15 min grace
+
+    if (
+      fullDrop.pickup_deadline &&
+      !isOrderable &&
+      fullDrop.status === 'active'
+    ) {
+      const deadline = new Date(fullDrop.pickup_deadline);
+      const graceDeadline = new Date(deadline.getTime() + 15 * 60 * 1000); // 15 min grace
       const now = new Date();
-      
+
       if (now <= graceDeadline) {
         finalOrderable = true;
-        gracePeriodActive = true;
+        gracePeriodActive = now > deadline;
       }
     }
 
@@ -66,26 +104,31 @@ export async function GET(
     let timeRemaining = null;
 
     if (!finalOrderable) {
-      if (drop.status === 'completed') {
+      if (fullDrop.status === 'completed') {
         reason = 'This drop has been completed';
-      } else if (drop.status === 'cancelled') {
+      } else if (fullDrop.status === 'cancelled') {
         reason = 'This drop has been cancelled';
-      } else if (drop.status === 'upcoming') {
+      } else if (fullDrop.status === 'upcoming') {
         reason = 'This drop is not yet open for ordering';
-      } else if (drop.pickup_deadline && new Date(drop.pickup_deadline) <= new Date()) {
+      } else if (
+        fullDrop.pickup_deadline &&
+        new Date(fullDrop.pickup_deadline) <= new Date()
+      ) {
         reason = 'The pickup time has passed';
       } else {
         reason = 'This drop is not currently accepting orders';
       }
-    } else if (drop.pickup_deadline) {
-      const deadline = new Date(drop.pickup_deadline);
+    } else if (fullDrop.pickup_deadline) {
+      const deadline = new Date(fullDrop.pickup_deadline);
       const now = new Date();
       const diffMs = deadline.getTime() - now.getTime();
-      
+
       if (diffMs > 0) {
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
+        const diffMinutes = Math.floor(
+          (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+        );
+
         if (diffHours > 0) {
           timeRemaining = `${diffHours}h ${diffMinutes}m`;
         } else {
@@ -93,7 +136,7 @@ export async function GET(
         }
       } else if (gracePeriodActive) {
         // Show grace period remaining time
-        const graceDeadline = new Date(deadline.getTime() + (15 * 60 * 1000));
+        const graceDeadline = new Date(deadline.getTime() + 15 * 60 * 1000);
         const graceDiffMs = graceDeadline.getTime() - now.getTime();
         const graceDiffMinutes = Math.floor(graceDiffMs / (1000 * 60));
         timeRemaining = `Grace period: ${graceDiffMinutes}m remaining`;
@@ -103,11 +146,11 @@ export async function GET(
     return NextResponse.json({
       orderable: finalOrderable,
       drop: {
-        id: drop.id,
-        status: drop.status,
-        date: drop.date,
-        pickup_deadline: drop.pickup_deadline,
-        location: drop.locations,
+        id: fullDrop.id,
+        status: fullDrop.status,
+        date: fullDrop.date,
+        pickup_deadline: fullDrop.pickup_deadline,
+        location: fullDrop.locations,
       },
       reason,
       time_until_deadline: timeRemaining,
@@ -116,7 +159,10 @@ export async function GET(
   } catch (error) {
     console.error('Unexpected error in check drop orderable:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     );
   }

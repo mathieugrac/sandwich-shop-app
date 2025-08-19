@@ -58,8 +58,8 @@ export function OrderBanner({ dropId, className = '' }: OrderBannerProps) {
 
     if (dropId) {
       checkDropStatus();
-
-      // Check status every 2 minutes instead of 30 seconds to reduce real-time checks
+      
+      // Check status every 2 minutes to reduce real-time checks
       const interval = setInterval(checkDropStatus, 120000);
       return () => clearInterval(interval);
     }
@@ -227,6 +227,28 @@ export function OrderBanner({ dropId, className = '' }: OrderBannerProps) {
               ⚠️ Ordering closes soon!
             </div>
           )}
+        </div>
+
+        {/* 🧪 TEST BUTTONS - Always show for testing */}
+        <div className="flex space-x-2 text-xs">
+          <button
+            onClick={() => showTestState('deadline')}
+            className="px-2 py-1 bg-blue-200 text-blue-800 rounded hover:bg-blue-300"
+          >
+            Test Deadline
+          </button>
+          <button
+            onClick={() => showTestState('grace')}
+            className="px-2 py-1 bg-orange-200 text-orange-800 rounded hover:bg-orange-300"
+          >
+            Test Grace
+          </button>
+          <button
+            onClick={() => showTestState('completed')}
+            className="px-2 py-1 bg-red-200 text-red-800 rounded hover:bg-red-300"
+          >
+            Test Completed
+          </button>
         </div>
       </div>
     </div>
