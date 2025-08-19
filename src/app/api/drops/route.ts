@@ -3,8 +3,6 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    console.log('🔍 API: Fetching drops with location data...');
-
     const { data: drops, error } = await supabase
       .from('drops')
       .select(
@@ -52,12 +50,6 @@ export async function GET() {
 
         return { ...drop, total_available };
       })
-    );
-
-    console.log('✅ API: Drops fetched successfully:', dropsWithTotal);
-    console.log(
-      '✅ API: First drop location data:',
-      dropsWithTotal?.[0]?.location
     );
 
     return NextResponse.json(dropsWithTotal);

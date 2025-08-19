@@ -32,24 +32,8 @@ interface CustomerInfo {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const {
-    items,
-    totalPrice,
-    clearCart,
-    validateDrop,
-    isDropValid,
-    dropValidationError,
-    isInitialized,
-  } = useCart();
+  const { items, totalPrice, clearCart, isInitialized } = useCart();
 
-  // Debug logging
-  console.log('Checkout: Cart context values:', {
-    items,
-    totalPrice,
-    isInitialized,
-    isDropValid,
-    dropValidationError,
-  });
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: '',
     email: '',
@@ -95,17 +79,11 @@ export default function CheckoutPage() {
         setDropInfo(parsedDrop);
 
         // Validate the drop if we have an ID and cart is initialized
-        if (parsedDrop.id && isInitialized && validateDrop) {
-          setIsValidatingDrop(true);
-          validateDrop(parsedDrop.id).finally(() => {
-            setIsValidatingDrop(false);
-          });
-        }
       } catch (error) {
         console.error('Error parsing drop info:', error);
       }
     }
-  }, [validateDrop, isInitialized]);
+  }, [isInitialized]);
 
   // Save customer info to localStorage
   const saveCustomerInfo = (info: CustomerInfo) => {
@@ -191,14 +169,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (!isDropValid) {
-      alert(
-        dropValidationError ||
-          'This drop is no longer accepting orders. Please return to the menu to check availability.'
-      );
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -212,7 +182,7 @@ export default function CheckoutPage() {
         customerEmail: customerInfo.email.trim(),
         customerPhone: formattedPhone,
         pickupTime: pickupTime,
-        pickupDate: new Date().toISOString().split('T')[0],
+        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
         items: (items || []).map(item => ({
           id: item.dropProductId, // Use drop_product_id for the API
           name: item.name, // Add the missing name field
@@ -223,8 +193,6 @@ export default function CheckoutPage() {
         totalAmount: totalPrice || 0,
       };
 
-      console.log('Checkout: Sending order data:', orderData);
-
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -233,8 +201,6 @@ export default function CheckoutPage() {
         body: JSON.stringify(orderData),
       });
 
-      console.log('Checkout: Response status:', response.status);
-
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Checkout: API error:', errorData);
@@ -242,9 +208,6 @@ export default function CheckoutPage() {
       }
 
       const result = await response.json();
-      console.log('Checkout: Order result:', result);
-
-      console.log('Checkout: Order successful, redirecting to confirmation...');
 
       // Save customer info for future orders
       saveCustomerInfo({
@@ -256,14 +219,14 @@ export default function CheckoutPage() {
       const activeOrder = {
         orderNumber: result.order.order_number,
         pickupTime: pickupTime,
-        pickupDate: new Date().toISOString().split('T')[0], // Today's date
+        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
         items: (items || []).map(item => ({
           name: item.name,
           quantity: item.quantity,
         })),
         totalAmount: totalPrice || 0,
       };
-      console.log('Checkout: Saving active order:', activeOrder);
+
       localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
 
       // Clear cart and localStorage
@@ -276,7 +239,6 @@ export default function CheckoutPage() {
 
       // Redirect to confirmation
       const confirmationUrl = `/confirmation?orderId=${result.order.id}`;
-      console.log('Checkout: Redirecting to:', confirmationUrl);
 
       // Force navigation using window.location as fallback
       try {
@@ -284,7 +246,6 @@ export default function CheckoutPage() {
         // If router.push doesn't work, use window.location
         setTimeout(() => {
           if (window.location.pathname !== '/confirmation') {
-            console.log('Checkout: Router failed, using window.location');
             window.location.href = confirmationUrl;
           }
         }, 100);
@@ -386,39 +347,6 @@ export default function CheckoutPage() {
             </div>
           )}
 
-          {/* Drop Validation Error */}
-          {!isValidatingDrop && !isDropValid && dropValidationError && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex items-center space-x-2">
-                <svg
-                  className="w-4 h-4 text-red-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span className="text-red-600 text-sm font-medium">
-                  Ordering Closed
-                </span>
-              </div>
-              <p className="text-red-600 text-sm mt-1">{dropValidationError}</p>
-              <Button
-                onClick={() => router.push('/')}
-                variant="outline"
-                size="sm"
-                className="mt-2"
-              >
-                Return to Home
-              </Button>
-            </div>
-          )}
-
           {/* Name for Order */}
           <Card className="p-5 shadow-none">
             <h2 className="text-xl font-semibold mb-4">
@@ -516,7 +444,7 @@ export default function CheckoutPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={isLoading || !isDropValid || isValidatingDrop}
+                disabled={isLoading || isValidatingDrop}
                 className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
                 size="lg"
@@ -526,8 +454,6 @@ export default function CheckoutPage() {
                     <LoadingSpinner />
                     <span>Processing...</span>
                   </div>
-                ) : !isDropValid ? (
-                  'Ordering Closed'
                 ) : isValidatingDrop ? (
                   'Validating...'
                 ) : (

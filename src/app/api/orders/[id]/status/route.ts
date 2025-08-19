@@ -10,8 +10,6 @@ export async function PUT(
     const { status } = await request.json();
     const { id: orderId } = await params;
 
-    console.log(`API: Updating order ${orderId} status to ${status}`);
-
     // Update order status
     const { data: order, error: updateError } = await supabase
       .from('orders')
@@ -21,7 +19,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error('API: Error updating order status:', updateError);
+      console.error('Error updating order status:', updateError);
       return NextResponse.json(
         { error: 'Failed to update order status' },
         { status: 500 }
@@ -37,15 +35,13 @@ export async function PUT(
           order.order_number,
           status
         );
-        if (emailResult) {
-          console.log(`API: Status update email sent for order ${orderId}`);
-        } else {
-          console.log(
-            `API: Status update email failed for order ${orderId}, but status was updated successfully`
+        if (!emailResult) {
+          console.error(
+            `Status update email failed for order ${orderId}, but status was updated successfully`
           );
         }
       } catch (emailError) {
-        console.error('API: Failed to send status update email:', emailError);
+        console.error('Failed to send status update email:', emailError);
         // Don't fail the status update if email fails
       }
     }
@@ -55,7 +51,7 @@ export async function PUT(
       order,
     });
   } catch (error) {
-    console.error('API: Unexpected error updating order status:', error);
+    console.error('Unexpected error updating order status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

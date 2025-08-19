@@ -5,11 +5,7 @@ import { sendOrderConfirmationEmail } from '@/lib/email';
 // Working order creation with real drop product IDs
 export async function POST(request: Request) {
   try {
-    console.log('🔍 Debug: Starting order creation...');
-
-    // Log the request body
     const body = await request.json();
-    console.log('🔍 Debug: Request body:', body);
 
     const {
       customerName,
@@ -31,23 +27,19 @@ export async function POST(request: Request) {
       !items ||
       items.length === 0
     ) {
-      console.log('❌ Debug: Validation failed - missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    console.log('✅ Debug: All required fields present');
-
     // Get the next active drop
-    console.log('🔍 Debug: Getting next active drop...');
     const { data: nextDrop, error: dropError } = await supabase.rpc(
       'get_next_active_drop'
     );
 
     if (dropError || !nextDrop || nextDrop.length === 0) {
-      console.error('❌ Debug: Error getting next active drop:', dropError);
+      console.error('Error getting next active drop:', dropError);
       return NextResponse.json(
         { error: 'No active drop available for ordering' },
         { status: 400 }
@@ -55,7 +47,6 @@ export async function POST(request: Request) {
     }
 
     const activeDrop = nextDrop[0];
-    console.log('✅ Debug: Active drop found:', activeDrop);
 
     // Get location information for the drop
     const { data: location, error: locationError } = await supabase
@@ -65,14 +56,11 @@ export async function POST(request: Request) {
       .single();
 
     if (locationError) {
-      console.error('❌ Debug: Error fetching location:', locationError);
+      console.error('Error fetching location:', locationError);
       // Don't fail the order if location fetch fails, just log it
     }
 
-    console.log('✅ Debug: Location fetched:', location);
-
     // Get or create client
-    console.log('🔍 Debug: Getting/creating client...');
     const { data: client, error: clientError } = await supabase.rpc(
       'get_or_create_client',
       {
@@ -83,14 +71,12 @@ export async function POST(request: Request) {
     );
 
     if (clientError) {
-      console.error('❌ Debug: Error getting/creating client:', clientError);
+      console.error('Error getting/creating client:', clientError);
       return NextResponse.json(
         { error: 'Failed to process customer information' },
         { status: 500 }
       );
     }
-
-    console.log('✅ Debug: Client created/found:', client);
 
     // Generate simple order number
     const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -98,8 +84,6 @@ export async function POST(request: Request) {
       .toString()
       .padStart(4, '0');
     const orderNumber = `ORD-${timestamp}-${random}`;
-
-    console.log('🔍 Debug: Creating order with number:', orderNumber);
 
     // Create order linked to the active drop
     const { data: order, error: orderError } = await supabase
@@ -117,25 +101,18 @@ export async function POST(request: Request) {
       .single();
 
     if (orderError) {
-      console.error('❌ Debug: Error creating order:', orderError);
+      console.error('Error creating order:', orderError);
       return NextResponse.json(
         { error: 'Failed to create order' },
         { status: 500 }
       );
     }
 
-    console.log('✅ Debug: Order created successfully:', order);
-
     // Create order products and reserve inventory
-    console.log('🔍 Debug: Creating order products and reserving inventory...');
     const orderProducts = [];
 
     // First, reserve inventory for each item
     for (const item of items) {
-      console.log(
-        `🔍 Debug: Reserving ${item.quantity} units for drop_product_id: ${item.id}`
-      );
-
       const { data: reservationResult, error: reservationError } =
         await supabase.rpc('reserve_drop_product_inventory', {
           p_drop_product_id: item.id,
@@ -143,10 +120,7 @@ export async function POST(request: Request) {
         });
 
       if (reservationError) {
-        console.error(
-          '❌ Debug: Inventory reservation error:',
-          reservationError
-        );
+        console.error('Inventory reservation error:', reservationError);
         return NextResponse.json(
           { error: 'Insufficient inventory available' },
           { status: 400 }
@@ -154,18 +128,12 @@ export async function POST(request: Request) {
       }
 
       if (!reservationResult) {
-        console.error(
-          '❌ Debug: Inventory reservation failed - insufficient stock'
-        );
+        console.error('Inventory reservation failed - insufficient stock');
         return NextResponse.json(
           { error: 'Insufficient inventory available' },
           { status: 400 }
         );
       }
-
-      console.log(
-        `✅ Debug: Inventory reserved successfully for item ${item.id}`
-      );
 
       orderProducts.push({
         order_id: order.id,
@@ -179,20 +147,14 @@ export async function POST(request: Request) {
       .insert(orderProducts);
 
     if (orderProductsError) {
-      console.error(
-        '❌ Debug: Error creating order products:',
-        orderProductsError
-      );
+      console.error('Error creating order products:', orderProductsError);
       return NextResponse.json(
         { error: 'Failed to create order products' },
         { status: 500 }
       );
     }
 
-    console.log('✅ Debug: Order products created successfully');
-
     // Send confirmation email
-    console.log('🔍 Debug: Sending confirmation email...');
     try {
       // Transform items to match email function expectations
       const emailItems = items.map(
@@ -208,7 +170,7 @@ export async function POST(request: Request) {
       const pickupDateObj = new Date(pickupDate);
       const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
       await sendOrderConfirmationEmail({
@@ -223,9 +185,8 @@ export async function POST(request: Request) {
         locationName: location?.name || 'Pickup Location',
         locationUrl: location?.location_url || '#',
       });
-      console.log('✅ Debug: Confirmation email sent successfully');
     } catch (emailError) {
-      console.error('❌ Debug: Error sending confirmation email:', emailError);
+      console.error('Error sending confirmation email:', emailError);
       // Don't fail the order if email fails
     }
 
@@ -239,7 +200,6 @@ export async function POST(request: Request) {
       message: 'Order created successfully',
     };
 
-    console.log('✅ Debug: Sending success response:', response);
     return NextResponse.json(response);
   } catch (error) {
     console.error('❌ Debug: Unexpected error:', error);

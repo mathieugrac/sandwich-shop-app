@@ -14,18 +14,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Debug logging
-    console.log('🔍 Admin upcoming drops API response:', {
-      dataCount: data?.length || 0,
-      firstDrop: data?.[0],
-      sampleData: data?.slice(0, 2).map((d: { id: string; date: string; status: string; total_available: number }) => ({
-        id: d.id,
-        date: d.date,
-        status: d.status,
-        total_available: d.total_available,
-      })),
-    });
-
     return NextResponse.json(data || []);
   } catch (error) {
     console.error('Unexpected error in admin upcoming drops:', error);

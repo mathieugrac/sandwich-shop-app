@@ -7,7 +7,6 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    console.log('🔍 API: Fetching drop products for drop ID:', id);
 
     // Validate drop ID
     if (!id || typeof id !== 'string' || id.trim() === '') {
@@ -40,11 +39,8 @@ export async function GET(
       return NextResponse.json({ error: 'Drop not found' }, { status: 404 });
     }
 
-    console.log('✅ API: Drop found:', drop.id, drop.date);
-
     // Check if drop is accessible (not completed or cancelled)
     if (drop.status === 'completed' || drop.status === 'cancelled') {
-      console.log('⚠️ API: Drop is not active:', drop.status);
       // Still return the drop data but with empty products
       return NextResponse.json({
         ...drop,
@@ -78,16 +74,6 @@ export async function GET(
       )
       .eq('drop_id', id);
 
-    console.log('🔍 API: drop_products query result:', {
-      count: dropProducts?.length || 0,
-      error: dropProductsError,
-      dropProducts: dropProducts,
-      dropProductsType: typeof dropProducts,
-      dropProductsIsArray: Array.isArray(dropProducts),
-      dropProductsIsNull: dropProducts === null,
-      dropProductsIsUndefined: dropProducts === undefined,
-    });
-
     // If there's an error fetching drop products, log it but don't fail
     if (dropProductsError) {
       console.error('❌ API: Error fetching drop products:', dropProductsError);
@@ -101,15 +87,8 @@ export async function GET(
     } else if (dropProducts === null || dropProducts === undefined) {
       safeDropProducts = [];
     } else {
-      console.warn('⚠️ API: dropProducts is not an array, converting to array:', dropProducts);
       safeDropProducts = [dropProducts];
     }
-
-    console.log('🔍 API: Safe drop products:', {
-      original: dropProducts,
-      safe: safeDropProducts,
-      safeLength: safeDropProducts.length,
-    });
 
     // Return the complete structure
     const result = {
@@ -117,20 +96,9 @@ export async function GET(
       dropProducts: safeDropProducts,
     };
 
-    console.log(
-      '✅ API: Returning result with drop products count:',
-      result.dropProducts.length,
-      'Result structure:',
-      {
-        hasDropProducts: !!result.dropProducts,
-        dropProductsType: typeof result.dropProducts,
-        dropProductsIsArray: Array.isArray(result.dropProducts),
-        dropProductsLength: result.dropProducts?.length,
-      }
-    );
     return NextResponse.json(result);
   } catch (error) {
-    console.error('❌ API: Unexpected error:', error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

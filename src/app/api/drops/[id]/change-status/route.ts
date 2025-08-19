@@ -46,15 +46,6 @@ export async function PUT(
     }
 
     // Use the enhanced function from Phase 1
-    console.log('🔍 Calling change_drop_status with params:', {
-      p_drop_id: id,
-      p_new_status: newStatus,
-      p_admin_user_id: user.id,
-      user_email: user.email,
-    });
-
-    // Temporary: Also log to a file or show in response for debugging
-    console.log('🚨 DEBUG: About to call RPC function');
 
     // Test if the function exists first
     try {
@@ -71,13 +62,11 @@ export async function PUT(
         if (adminUser) {
           // Admin user exists, use their ID
           adminUserId = adminUser.id;
-          console.log('✅ Found existing admin user:', adminUserId);
         } else {
           throw new Error('No admin user found');
         }
       } catch (error: unknown) {
         // Admin user doesn't exist, create one
-        console.log('🔄 Creating new admin user for:', user.email);
 
         const { data: newAdminUser, error: createError } = await supabase
           .from('admin_users')
@@ -95,7 +84,6 @@ export async function PUT(
         }
 
         adminUserId = newAdminUser.id;
-        console.log('✅ Created new admin user:', adminUserId);
       }
 
       const { data: testData, error: testError } = await supabase.rpc(
@@ -108,18 +96,16 @@ export async function PUT(
       );
 
       if (testError) {
-        console.log('❌ RPC function error:', testError);
         throw testError;
       }
-
-      console.log('✅ RPC function call successful:', testData);
       return NextResponse.json({
         success: true,
         message: `Drop status changed to ${newStatus} successfully`,
       });
     } catch (rpcError: unknown) {
       console.error('❌ RPC function failed:', rpcError);
-      const errorMessage = rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
+      const errorMessage =
+        rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
       return NextResponse.json(
         {
           error: 'RPC function failed',
