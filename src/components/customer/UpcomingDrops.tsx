@@ -29,47 +29,6 @@ export function UpcomingDrops() {
     loadFutureDrops();
   }, []);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return {
-      day: date.getDate(),
-      month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-    };
-  };
-
-  const formatPickupDeadline = (deadlineString: string | null) => {
-    if (!deadlineString) return null;
-
-    const deadline = new Date(deadlineString);
-    const now = new Date();
-    const diffMs = deadline.getTime() - now.getTime();
-
-    if (diffMs <= 0) return 'Closed';
-
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (diffHours > 0) {
-      return `${diffHours}h ${diffMinutes}m left`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}m left`;
-    } else {
-      return 'Closing soon';
-    }
-  };
-
-  const getStatusColor = (status: string, deadline: string | null) => {
-    if (status === 'completed' || status === 'cancelled')
-      return 'text-gray-500';
-    if (status === 'active') {
-      if (deadline && new Date(deadline) <= new Date()) {
-        return 'text-red-600';
-      }
-      return 'text-black';
-    }
-    return 'text-black';
-  };
-
   console.log(
     '🔄 UpcomingDrops: Render state - loading:',
     loading,
@@ -125,17 +84,9 @@ export function UpcomingDrops() {
 
   return (
     <Card className="p-3">
-      <h2 className="text-2xl font-bold text-black mb-2 p-3">Upcoming Drops</h2>
-
-      <div className="">
+      <div className="space-y-3">
         {validDrops.map(drop => (
-          <DropItem
-            key={drop.id}
-            drop={drop}
-            formatDate={formatDate}
-            formatPickupDeadline={formatPickupDeadline}
-            getStatusColor={getStatusColor}
-          />
+          <DropItem key={drop.id} drop={drop} />
         ))}
       </div>
     </Card>

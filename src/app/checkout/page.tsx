@@ -34,17 +34,26 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart, isInitialized } = useCart();
 
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    email: '',
-    phone: '',
+  // Consolidate form state
+  const [formState, setFormState] = useState({
+    customerInfo: {
+      name: '',
+      email: '',
+      phone: '',
+    },
+    pickupTime: '',
+    specialInstructions: '',
   });
-  const [errors, setErrors] = useState<Partial<CustomerInfo>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [pickupTime, setPickupTime] = useState('');
-  const [specialInstructions, setSpecialInstructions] = useState('');
+
+  // Consolidate UI state
+  const [uiState, setUiState] = useState({
+    errors: {} as Partial<CustomerInfo>,
+    isLoading: false,
+    isValidatingDrop: false,
+  });
+
+  // Separate state for drop info (complex object)
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
-  const [isValidatingDrop, setIsValidatingDrop] = useState(false);
 
   // Load saved customer info and order details from localStorage
   useEffect(() => {
@@ -52,7 +61,10 @@ export default function CheckoutPage() {
     if (savedInfo) {
       try {
         const parsed = JSON.parse(savedInfo);
-        setCustomerInfo(parsed);
+        setFormState(prev => ({
+          ...prev,
+          customerInfo: parsed,
+        }));
       } catch (error) {
         console.error('Error parsing saved customer info:', error);
       }
@@ -65,10 +77,10 @@ export default function CheckoutPage() {
     );
 
     if (savedPickupTime) {
-      setPickupTime(savedPickupTime);
+      setFormState(prev => ({ ...prev, pickupTime: savedPickupTime }));
     }
     if (savedSpecialInstructions) {
-      setSpecialInstructions(savedSpecialInstructions);
+      setFormState(prev => ({ ...prev, specialInstructions: savedSpecialInstructions }));
     }
 
     // Load drop information from localStorage
@@ -88,6 +100,16 @@ export default function CheckoutPage() {
   // Save customer info to localStorage
   const saveCustomerInfo = (info: CustomerInfo) => {
     localStorage.setItem('customerInfo', JSON.stringify(info));
+  };
+
+  // Update form state helper
+  const updateFormState = (updates: Partial<typeof formState>) => {
+    setFormState(prev => ({ ...prev, ...updates }));
+  };
+
+  // Update UI state helper
+  const updateUiState = (updates: Partial<typeof uiState>) => {
+    setUiState(prev => ({ ...prev, ...updates }));
   };
 
   // Format functions for the header
@@ -117,30 +139,30 @@ export default function CheckoutPage() {
     const newErrors: Partial<CustomerInfo> = {};
 
     // Name validation
-    if (!customerInfo.name.trim()) {
+    if (!formState.customerInfo.name.trim()) {
       newErrors.name = 'Name is required';
-    } else if (customerInfo.name.trim().length < 3) {
+    } else if (formState.customerInfo.name.trim().length < 3) {
       newErrors.name = 'Name must be at least 3 characters';
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!customerInfo.email.trim()) {
+    if (!formState.customerInfo.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(customerInfo.email.trim())) {
+    } else if (!emailRegex.test(formState.customerInfo.email.trim())) {
       newErrors.email = 'Please enter a valid email address';
     }
 
     // Phone validation (optional but if provided, must be valid)
-    if (customerInfo.phone.trim()) {
+    if (formState.customerInfo.phone.trim()) {
       // More permissive regex for international numbers
       const phoneRegex = /^[\+]?[1-9][\d\s\-\(\)\.]{7,20}$/;
-      if (!phoneRegex.test(customerInfo.phone.trim())) {
+      if (!phoneRegex.test(formState.customerInfo.phone.trim())) {
         newErrors.phone = 'Please enter a valid phone number';
       }
     }
 
-    setErrors(newErrors);
+    updateUiState({ errors: newErrors });
     return Object.keys(newErrors).length === 0;
   };
 
@@ -169,19 +191,19 @@ export default function CheckoutPage() {
       return;
     }
 
-    setIsLoading(true);
+    updateUiState({ isLoading: true });
 
     try {
       // Format phone number
-      const formattedPhone = customerInfo.phone.trim()
-        ? formatPhoneNumber(customerInfo.phone.trim())
+      const formattedPhone = formState.customerInfo.phone.trim()
+        ? formatPhoneNumber(formState.customerInfo.phone.trim())
         : '';
 
       const orderData = {
-        customerName: customerInfo.name.trim(),
-        customerEmail: customerInfo.email.trim(),
+        customerName: formState.customerInfo.name.trim(),
+        customerEmail: formState.customerInfo.email.trim(),
         customerPhone: formattedPhone,
-        pickupTime: pickupTime,
+        pickupTime: formState.pickupTime,
         pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
         items: (items || []).map(item => ({
           id: item.dropProductId, // Use drop_product_id for the API
@@ -189,7 +211,7 @@ export default function CheckoutPage() {
           quantity: item.quantity,
           price: item.price,
         })),
-        specialInstructions: specialInstructions,
+        specialInstructions: formState.specialInstructions,
         totalAmount: totalPrice || 0,
       };
 
@@ -211,14 +233,14 @@ export default function CheckoutPage() {
 
       // Save customer info for future orders
       saveCustomerInfo({
-        ...customerInfo,
+        ...formState.customerInfo,
         phone: formattedPhone,
       });
 
       // Save active order for banner display
       const activeOrder = {
         orderNumber: result.order.order_number,
-        pickupTime: pickupTime,
+        pickupTime: formState.pickupTime,
         pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
         items: (items || []).map(item => ({
           name: item.name,
@@ -274,16 +296,19 @@ export default function CheckoutPage() {
 
       alert(errorMessage);
     } finally {
-      setIsLoading(false);
+      updateUiState({ isLoading: false });
     }
   };
 
   // Handle input changes
   const handleInputChange = (field: keyof CustomerInfo, value: string) => {
-    setCustomerInfo(prev => ({ ...prev, [field]: value }));
+    setFormState(prev => ({
+      ...prev,
+      customerInfo: { ...prev.customerInfo, [field]: value },
+    }));
     // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+    if (uiState.errors[field]) {
+      updateUiState({ errors: { ...uiState.errors, [field]: undefined } });
     }
   };
 
@@ -320,7 +345,7 @@ export default function CheckoutPage() {
       <PageHeader
         title={
           dropInfo
-            ? `${formatDate(dropInfo.date)} (${pickupTime || 'Select pickup time'})`
+            ? `${formatDate(dropInfo.date)} (${formState.pickupTime || 'Select pickup time'})`
             : 'Customer Information'
         }
         subtitle={
@@ -336,7 +361,7 @@ export default function CheckoutPage() {
       <main className="px-5">
         <div className="space-y-5 py-5">
           {/* Drop Validation Status */}
-          {isValidatingDrop && (
+          {uiState.isValidatingDrop && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -355,13 +380,13 @@ export default function CheckoutPage() {
             <Input
               id="name"
               type="text"
-              value={customerInfo.name}
+              value={formState.customerInfo.name}
               onChange={e => handleInputChange('name', e.target.value)}
               placeholder="Enter your full name"
-              className={errors.name ? 'border-red-500' : ''}
+              className={uiState.errors.name ? 'border-red-500' : ''}
             />
-            {errors.name && (
-              <p className="text-sm text-red-600">{errors.name}</p>
+            {uiState.errors.name && (
+              <p className="text-sm text-red-600">{uiState.errors.name}</p>
             )}
           </Card>
 
@@ -376,13 +401,13 @@ export default function CheckoutPage() {
                 <Input
                   id="email"
                   type="email"
-                  value={customerInfo.email}
+                  value={formState.customerInfo.email}
                   onChange={e => handleInputChange('email', e.target.value)}
                   placeholder="your.email@example.com"
-                  className={errors.email ? 'border-red-500' : ''}
+                  className={uiState.errors.email ? 'border-red-500' : ''}
                 />
-                {errors.email && (
-                  <p className="text-sm text-red-600">{errors.email}</p>
+                {uiState.errors.email && (
+                  <p className="text-sm text-red-600">{uiState.errors.email}</p>
                 )}
               </div>
 
@@ -391,13 +416,13 @@ export default function CheckoutPage() {
                 <Input
                   id="phone"
                   type="tel"
-                  value={customerInfo.phone}
+                  value={formState.customerInfo.phone}
                   onChange={e => handleInputChange('phone', e.target.value)}
                   placeholder="+351 912 345 678 (optional)"
-                  className={errors.phone ? 'border-red-500' : ''}
+                  className={uiState.errors.phone ? 'border-red-500' : ''}
                 />
-                {errors.phone && (
-                  <p className="text-sm text-red-600">{errors.phone}</p>
+                {uiState.errors.phone && (
+                  <p className="text-sm text-red-600">{uiState.errors.phone}</p>
                 )}
                 {/* Description */}
                 <p className="text-sm text-gray-600">
@@ -444,17 +469,17 @@ export default function CheckoutPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={isLoading || isValidatingDrop}
+                disabled={uiState.isLoading || uiState.isValidatingDrop}
                 className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
                 size="lg"
               >
-                {isLoading ? (
+                {uiState.isLoading ? (
                   <div className="flex items-center space-x-2">
                     <LoadingSpinner />
                     <span>Processing...</span>
                   </div>
-                ) : isValidatingDrop ? (
+                ) : uiState.isValidatingDrop ? (
                   'Validating...'
                 ) : (
                   'Place Order'

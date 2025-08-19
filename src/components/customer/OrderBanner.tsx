@@ -174,7 +174,7 @@ export function OrderBanner({ dropId, className = '' }: OrderBannerProps) {
     return (
       <div className="flex items-center space-x-2">
         <span className="text-red-600 font-medium">Ordering Closed</span>
-        <span className="text-red-600 text-sm">{dropStatus.reason}</span>
+        <span className="text-blue-600 text-sm">{dropStatus.reason}</span>
       </div>
     );
   };
@@ -227,28 +227,6 @@ export function OrderBanner({ dropId, className = '' }: OrderBannerProps) {
               ⚠️ Ordering closes soon!
             </div>
           )}
-        </div>
-
-        {/* 🧪 TEST BUTTONS - Always show for testing */}
-        <div className="flex space-x-2 text-xs">
-          <button
-            onClick={() => showTestState('deadline')}
-            className="px-2 py-1 bg-blue-200 text-blue-800 rounded hover:bg-blue-300"
-          >
-            Test Deadline
-          </button>
-          <button
-            onClick={() => showTestState('grace')}
-            className="px-2 py-1 bg-orange-200 text-orange-800 rounded hover:bg-orange-300"
-          >
-            Test Grace
-          </button>
-          <button
-            onClick={() => showTestState('completed')}
-            className="px-2 py-1 bg-red-200 text-red-800 rounded hover:bg-red-300"
-          >
-            Test Completed
-          </button>
         </div>
       </div>
     </div>

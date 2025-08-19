@@ -76,12 +76,22 @@ export default function CartPage() {
   const router = useRouter();
   const { items, removeFromCart, updateQuantity, clearCart, totalPrice } =
     useCart();
-  const [selectedTime, setSelectedTime] = useState('');
-  const [comment, setComment] = useState('');
-  const [isLoading] = useState(false);
+
+  // Consolidate form state
+  const [formState, setFormState] = useState({
+    selectedTime: '',
+    comment: '',
+  });
+
+  // Consolidate UI state
+  const [uiState, setUiState] = useState({
+    isLoading: false,
+    isValidating: false,
+    error: null as string | null,
+  });
+
+  // Separate state for drop info (complex object)
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
 
   // Generate pickup times based on location hours
   const pickupTimes = useMemo(() => {
@@ -125,40 +135,53 @@ export default function CartPage() {
           parsedDrop?.location?.pickup_hour_end
         ) {
           setDropInfo(parsedDrop);
-          setError(null);
+          setUiState(prev => ({ ...prev, error: null }));
         } else {
-          setError('Invalid drop information format');
+          setUiState(prev => ({
+            ...prev,
+            error: 'Invalid drop information format',
+          }));
           console.error('Drop info missing required fields:', parsedDrop);
         }
       } catch (error) {
-        setError('Failed to load drop information');
+        setUiState(prev => ({
+          ...prev,
+          error: 'Failed to load drop information',
+        }));
         console.error('Error parsing drop info:', error);
       }
     } else {
-      setError('No drop information found');
+      setUiState(prev => ({ ...prev, error: 'No drop information found' }));
     }
 
     // Load saved form data
     if (savedPickupTime) {
-      setSelectedTime(savedPickupTime);
+      setFormState(prev => ({ ...prev, selectedTime: savedPickupTime }));
     }
     if (savedComment) {
-      setComment(savedComment);
+      setFormState(prev => ({ ...prev, comment: savedComment }));
     }
   }, []);
 
   // Save form data to localStorage when it changes
   useEffect(() => {
-    if (selectedTime) {
-      localStorage.setItem('cartPickupTime', selectedTime);
+    if (formState.selectedTime) {
+      localStorage.setItem('cartPickupTime', formState.selectedTime);
     }
-  }, [selectedTime]);
+    if (formState.comment) {
+      localStorage.setItem('cartComment', formState.comment);
+    }
+  }, [formState.selectedTime, formState.comment]);
 
-  useEffect(() => {
-    if (comment) {
-      localStorage.setItem('cartComment', comment);
-    }
-  }, [comment]);
+  // Update form state helper
+  const updateFormState = (updates: Partial<typeof formState>) => {
+    setFormState(prev => ({ ...prev, ...updates }));
+  };
+
+  // Update UI state helper
+  const updateUiState = (updates: Partial<typeof uiState>) => {
+    setUiState(prev => ({ ...prev, ...updates }));
+  };
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -176,32 +199,38 @@ export default function CartPage() {
 
   // Handle place order
   const handlePlaceOrder = useCallback(() => {
-    if (!selectedTime) {
-      setError('Please select a pickup time');
+    if (!formState.selectedTime) {
+      updateUiState({ error: 'Please select a pickup time' });
       return;
     }
 
     if (!dropInfo) {
-      setError('Drop information is missing');
+      updateUiState({ error: 'Drop information is missing' });
       return;
     }
 
     try {
       // Save pickup time and special instructions to localStorage for checkout
-      localStorage.setItem('pickupTime', selectedTime);
-      localStorage.setItem('specialInstructions', comment);
-      setError(null);
+      localStorage.setItem('pickupTime', formState.selectedTime);
+      localStorage.setItem('specialInstructions', formState.comment);
+      updateUiState({ error: null });
 
       // Navigate to checkout page
       router.push('/checkout');
     } catch (error) {
-      setError('Failed to save order information');
+      updateUiState({ error: 'Failed to save order information' });
       console.error('Error saving order info:', error);
     }
-  }, [selectedTime, comment, dropInfo, router]);
+  }, [
+    formState.selectedTime,
+    formState.comment,
+    dropInfo,
+    router,
+    updateUiState,
+  ]);
 
   // Show error state if there's an error
-  if (error && !dropInfo) {
+  if (uiState.error && !dropInfo) {
     return (
       <PageLayout>
         <PageHeader
@@ -211,7 +240,7 @@ export default function CartPage() {
         />
         <main className="px-5 py-8">
           <Card className="p-6 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
+            <p className="text-red-600 mb-4">{uiState.error}</p>
             <Button onClick={handleBack} variant="outline">
               Go Back
             </Button>
@@ -242,7 +271,7 @@ export default function CartPage() {
       <main className="px-5 pb-0">
         <div className="space-y-5 pt-5">
           {/* Drop Validation Status */}
-          {isValidating && (
+          {uiState.isValidating && (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <div className="flex items-center space-x-2">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -254,9 +283,9 @@ export default function CartPage() {
           )}
 
           {/* General Error Display */}
-          {error && (
+          {uiState.error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <p className="text-red-600 text-sm">{error}</p>
+              <p className="text-red-600 text-sm">{uiState.error}</p>
             </div>
           )}
 
@@ -306,8 +335,10 @@ export default function CartPage() {
                   <div>
                     <Textarea
                       placeholder="Leave a comment..."
-                      value={comment}
-                      onChange={e => setComment(e.target.value)}
+                      value={formState.comment}
+                      onChange={e =>
+                        updateFormState({ comment: e.target.value })
+                      }
                       aria-label="Special instructions for your order"
                       className="shadow-none resize-none min-h-[60px] border-0 p-2"
                     />
@@ -347,7 +378,12 @@ export default function CartPage() {
                 <p className="mb-4">
                   Select a an aproximate time for your order
                 </p>
-                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                <Select
+                  value={formState.selectedTime}
+                  onValueChange={value =>
+                    updateFormState({ selectedTime: value })
+                  }
+                >
                   <SelectTrigger className="" aria-label="Select a slot">
                     <SelectValue placeholder="Select a slot" />
                   </SelectTrigger>
@@ -389,14 +425,19 @@ export default function CartPage() {
 
           <Button
             onClick={handlePlaceOrder}
-            disabled={isLoading || !selectedTime || !dropInfo || isValidating}
+            disabled={
+              uiState.isLoading ||
+              !formState.selectedTime ||
+              !dropInfo ||
+              uiState.isValidating
+            }
             className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
             aria-label="Continue to checkout"
             size="lg"
           >
-            {isLoading
+            {uiState.isLoading
               ? 'Processing...'
-              : isValidating
+              : uiState.isValidating
                 ? 'Validating...'
                 : 'Continue'}
           </Button>
