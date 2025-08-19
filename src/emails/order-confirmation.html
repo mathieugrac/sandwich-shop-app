@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Confirmation - {{orderNumber}}</title>
+    <link rel="stylesheet" href="{{baseUrl}}/emails/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Order Confirmation</h1>
+      </div>
+
+      <p>Hi {{customerName}},</p>
+      <p>Thank you for your order! Here are the details:</p>
+
+      <div class="order-details">
+        <h3>Order Information</h3>
+        <div class="order-info">
+          <span>Order Number:</span>
+          <span>{{orderNumber}}</span>
+        </div>
+        <div class="order-info">
+          <span>Pickup Date:</span>
+          <span>{{pickupDate}}</span>
+        </div>
+        <div class="order-info">
+          <span>Pickup Time:</span>
+          <span>{{pickupTime}}</span>
+        </div>
+      </div>
+
+      <div class="items">
+        <h3>Your Order</h3>
+        {{#each items}}
+        <div class="item">
+          <span>{{productName}} x{{quantity}}</span>
+          <span>${{totalPrice}}</span>
+        </div>
+        {{/each}}
+
+        <div class="total">
+          <span>Total</span>
+          <span>${{totalAmount}}</span>
+        </div>
+      </div>
+
+      {{#if specialInstructions}}
+      <div class="special-instructions">
+        <h3>Special Instructions</h3>
+        <p>{{specialInstructions}}</p>
+      </div>
+      {{/if}}
+
+      <div class="important-notes">
+        <h3>Important Notes</h3>
+        <ul>
+          <li>Please arrive within 15 minutes of your pickup time</li>
+          <li>Payment is due in cash at pickup</li>
+          <li>
+            If you need to make changes, please contact us as soon as possible
+          </li>
+        </ul>
+      </div>
+
+      <div class="contact-info">
+        <h3>Contact Information</h3>
+        <p><strong>Phone:</strong> {{shopPhone}}</p>
+        <p><strong>Email:</strong> {{shopEmail}}</p>
+      </div>
+
+      <div class="footer">
+        <p>Thank you for choosing {{shopName}}!</p>
+        <p>We look forward to serving you.</p>
+      </div>
+    </div>
+  </body>
+</html>

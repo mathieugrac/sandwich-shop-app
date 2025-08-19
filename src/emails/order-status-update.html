@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Status Update - {{orderNumber}}</title>
+    <link rel="stylesheet" href="{{baseUrl}}/emails/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Order Status Update</h1>
+      </div>
+
+      <p>Hi {{customerName}},</p>
+
+      <div class="status-update">
+        <h3>Order #{{orderNumber}}</h3>
+        <p>{{statusMessage}}</p>
+      </div>
+
+      <div class="important-notes">
+        <h3>What This Means</h3>
+        <ul>
+          <li>
+            <strong>Confirmed:</strong> Your order has been accepted and is
+            being prepared
+          </li>
+          <li><strong>Ready:</strong> Your order is ready for pickup</li>
+          <li><strong>Completed:</strong> Thank you for your order!</li>
+        </ul>
+      </div>
+
+      <div class="contact-info">
+        <h3>Need Help?</h3>
+        <p><strong>Phone:</strong> {{shopPhone}}</p>
+        <p><strong>Email:</strong> {{shopEmail}}</p>
+      </div>
+
+      <div class="footer">
+        <p>Thank you for choosing {{shopName}}!</p>
+        <p>We appreciate your business.</p>
+      </div>
+    </div>
+  </body>
+</html>

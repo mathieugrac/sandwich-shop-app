@@ -1,0 +1,197 @@
+/* Email Styles - Shared across all email templates */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.6;
+  color: #333;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.header h1 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 28px;
+}
+
+.order-details {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  margin: 20px 0;
+  border-left: 4px solid #007bff;
+}
+
+.order-details h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.order-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.order-info span:first-child {
+  font-weight: 600;
+  color: #495057;
+}
+
+.items {
+  margin: 25px 0;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item span:first-child {
+  font-weight: 500;
+}
+
+.item span:last-child {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  font-size: 1.2em;
+  border-top: 2px solid #333;
+  margin-top: 20px;
+  padding-top: 20px;
+  color: #2c3e50;
+}
+
+.special-instructions {
+  background-color: #fff3cd;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+  margin: 20px 0;
+}
+
+.special-instructions h3 {
+  margin: 0 0 10px 0;
+  color: #856404;
+}
+
+.special-instructions p {
+  margin: 0;
+  color: #856404;
+}
+
+.important-notes {
+  background-color: #e7f3ff;
+  padding: 20px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  margin: 20px 0;
+}
+
+.important-notes h3 {
+  margin: 0 0 15px 0;
+  color: #004085;
+}
+
+.important-notes ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.important-notes li {
+  margin-bottom: 8px;
+  color: #004085;
+}
+
+.contact-info {
+  background-color: #f8f9fa;
+  padding: 20px;
+  border-radius: 6px;
+  margin: 20px 0;
+}
+
+.contact-info h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+}
+
+.contact-info p {
+  margin: 8px 0;
+}
+
+.contact-info strong {
+  color: #495057;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  color: #6c757d;
+}
+
+.footer p {
+  margin: 5px 0;
+}
+
+.status-update {
+  background-color: #d4edda;
+  padding: 20px;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+  margin: 20px 0;
+}
+
+.status-update h3 {
+  margin: 0 0 15px 0;
+  color: #155724;
+}
+
+.status-update p {
+  margin: 0;
+  color: #155724;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+  
+  .container {
+    padding: 20px;
+  }
+  
+  .header h1 {
+    font-size: 24px;
+  }
+}
