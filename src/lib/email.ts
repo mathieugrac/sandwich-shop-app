@@ -18,6 +18,8 @@ export interface OrderConfirmationEmailData {
   }>;
   totalAmount: number;
   specialInstructions?: string;
+  locationName: string;
+  locationUrl: string;
 }
 
 export async function sendOrderConfirmationEmail(

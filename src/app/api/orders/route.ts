@@ -57,6 +57,20 @@ export async function POST(request: Request) {
     const activeDrop = nextDrop[0];
     console.log('✅ Debug: Active drop found:', activeDrop);
 
+    // Get location information for the drop
+    const { data: location, error: locationError } = await supabase
+      .from('locations')
+      .select('name, address, location_url')
+      .eq('id', activeDrop.location_id)
+      .single();
+
+    if (locationError) {
+      console.error('❌ Debug: Error fetching location:', locationError);
+      // Don't fail the order if location fetch fails, just log it
+    }
+
+    console.log('✅ Debug: Location fetched:', location);
+
     // Get or create client
     console.log('🔍 Debug: Getting/creating client...');
     const { data: client, error: clientError } = await supabase.rpc(
@@ -190,15 +204,24 @@ export async function POST(request: Request) {
         })
       );
 
+      // Format pickup date for email (e.g., "August 19th")
+      const pickupDateObj = new Date(pickupDate);
+      const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric'
+      });
+
       await sendOrderConfirmationEmail({
         orderNumber: order.order_number,
         customerName,
         customerEmail,
         pickupTime,
-        pickupDate,
+        pickupDate: formattedPickupDate,
         items: emailItems,
         totalAmount,
         specialInstructions,
+        locationName: location?.name || 'Pickup Location',
+        locationUrl: location?.location_url || '#',
       });
       console.log('✅ Debug: Confirmation email sent successfully');
     } catch (emailError) {

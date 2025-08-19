@@ -3,76 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Order Confirmation - {{orderNumber}}</title>
+    <title>
+      All set! Your Fomé order is confirmed — see you at {{pickupTime}}!
+    </title>
     <link rel="stylesheet" href="{{baseUrl}}/emails/styles.css" />
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <h1>Order Confirmation</h1>
+        <h1>
+          All set! Your Fomé order is confirmed — see you at {{pickupTime}}!
+        </h1>
       </div>
 
-      <p>Hi {{customerName}},</p>
-      <p>Thank you for your order! Here are the details:</p>
+      <div class="email-content">
+        <p>Hi {{customerName}},</p>
 
-      <div class="order-details">
-        <h3>Order Information</h3>
-        <div class="order-info">
-          <span>Order Number:</span>
-          <span>{{orderNumber}}</span>
+        <p>
+          Thanks for choosing Fomé! Your order is all set and we're excited to
+          prepare it for you.
+        </p>
+
+        <div class="order-summary">
+          <h2>Order #{{orderNumber}}</h2>
+
+          <div class="order-items">
+            {{#each items}}
+            <div class="order-item">
+              <span>{{productName}} × {{quantity}}</span>
+            </div>
+            {{/each}}
+          </div>
+
+          <div class="order-total">
+            <strong>Total: {{totalAmount}}€</strong>
+          </div>
+
+          <div class="pickup-info">
+            <strong
+              >Ready for pickup: *{{pickupDate}} at {{pickupTime}}*</strong
+            >
+          </div>
+
+          <div class="location-info">
+            <strong>Where?</strong>
+            <a href="{{locationUrl}}" class="location-link">{{locationName}}</a>
+          </div>
         </div>
-        <div class="order-info">
-          <span>Pickup Date:</span>
-          <span>{{pickupDate}}</span>
+
+        {{#if specialInstructions}}
+        <div class="special-instructions">
+          <h3>Special Instructions</h3>
+          <p>{{specialInstructions}}</p>
         </div>
-        <div class="order-info">
-          <span>Pickup Time:</span>
-          <span>{{pickupTime}}</span>
+        {{/if}}
+
+        <div class="reminders">
+          <h3>*Quick reminders*</h3>
+          <p>
+            Please plan to arrive within 10 minutes of your pickup time, and
+            bring cash for payment. Mbway is accepted.
+          </p>
         </div>
-      </div>
 
-      <div class="items">
-        <h3>Your Order</h3>
-        {{#each items}}
-        <div class="item">
-          <span>{{productName}} x{{quantity}}</span>
-          <span>€{{totalPrice}}</span>
+        <div class="contact-info">
+          <h3>*Questions?*</h3>
+          <p><strong>WhatsApp:</strong> +33 6 52 41 39 01</p>
+          <p><strong>Email:</strong> {{shopEmail}}</p>
         </div>
-        {{/each}}
 
-        <div class="total">
-          <span>Total</span>
-          <span>€{{totalAmount}}</span>
+        <div class="footer">
+          <p>See you soon!</p>
+          <p>The Fomé team</p>
         </div>
-      </div>
-
-      {{#if specialInstructions}}
-      <div class="special-instructions">
-        <h3>Special Instructions</h3>
-        <p>{{specialInstructions}}</p>
-      </div>
-      {{/if}}
-
-      <div class="important-notes">
-        <h3>Important Notes</h3>
-        <ul>
-          <li>Please arrive within 15 minutes of your pickup time</li>
-          <li>Payment is due in cash at pickup</li>
-          <li>
-            If you need to make changes, please contact us as soon as possible
-          </li>
-        </ul>
-      </div>
-
-      <div class="contact-info">
-        <h3>Contact Information</h3>
-        <p><strong>Phone:</strong> {{shopPhone}}</p>
-        <p><strong>Email:</strong> {{shopEmail}}</p>
-      </div>
-
-      <div class="footer">
-        <p>Thank you for choosing {{shopName}}!</p>
-        <p>We look forward to serving you.</p>
       </div>
     </div>
   </body>
