@@ -51,7 +51,7 @@ export async function sendOrderConfirmationEmail(
     const { data: emailData, error } = await resend.emails.send({
       from: shopInfo.shopEmail,
       to: data.customerEmail,
-      subject: `Order Confirmation - ${data.orderNumber}`,
+      subject: `All set! Your Fomé order is confirmed — see you at ${data.pickupTime}!`,
       html,
     });
 
