@@ -48,7 +48,7 @@ body {
   border-left: 4px solid #28a745;
 }
 
-.order-summary h2 {
+.order-summary h3 {
   margin: 0 0 20px 0;
   color: #2c3e50;
   font-size: 20px;
@@ -56,12 +56,14 @@ body {
 
 .order-items {
   margin: 20px 0;
+  padding-left: 20px;
 }
 
 .order-item {
   padding: 8px 0;
   border-bottom: 1px solid #e9ecef;
   font-size: 16px;
+  list-style-type: none;
 }
 
 .order-item:last-child {
@@ -75,6 +77,7 @@ body {
   margin: 20px 0;
   padding: 15px 0;
   border-top: 2px solid #dee2e6;
+  list-style-type: none;
 }
 
 .pickup-info {
@@ -84,11 +87,13 @@ body {
   border-left: 4px solid #28a745;
   margin: 20px 0;
   font-size: 16px;
+  list-style-type: none;
 }
 
 .location-info {
   margin: 20px 0;
   font-size: 16px;
+  list-style-type: none;
 }
 
 .location-link {
@@ -160,6 +165,16 @@ body {
   font-size: 16px;
 }
 
+.contact-info ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.contact-info li {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
 .contact-info strong {
   color: #495057;
 }
@@ -175,6 +190,47 @@ body {
 .footer p {
   margin: 5px 0;
   font-size: 16px;
+}
+
+.status-update {
+  background-color: #d4edda;
+  padding: 20px;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+  margin: 20px 0;
+}
+
+.status-update h3 {
+  margin: 0 0 15px 0;
+  color: #155724;
+}
+
+.status-update p {
+  margin: 0;
+  color: #155724;
+}
+
+.important-notes {
+  background-color: #e7f3ff;
+  padding: 20px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  margin: 20px 0;
+}
+
+.important-notes h3 {
+  margin: 0 0 15px 0;
+  color: #004085;
+}
+
+.important-notes ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.important-notes li {
+  margin-bottom: 8px;
+  color: #004085;
 }
 
 /* Responsive adjustments */
