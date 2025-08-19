@@ -27,6 +27,17 @@ interface DropValidation {
   dropStatus?: string;
 }
 
+// Unified state interface
+interface CartState {
+  items: CartItem[];
+  isInitialized: boolean;
+  dropValidation: {
+    isValid: boolean;
+    error?: string;
+    lastChecked?: Date;
+  };
+}
+
 interface CartContextType {
   items: CartItem[];
   addToCart: (item: Omit<CartItem, 'quantity'>) => void;
@@ -44,35 +55,32 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  // Initialize cart from localStorage if available
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Single unified state
+  const [cartState, setCartState] = useState<CartState>({
+    items: [],
+    isInitialized: false,
+    dropValidation: {
+      isValid: true,
+      error: undefined,
+      lastChecked: undefined,
+    },
+  });
 
   // Initialize cart after component mounts to avoid SSR issues
   React.useEffect(() => {
-    console.log('🔄 Cart context: Initializing cart...');
-    if (typeof window !== 'undefined' && !isInitialized) {
+    if (typeof window !== 'undefined' && !cartState.isInitialized) {
       try {
         const savedCart = localStorage.getItem('sandwich-shop-cart');
-        console.log(
-          '🔄 Cart context: Saved cart from localStorage:',
-          savedCart
-        );
         if (savedCart) {
           const parsedCart = JSON.parse(savedCart);
 
           // Handle backward compatibility for cart items without dropId
           const migratedCart = parsedCart.map((item: CartItem) => {
             if (!item.dropId && item.dropProductId) {
-              // For backward compatibility, try to get dropId from currentDrop in localStorage
               try {
                 const currentDrop = localStorage.getItem('currentDrop');
                 if (currentDrop) {
                   const dropData = JSON.parse(currentDrop);
-                  console.log(
-                    '🔄 Migrating cart item with dropId:',
-                    dropData.id
-                  );
                   return { ...item, dropId: dropData.id };
                 }
               } catch (error) {
@@ -82,33 +90,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return item;
           });
 
-          console.log('📦 Cart loaded from localStorage:', migratedCart);
-          setItems(migratedCart);
+          setCartState(prev => ({
+            ...prev,
+            items: migratedCart,
+            isInitialized: true,
+          }));
         } else {
-          console.log(
-            '📦 Cart context: No saved cart found, starting with empty cart'
-          );
+          setCartState(prev => ({ ...prev, isInitialized: true }));
         }
-        setIsInitialized(true);
-        console.log('✅ Cart context: Initialization complete');
       } catch (error) {
-        console.error(
-          '❌ Cart context: Error loading cart from localStorage:',
-          error
-        );
-        setIsInitialized(true);
+        console.error('Error loading cart from localStorage:', error);
+        setCartState(prev => ({ ...prev, isInitialized: true }));
       }
-    } else {
-      console.log(
-        '🔄 Cart context: Skipping initialization - window not available or already initialized'
-      );
     }
-  }, [isInitialized]);
-
-  const [isDropValid, setIsDropValid] = useState(true);
-  const [dropValidationError, setDropValidationError] = useState<
-    string | undefined
-  >();
+  }, [cartState.isInitialized]);
 
   // Helper function to save cart to localStorage
   const saveCartToStorage = useCallback((cartItems: CartItem[]) => {
@@ -122,59 +117,63 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addToCart = (newItem: Omit<CartItem, 'quantity'>) => {
-    setItems(prevItems => {
-      const currentItems = prevItems || [];
-      const existingItem = currentItems.find(item => item.id === newItem.id);
+    setCartState(prev => {
+      const existingItem = prev.items.find(item => item.id === newItem.id);
       let newItems;
+
       if (existingItem) {
-        newItems = currentItems.map(item =>
+        newItems = prev.items.map(item =>
           item.id === newItem.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
-        newItems = [...currentItems, { ...newItem, quantity: 1 }];
+        newItems = [...prev.items, { ...newItem, quantity: 1 }];
       }
-      // Save to localStorage
+
       saveCartToStorage(newItems);
-      return newItems;
+      return { ...prev, items: newItems };
     });
   };
 
   const removeFromCart = (id: string) => {
-    setItems(prevItems => {
-      const currentItems = prevItems || [];
-      const newItems = currentItems.filter(item => item.id !== id);
+    setCartState(prev => {
+      const newItems = prev.items.filter(item => item.id !== id);
       saveCartToStorage(newItems);
-      return newItems;
+      return { ...prev, items: newItems };
     });
   };
 
   const updateQuantity = (id: string, quantity: number) => {
     if (quantity <= 0) {
-      setItems(prevItems => {
-        const currentItems = prevItems || [];
-        const newItems = currentItems.filter(item => item.id !== id);
+      setCartState(prev => {
+        const newItems = prev.items.filter(item => item.id !== id);
         saveCartToStorage(newItems);
-        return newItems;
+        return { ...prev, items: newItems };
       });
       return;
     }
-    setItems(prevItems => {
-      const currentItems = prevItems || [];
-      const newItems = currentItems.map(item =>
+
+    setCartState(prev => {
+      const newItems = prev.items.map(item =>
         item.id === id ? { ...item, quantity } : item
       );
       saveCartToStorage(newItems);
-      return newItems;
+      return { ...prev, items: newItems };
     });
   };
 
   const clearCart = () => {
-    setItems([]);
-    setIsDropValid(true);
-    setDropValidationError(undefined);
-    // Clear from localStorage
+    setCartState({
+      items: [],
+      isInitialized: true,
+      dropValidation: {
+        isValid: true,
+        error: undefined,
+        lastChecked: undefined,
+      },
+    });
+
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('sandwich-shop-cart');
@@ -187,7 +186,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const validateDrop = useCallback(
     async (dropId: string): Promise<DropValidation> => {
       try {
-        console.log('🔍 Validating drop:', dropId);
         const response = await fetch(`/api/drops/${dropId}/orderable`);
         if (!response.ok) {
           throw new Error(
@@ -196,21 +194,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         const data = await response.json();
-        console.log('✅ Drop validation response:', data);
 
-        if (data.orderable) {
-          setIsDropValid(true);
-          setDropValidationError(undefined);
-        } else {
-          setIsDropValid(false);
-          setDropValidationError(data.reason || 'Drop is not orderable');
-        }
+        setCartState(prev => ({
+          ...prev,
+          dropValidation: {
+            isValid: data.orderable,
+            error: data.orderable
+              ? undefined
+              : data.reason || 'Drop is not orderable',
+            lastChecked: new Date(),
+          },
+        }));
 
         return data;
       } catch (error) {
-        console.error('❌ Error validating drop:', error);
-        setIsDropValid(false);
-        setDropValidationError('Failed to validate drop status');
+        console.error('Error validating drop:', error);
+        setCartState(prev => ({
+          ...prev,
+          dropValidation: {
+            isValid: false,
+            error: 'Failed to validate drop status',
+            lastChecked: new Date(),
+          },
+        }));
+
         return {
           orderable: false,
           reason: 'Failed to validate drop status',
@@ -222,24 +229,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Clean up expired cart items on mount
   React.useEffect(() => {
-    if (items && items.length > 0) {
-      // Check if any items are from expired drops
+    if (cartState.items.length > 0) {
       const checkExpiredItems = async () => {
         try {
-          // Get unique drop IDs from cart items (filter out undefined dropIds)
           const dropIds = [
-            ...new Set(items.map(item => item.dropId).filter(Boolean)),
+            ...new Set(
+              cartState.items.map(item => item.dropId).filter(Boolean)
+            ),
           ];
 
-          if (dropIds.length === 0) {
-            console.log('No valid drop IDs found in cart, skipping validation');
-            return;
-          }
+          if (dropIds.length === 0) return;
 
           for (const dropId of dropIds) {
             const validation = await validateDrop(dropId);
             if (!validation.orderable) {
-              console.log('Drop expired, clearing cart');
               clearCart();
               break;
             }
@@ -251,19 +254,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       checkExpiredItems();
     }
-  }, [items, validateDrop]);
+  }, [cartState.items, validateDrop]);
 
-  const totalItems = (items || []).reduce(
+  const totalItems = cartState.items.reduce(
     (sum, item) => sum + item.quantity,
     0
   );
-  const totalPrice = (items || []).reduce(
+
+  const totalPrice = cartState.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
 
   const contextValue = {
-    items: items || [],
+    items: cartState.items,
     addToCart,
     removeFromCart,
     updateQuantity,
@@ -271,12 +275,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     totalItems,
     totalPrice,
     validateDrop,
-    isDropValid,
-    dropValidationError,
-    isInitialized,
+    isDropValid: cartState.dropValidation.isValid,
+    dropValidationError: cartState.dropValidation.error,
+    isInitialized: cartState.isInitialized,
   };
-
-  console.log('🔄 Cart context: Providing context value:', contextValue);
 
   return (
     <CartContext.Provider value={contextValue}>{children}</CartContext.Provider>
@@ -285,13 +287,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  console.log('🔄 useCart hook called, context:', context);
   if (context === undefined) {
-    console.error(
-      '❌ useCart hook: Context is undefined - not within CartProvider'
-    );
     throw new Error('useCart must be used within a CartProvider');
   }
-  console.log('✅ useCart hook: Returning context:', context);
   return context;
 }
