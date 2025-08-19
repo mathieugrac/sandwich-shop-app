@@ -4,6 +4,7 @@ import { DropWithCalculatedFields } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { validateDropDeadline } from '@/lib/utils';
 
 interface DropItemProps {
   drop: DropWithCalculatedFields;
@@ -23,9 +24,12 @@ export function DropItem({
   const { day, month } = formatDate(drop.date);
   const timeRemaining = formatPickupDeadline(drop.pickup_deadline);
   const statusColor = getStatusColor(drop.status, drop.pickup_deadline);
+  
+  // Use centralized deadline validation
+  const deadlineValidation = validateDropDeadline(drop.pickup_deadline);
 
   const handlePreOrder = () => {
-    if (drop.status === 'active') {
+    if (drop.status === 'active' && deadlineValidation.isValid) {
       router.push(`/menu/${drop.id}`);
     }
   };
@@ -86,16 +90,12 @@ export function DropItem({
               onClick={handlePreOrder}
               className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
               size="lg"
-              disabled={
-                !!(
-                  drop.pickup_deadline &&
-                  new Date(drop.pickup_deadline) <= new Date()
-                )
-              }
+              disabled={!deadlineValidation.isValid}
             >
-              {drop.pickup_deadline &&
-              new Date(drop.pickup_deadline) <= new Date()
+              {deadlineValidation.isExpired
                 ? 'Closed'
+                : deadlineValidation.isGracePeriod
+                ? 'Grace Period'
                 : 'Pre-Order'}
             </Button>
           ) : drop.status === 'upcoming' ? (

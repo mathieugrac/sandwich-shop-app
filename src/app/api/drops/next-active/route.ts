@@ -72,8 +72,9 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq('status', 'active')
-      .gte('date', new Date().toISOString().split('T')[0])
-      .order('date', { ascending: true })
+      .not('pickup_deadline', 'is', null)  // Ensure deadline is set
+      .gt('pickup_deadline', new Date().toISOString())  // Use deadline instead of date
+      .order('pickup_deadline', { ascending: true })  // Order by deadline
       .limit(1)
       .single();
 

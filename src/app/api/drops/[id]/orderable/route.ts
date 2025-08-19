@@ -46,11 +46,26 @@ export async function GET(
       );
     }
 
+    // Apply grace period logic (15 minutes after pickup deadline)
+    let finalOrderable = isOrderable;
+    let gracePeriodActive = false;
+    
+    if (drop.pickup_deadline && !isOrderable && drop.status === 'active') {
+      const deadline = new Date(drop.pickup_deadline);
+      const graceDeadline = new Date(deadline.getTime() + (15 * 60 * 1000)); // 15 min grace
+      const now = new Date();
+      
+      if (now <= graceDeadline) {
+        finalOrderable = true;
+        gracePeriodActive = true;
+      }
+    }
+
     // Provide detailed information about the drop status
     let reason = null;
     let timeRemaining = null;
 
-    if (!isOrderable) {
+    if (!finalOrderable) {
       if (drop.status === 'completed') {
         reason = 'This drop has been completed';
       } else if (drop.status === 'cancelled') {
@@ -76,11 +91,17 @@ export async function GET(
         } else {
           timeRemaining = `${diffMinutes}m`;
         }
+      } else if (gracePeriodActive) {
+        // Show grace period remaining time
+        const graceDeadline = new Date(deadline.getTime() + (15 * 60 * 1000));
+        const graceDiffMs = graceDeadline.getTime() - now.getTime();
+        const graceDiffMinutes = Math.floor(graceDiffMs / (1000 * 60));
+        timeRemaining = `Grace period: ${graceDiffMinutes}m remaining`;
       }
     }
 
     return NextResponse.json({
-      orderable: isOrderable,
+      orderable: finalOrderable,
       drop: {
         id: drop.id,
         status: drop.status,
@@ -90,6 +111,7 @@ export async function GET(
       },
       reason,
       time_until_deadline: timeRemaining,
+      grace_period_active: gracePeriodActive,
     });
   } catch (error) {
     console.error('Unexpected error in check drop orderable:', error);
