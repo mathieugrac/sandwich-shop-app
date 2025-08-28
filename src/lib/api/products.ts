@@ -1,4 +1,8 @@
-import { Product } from '@/types/database';
+import type { Database } from '@/types/database';
+
+type Product = Database['public']['Tables']['products']['Row'];
+type ProductInsert = Database['public']['Tables']['products']['Insert'];
+type ProductUpdate = Database['public']['Tables']['products']['Update'];
 
 export async function fetchProducts(): Promise<Product[]> {
   const response = await fetch('/api/products');
@@ -10,15 +14,9 @@ export async function fetchProducts(): Promise<Product[]> {
   return response.json();
 }
 
-export async function createProduct(productData: {
-  name: string;
-  description: string;
-  sell_price: number;
-  production_cost: number;
-  category: 'sandwich' | 'side' | 'dessert' | 'beverage';
-  active?: boolean;
-  sort_order?: number;
-}): Promise<Product> {
+export async function createProduct(
+  productData: ProductInsert
+): Promise<Product> {
   const response = await fetch('/api/products', {
     method: 'POST',
     headers: {
@@ -36,7 +34,7 @@ export async function createProduct(productData: {
 
 export async function updateProduct(
   productId: string,
-  productData: Partial<Product>
+  productData: ProductUpdate
 ): Promise<Product> {
   const response = await fetch(`/api/products/${productId}`, {
     method: 'PUT',

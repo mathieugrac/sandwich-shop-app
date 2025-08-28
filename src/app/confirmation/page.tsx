@@ -17,11 +17,17 @@ interface ConfirmationCartItem {
 }
 
 interface ParsedOrder {
-  items?: ConfirmationCartItem[];
-  comment?: string;
-  totalAmount?: number;
-  pickupTime?: string;
-  pickupDate?: string;
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string | null;
+  pickupDate: string;
+  pickupTime: string;
+  totalAmount: number;
+  specialInstructions: string | null;
+  order_products: OrderItem[]; // Updated from order_items
+  status: string;
+  createdAt: string;
   dropInfo?: {
     location?: {
       name?: string;
@@ -41,24 +47,30 @@ interface OrderItem {
 }
 
 interface OrderDetails {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  pickup_time: string;
-  pickup_date: string;
-  total_amount: number;
-  special_instructions?: string;
-  created_at: string;
-  order_items: OrderItem[];
+  order: ParsedOrder;
+  order_products: OrderItem[]; // Updated from order_items
 }
 
 function ConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
-  const [order, setOrder] = useState<OrderDetails | null>(null);
+  const [orderData, setOrderData] = useState<OrderDetails>({
+    order: {
+      orderNumber: '',
+      customerName: '',
+      customerEmail: '',
+      customerPhone: null,
+      pickupDate: '',
+      pickupTime: '',
+      totalAmount: 0,
+      specialInstructions: null,
+      order_products: [], // Updated from order_items
+      status: '',
+      createdAt: '',
+    },
+    order_products: [], // Updated from order_items
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -87,8 +99,43 @@ function ConfirmationContent() {
         }
 
         const data = await response.json();
-        console.log('Successfully fetched order from database:', data.order);
-        setOrder(data.order);
+        console.log('Successfully fetched order from database:', data);
+        console.log('API response structure:', {
+          success: data.success,
+          hasOrder: !!data.order,
+          orderKeys: data.order ? Object.keys(data.order) : [],
+          orderData: data.order,
+        });
+
+        // Transform the API response to match our expected structure
+        if (data.success && data.order) {
+          const apiOrder = data.order;
+          console.log('Processing API order:', apiOrder);
+
+          const transformedOrder: ParsedOrder = {
+            orderNumber: apiOrder.order_number || '',
+            customerName: apiOrder.customer_name || '',
+            customerEmail: apiOrder.customer_email || '',
+            customerPhone: apiOrder.customer_phone || null,
+            pickupDate: apiOrder.pickup_date || '',
+            pickupTime: apiOrder.pickup_time || '',
+            totalAmount: apiOrder.total_amount || 0,
+            specialInstructions: apiOrder.special_instructions || null,
+            order_products: apiOrder.order_products || [],
+            status: 'confirmed', // API orders are already confirmed
+            createdAt: apiOrder.created_at || new Date().toISOString(),
+            dropInfo: apiOrder.drop_info || undefined,
+          };
+
+          console.log('Transformed order:', transformedOrder);
+
+          setOrderData({
+            order: transformedOrder,
+            order_products: transformedOrder.order_products,
+          });
+        } else {
+          throw new Error('Invalid API response format');
+        }
       } catch (error) {
         console.error('Error fetching order details:', error);
         console.log(
@@ -100,7 +147,7 @@ function ConfirmationContent() {
         console.log('currentDrop:', localStorage.getItem('currentDrop'));
 
         // Fallback to localStorage data if API fails
-        let fallbackOrder: OrderDetails;
+        let fallbackOrder: ParsedOrder;
 
         try {
           const customerInfo = localStorage.getItem('customerInfo');
@@ -120,19 +167,19 @@ function ConfirmationContent() {
               console.log('Parsed activeOrder:', parsedOrder);
 
               // Handle the actual structure from activeOrder
-              if (parsedOrder.items) {
-                cartItems = parsedOrder.items.map(
-                  (item: ConfirmationCartItem) => ({
+              if (parsedOrder.order_products) {
+                cartItems = parsedOrder.order_products.map(
+                  (item: OrderItem) => ({
                     id: item.id || Math.random().toString(),
-                    name: item.name,
-                    price: item.price || 0,
+                    name: item.products.name,
+                    price: item.unit_price,
                     quantity: item.quantity,
-                    description: item.description || '',
+                    description: item.products.description,
                   })
                 );
               }
 
-              cartComment = parsedOrder.comment || '';
+              cartComment = parsedOrder.specialInstructions || '';
               totalAmount = parsedOrder.totalAmount || 0;
 
               console.log('Processed cartItems:', cartItems);
@@ -159,27 +206,15 @@ function ConfirmationContent() {
           }
 
           fallbackOrder = {
-            id: orderId,
-            order_number: `ORD-${Date.now().toString().slice(-8)}`,
-            customer_name: customerInfo
+            orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
+            customerName: customerInfo
               ? JSON.parse(customerInfo).name
               : 'Your Name',
-            customer_email: customerInfo
+            customerEmail: customerInfo
               ? JSON.parse(customerInfo).email
               : 'your.email@example.com',
-            customer_phone: customerInfo ? JSON.parse(customerInfo).phone : '',
-            pickup_time: (() => {
-              if (activeOrder) {
-                try {
-                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
-                  return parsedOrder.pickupTime || cartPickupTime || '12:00';
-                } catch (e) {
-                  return cartPickupTime || '12:00';
-                }
-              }
-              return cartPickupTime || '12:00';
-            })(),
-            pickup_date: (() => {
+            customerPhone: customerInfo ? JSON.parse(customerInfo).phone : null,
+            pickupDate: (() => {
               if (activeOrder) {
                 try {
                   const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
@@ -193,7 +228,18 @@ function ConfirmationContent() {
               }
               return new Date().toISOString().split('T')[0];
             })(),
-            total_amount:
+            pickupTime: (() => {
+              if (activeOrder) {
+                try {
+                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
+                  return parsedOrder.pickupTime || cartPickupTime || '12:00';
+                } catch (e) {
+                  return cartPickupTime || '12:00';
+                }
+              }
+              return cartPickupTime || '12:00';
+            })(),
+            totalAmount:
               totalAmount ||
               (cartItems && cartItems.length > 0
                 ? cartItems.reduce(
@@ -202,9 +248,8 @@ function ConfirmationContent() {
                     0
                   )
                 : 0),
-            special_instructions: cartComment,
-            created_at: new Date().toISOString(),
-            order_items:
+            specialInstructions: cartComment,
+            order_products:
               cartItems && cartItems.length > 0
                 ? cartItems.map((item: ConfirmationCartItem) => ({
                     id: item.id,
@@ -216,26 +261,31 @@ function ConfirmationContent() {
                     },
                   }))
                 : [],
+            status: 'pending', // Assuming a default status
+            createdAt: new Date().toISOString(),
           };
         } catch (fallbackError) {
           console.error('Error creating fallback order:', fallbackError);
           // Create a minimal fallback order if parsing fails
           fallbackOrder = {
-            id: orderId,
-            order_number: `ORD-${Date.now().toString().slice(-8)}`,
-            customer_name: 'Your Name',
-            customer_email: 'your.email@example.com',
-            customer_phone: '',
-            pickup_time: '12:00',
-            pickup_date: new Date().toISOString().split('T')[0],
-            total_amount: 0,
-            special_instructions: '',
-            created_at: new Date().toISOString(),
-            order_items: [],
+            orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
+            customerName: 'Your Name',
+            customerEmail: 'your.email@example.com',
+            customerPhone: null,
+            pickupDate: new Date().toISOString().split('T')[0],
+            pickupTime: '12:00',
+            totalAmount: 0,
+            specialInstructions: '',
+            order_products: [],
+            status: 'pending',
+            createdAt: new Date().toISOString(),
           };
         }
 
-        setOrder(fallbackOrder);
+        setOrderData({
+          order: fallbackOrder,
+          order_products: fallbackOrder.order_products,
+        });
       } finally {
         setLoading(false);
       }
@@ -252,19 +302,31 @@ function ConfirmationContent() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading order details...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading order details...</p>
         </div>
       </div>
     );
   }
 
-  if (!order) {
+  // Safety check to ensure orderData is properly initialized
+  if (!orderData || !orderData.order || !orderData.order.orderNumber) {
+    console.error('Order data not properly initialized:', orderData);
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Order not found</p>
-          <Button onClick={handleBackToHome}>Back to Home</Button>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Order Not Found
+          </h1>
+          <p className="text-gray-600 mb-6">
+            We couldn&apos;t load your order details.
+          </p>
+          <button
+            onClick={handleBackToHome}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Back to Home
+          </button>
         </div>
       </div>
     );
@@ -293,21 +355,27 @@ function ConfirmationContent() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order Number:</span>
-                    <span className="font-medium">{order.order_number}</span>
+                    <span className="font-medium">
+                      {orderData.order.orderNumber}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Customer:</span>
-                    <span className="font-medium">{order.customer_name}</span>
+                    <span className="font-medium">
+                      {orderData.order.customerName || 'Unknown'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span className="font-medium">{order.customer_email}</span>
+                    <span className="font-medium">
+                      {orderData.order.customerEmail || 'Unknown'}
+                    </span>
                   </div>
-                  {order.customer_phone && (
+                  {orderData.order.customerPhone && (
                     <div className="flex justify-between">
                       <span className="text-gray-600">Phone:</span>
                       <span className="font-medium">
-                        {order.customer_phone}
+                        {orderData.order.customerPhone}
                       </span>
                     </div>
                   )}
@@ -315,7 +383,7 @@ function ConfirmationContent() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total Amount:</span>
                     <span className="font-semibold text-lg">
-                      €{order.total_amount.toFixed(2)}
+                      €{(orderData.order.totalAmount || 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -323,30 +391,31 @@ function ConfirmationContent() {
             </section>
 
             {/* Order Items */}
-            {order.order_items && order.order_items.length > 0 && (
-              <section>
-                <h3 className="text-xl font-semibold mb-4">Order Items</h3>
-                <Card className="p-4">
-                  <div className="space-y-3">
-                    {order.order_items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center"
-                      >
-                        <div>
-                          <span className="font-medium">
-                            {item.products.name}
-                          </span>
-                          <span className="text-gray-600 ml-2">
-                            x{item.quantity}
-                          </span>
+            {orderData.order_products &&
+              orderData.order_products.length > 0 && (
+                <section>
+                  <h3 className="text-xl font-semibold mb-4">Order Items</h3>
+                  <Card className="p-4">
+                    <div className="space-y-3">
+                      {orderData.order_products.map((item, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center"
+                        >
+                          <div>
+                            <span className="font-medium">
+                              {item.products.name}
+                            </span>
+                            <span className="text-gray-600 ml-2">
+                              x{item.quantity}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </section>
-            )}
+                      ))}
+                    </div>
+                  </Card>
+                </section>
+              )}
 
             {/* Pickup Information */}
             <section>
@@ -358,9 +427,9 @@ function ConfirmationContent() {
                     <div>
                       <p className="text-sm text-gray-600">Pickup Time</p>
                       <p className="font-medium">
-                        {order.pickup_time
+                        {orderData.order.pickupTime
                           ? new Date(
-                              `2000-01-01T${order.pickup_time}`
+                              `2000-01-01T${orderData.order.pickupTime}`
                             ).toLocaleTimeString('en-US', {
                               hour: 'numeric',
                               minute: '2-digit',
@@ -498,13 +567,15 @@ function ConfirmationContent() {
             </section>
 
             {/* Special Instructions */}
-            {order.special_instructions && (
+            {orderData.order.specialInstructions && (
               <section>
                 <h3 className="text-xl font-semibold mb-4">
                   Special Instructions
                 </h3>
                 <Card className="p-4">
-                  <p className="text-gray-700">{order.special_instructions}</p>
+                  <p className="text-gray-700">
+                    {orderData.order.specialInstructions}
+                  </p>
                 </Card>
               </section>
             )}

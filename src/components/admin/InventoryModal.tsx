@@ -9,7 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Product } from '@/types/database';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
+import type { Database } from '@/types/database';
+
+type Product = Database['public']['Tables']['products']['Row'];
 
 interface InventoryModalProps {
   open: boolean;

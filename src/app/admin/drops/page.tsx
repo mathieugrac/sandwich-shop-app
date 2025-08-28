@@ -10,6 +10,7 @@ import {
   fetchAdminPastDrops,
   changeDropStatus,
   calculatePickupDeadline,
+  AdminDrop,
 } from '@/lib/api/drops';
 import {
   AdminLayout,
@@ -19,7 +20,16 @@ import {
   InventoryModal,
 } from '@/components/admin';
 import { Plus } from 'lucide-react';
-import { Drop, Location, Product, AdminDrop } from '@/types/database';
+import type { Database } from '@/types/database';
+
+type Drop = Database['public']['Tables']['drops']['Row'];
+type Location = Database['public']['Tables']['locations']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
+
+interface ExtendedDrop extends AdminDrop {
+  drop_products_count?: number;
+  drop_products_total?: number;
+}
 
 export default function DropManagementPage() {
   // Consolidate drops state
@@ -270,8 +280,10 @@ export default function DropManagementPage() {
     updateFormState({
       editDrop: {
         date: drop.date,
-        location: drop.location_id,
-        status: drop.status,
+        location: drop.location_id || '',
+        status:
+          (drop.status as 'upcoming' | 'active' | 'completed' | 'cancelled') ||
+          'upcoming',
       },
     });
     updateUiState({ showEditModal: true });

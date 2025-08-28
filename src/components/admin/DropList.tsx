@@ -18,14 +18,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  CheckCircle,
-  Clock,
+  Loader2,
   Edit,
-  Play,
-  RotateCcw,
   Trash2,
+  Eye,
+  Calendar,
+  MapPin,
+  Package,
 } from 'lucide-react';
-import { AdminDrop, Drop } from '@/types/database';
+import { AdminDrop } from '@/lib/api/drops';
+import type { Database } from '@/types/database';
+
+type Drop = Database['public']['Tables']['drops']['Row'];
 
 interface DropListProps {
   upcomingDrops: AdminDrop[];
@@ -56,7 +60,9 @@ export default function DropList({
   onStatusChange,
   onViewOrders,
 }: DropListProps) {
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return <Badge variant="secondary">Unknown</Badge>;
+
     switch (status) {
       case 'upcoming':
         return <Badge variant="secondary">Upcoming</Badge>;
@@ -74,15 +80,15 @@ export default function DropList({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'upcoming':
-        return <Clock className="h-4 w-4" />;
+        return <Calendar className="h-4 w-4" />;
       case 'active':
-        return <CheckCircle className="h-4 w-4" />;
+        return <Eye className="h-4 w-4" />;
       case 'completed':
-        return <CheckCircle className="h-4 w-4" />;
+        return <Package className="h-4 w-4" />;
       case 'cancelled':
-        return <Clock className="h-4 w-4" />;
+        return <Calendar className="h-4 w-4" />;
       default:
-        return <Clock className="h-4 w-4" />;
+        return <Calendar className="h-4 w-4" />;
     }
   };
 
@@ -148,7 +154,7 @@ export default function DropList({
                           onClick={() => onStatusChange(drop.id, 'active')}
                           className="flex items-center space-x-2"
                         >
-                          <Play className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                           <span>Activate</span>
                         </Button>
                       )}
@@ -160,7 +166,7 @@ export default function DropList({
                           onClick={() => onStatusChange(drop.id, 'completed')}
                           className="flex items-center space-x-2"
                         >
-                          <CheckCircle className="w-4 h-4" />
+                          <Package className="w-4 h-4" />
                           <span>Complete</span>
                         </Button>
                       )}
@@ -245,7 +251,7 @@ export default function DropList({
                           onClick={() => onStatusChange(drop.id, 'active')}
                           className="flex items-center space-x-2"
                         >
-                          <RotateCcw className="w-4 h-4" />
+                          <Eye className="w-4 h-4" />
                           <span>Reopen</span>
                         </Button>
                       )}

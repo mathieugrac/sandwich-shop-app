@@ -1,10 +1,38 @@
-import {
-  Drop,
-  DropWithProducts,
-  AdminDrop,
-  DropWithCalculatedFields,
-} from '@/types/database';
+import type { Database } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
+
+// Extract base types from the new database schema
+type Drop = Database['public']['Tables']['drops']['Row'];
+type Location = Database['public']['Tables']['locations']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
+type DropProduct = Database['public']['Tables']['drop_products']['Row'];
+
+// Create extended types that were previously imported
+export interface DropWithCalculatedFields extends Drop {
+  location: Location;
+  total_available: number;
+}
+
+export interface DropWithProducts extends Drop {
+  location: Location;
+  dropProducts: Array<
+    DropProduct & {
+      product: Product & {
+        product_images?: Array<{
+          id: string;
+          image_url: string;
+          alt_text: string | null;
+          sort_order: number;
+        }>;
+      };
+    }
+  >;
+}
+
+export interface AdminDrop extends Drop {
+  location_name: string;
+  total_available: number;
+}
 
 export async function fetchDrops(): Promise<DropWithCalculatedFields[]> {
   const response = await fetch('/api/drops');

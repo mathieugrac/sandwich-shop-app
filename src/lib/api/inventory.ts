@@ -1,4 +1,7 @@
-import { Product, DropProduct } from '@/types/database';
+import type { Database } from '@/types/database';
+
+type Product = Database['public']['Tables']['products']['Row'];
+type DropProduct = Database['public']['Tables']['drop_products']['Row'];
 
 export interface InventoryItem extends DropProduct {
   product: Product;

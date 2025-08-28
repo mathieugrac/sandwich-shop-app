@@ -1,8 +1,8 @@
 'use client';
 
-import { DropWithCalculatedFields } from '@/types/database';
+import { DropWithCalculatedFields } from '@/lib/api/drops';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
+import { Calendar, MapPin, Clock, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { validateDropDeadline } from '@/lib/utils';
 
@@ -45,7 +45,9 @@ export function DropItem({ drop }: DropItemProps) {
   };
 
   // Get status color internally
-  const getStatusColor = (status: string, deadline: string | null) => {
+  const getStatusColor = (status: string | null, deadline: string | null) => {
+    if (!status) return 'text-gray-500';
+
     if (status === 'completed' || status === 'cancelled')
       return 'text-gray-500';
     if (status === 'active') {
@@ -60,7 +62,7 @@ export function DropItem({ drop }: DropItemProps) {
   const { day, month } = formatDate(drop.date);
   const timeRemaining = formatPickupDeadline(drop.pickup_deadline);
   const statusColor = getStatusColor(drop.status, drop.pickup_deadline);
-  
+
   // Use centralized deadline validation
   const deadlineValidation = validateDropDeadline(drop.pickup_deadline);
 
@@ -131,8 +133,8 @@ export function DropItem({ drop }: DropItemProps) {
               {deadlineValidation.isExpired
                 ? 'Closed'
                 : deadlineValidation.isGracePeriod
-                ? 'Grace Period'
-                : 'Pre-Order'}
+                  ? 'Grace Period'
+                  : 'Pre-Order'}
             </Button>
           ) : (
             <Button

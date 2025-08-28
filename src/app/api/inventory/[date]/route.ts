@@ -16,21 +16,36 @@ export async function GET(
       );
     }
 
-    const { data: inventory, error } = await supabase
-      .from('daily_inventory')
+    const { data: inventoryData, error } = await supabase
+      .from('drop_products')
       .select(
         `
-        *,
+        id,
+        stock_quantity,
+        reserved_quantity,
+        available_quantity,
+        selling_price,
         products (
           id,
           name,
           description,
-          price,
-          image_url
+          category,
+          active
+        ),
+        drops (
+          id,
+          date,
+          status,
+          locations (
+            name,
+            district
+          )
         )
       `
       )
-      .eq('date', date);
+      .eq('drops.date', date)
+      .eq('drops.status', 'active')
+      .eq('products.active', true);
 
     if (error) {
       console.error('Error fetching inventory:', error);
@@ -40,7 +55,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(inventory);
+    return NextResponse.json(inventoryData);
   } catch (error) {
     console.error('Unexpected error:', error);
     return NextResponse.json(

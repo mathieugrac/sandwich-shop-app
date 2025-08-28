@@ -20,7 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2, Plus } from 'lucide-react';
-import { Location } from '@/types/database';
+import type { Database } from '@/types/database';
+
+type Location = Database['public']['Tables']['locations']['Row'];
 
 interface CreateDropModalProps {
   open: boolean;
@@ -32,7 +34,9 @@ interface CreateDropModalProps {
   newDropStatus: 'upcoming' | 'active' | 'completed' | 'cancelled';
   onNewDropDateChange: (date: string) => void;
   onNewDropLocationChange: (locationId: string) => void;
-  onNewDropStatusChange: (status: 'upcoming' | 'active' | 'completed' | 'cancelled') => void;
+  onNewDropStatusChange: (
+    status: 'upcoming' | 'active' | 'completed' | 'cancelled'
+  ) => void;
   creating: boolean;
 }
 
@@ -109,10 +113,7 @@ export default function CreateDropModal({
         </div>
 
         <div className="flex justify-end space-x-2 pt-4">
-          <Button
-            onClick={() => onOpenChange(false)}
-            variant="outline"
-          >
+          <Button onClick={() => onOpenChange(false)} variant="outline">
             Cancel
           </Button>
           <Button

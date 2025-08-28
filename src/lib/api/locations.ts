@@ -1,4 +1,8 @@
-import { Location } from '@/types/database';
+import type { Database } from '@/types/database';
+
+type Location = Database['public']['Tables']['locations']['Row'];
+type LocationInsert = Database['public']['Tables']['locations']['Insert'];
+type LocationUpdate = Database['public']['Tables']['locations']['Update'];
 
 export async function fetchLocations(): Promise<Location[]> {
   const response = await fetch('/api/locations');
@@ -16,13 +20,7 @@ export async function fetchLocation(id: string): Promise<Location> {
   return response.json();
 }
 
-export async function createLocation(locationData: {
-  name: string;
-  address: string;
-  location_url?: string;
-  pickup_hour_start: string;
-  pickup_hour_end: string;
-}): Promise<Location> {
+export async function createLocation(locationData: LocationInsert): Promise<Location> {
   const response = await fetch('/api/locations', {
     method: 'POST',
     headers: {
@@ -40,14 +38,7 @@ export async function createLocation(locationData: {
 
 export async function updateLocation(
   id: string,
-  locationData: Partial<{
-    name: string;
-    address: string;
-    location_url: string;
-    pickup_hour_start: string;
-    pickup_hour_end: string;
-    active: boolean;
-  }>
+  locationData: LocationUpdate
 ): Promise<Location> {
   const response = await fetch(`/api/locations/${id}`, {
     method: 'PUT',

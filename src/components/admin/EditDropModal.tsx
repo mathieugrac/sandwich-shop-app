@@ -18,7 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Location } from '@/types/database';
+import { Loader2, Save } from 'lucide-react';
+import type { Database } from '@/types/database';
+
+type Location = Database['public']['Tables']['locations']['Row'];
 
 interface EditDropModalProps {
   open: boolean;

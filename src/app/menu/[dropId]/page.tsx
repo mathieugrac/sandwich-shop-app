@@ -7,7 +7,7 @@ import { StickyBasketButton } from '@/components/customer/StickyBasketButton';
 import { OrderBanner } from '@/components/customer/OrderBanner';
 import { useCart } from '@/lib/cart-context';
 import { fetchDropWithProducts } from '@/lib/api/drops';
-import { DropWithProducts } from '@/types/database';
+import { DropWithProducts } from '@/lib/api/drops';
 import { Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -34,16 +34,16 @@ export default function MenuPage() {
           dropProductsType: typeof drop?.dropProducts,
           dropProductsIsArray: Array.isArray(drop?.dropProducts),
           dropProductsLength: drop?.dropProducts?.length,
-          dropDataKeys: drop ? Object.keys(drop) : 'no drop data'
+          dropDataKeys: drop ? Object.keys(drop) : 'no drop data',
         });
-        
+
         // Additional safety check: ensure drop has required properties
         if (drop && (!drop.location || !drop.date || !drop.status)) {
           console.error('❌ Drop data missing required properties:', drop);
           setError('Invalid drop data received from server');
           return;
         }
-        
+
         setDropData(drop);
       } catch (err) {
         console.error('❌ Error loading drop data:', err);
@@ -99,7 +99,7 @@ export default function MenuPage() {
         id: dropProduct.id, // Use drop_product.id as cart item ID
         name: dropProduct.product.name,
         price: dropProduct.selling_price,
-        availableStock: dropProduct.available_quantity, // Store available stock
+        availableStock: dropProduct.available_quantity || 0, // Store available stock
         dropProductId: dropProduct.id, // Store reference to drop_product
         dropId: dropData.id, // Store reference to the actual drop (for validation)
         productId: dropProduct.product.id, // Store reference to original product
@@ -123,10 +123,12 @@ export default function MenuPage() {
 
   const getAvailableStock = (dropProductId: string) => {
     if (!dropData?.dropProducts || !Array.isArray(dropData.dropProducts)) {
-      console.error('❌ getAvailableStock: dropProducts is undefined or not an array');
+      console.error(
+        '❌ getAvailableStock: dropProducts is undefined or not an array'
+      );
       return 0;
     }
-    
+
     const dropProductItem = dropData.dropProducts.find(
       item => item.id === dropProductId
     );

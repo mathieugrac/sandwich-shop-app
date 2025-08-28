@@ -5,13 +5,16 @@ A custom web application for a local sandwich shop to handle pre-orders during l
 ## 🚀 Features
 
 ### Customer Features
+
 - **Product Catalog**: View today's available sandwiches with real-time inventory
 - **Shopping Cart**: Add/remove items with automatic price calculation
 - **Order Placement**: Select pickup time and provide contact information
 - **Order Confirmation**: Receive email confirmation with order details
 
 ### Admin Features
-- **Inventory Management**: Set daily inventory quantities each morning
+
+- **Drop Management**: Create and manage drops (events) in advance
+- **Inventory Management**: Set quantities and pricing for each drop
 - **Order Management**: View and update order statuses
 - **Dashboard**: Monitor daily orders and business metrics
 
@@ -26,7 +29,7 @@ A custom web application for a local sandwich shop to handle pre-orders during l
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Supabase account
 - Vercel account (for deployment)
@@ -34,18 +37,22 @@ A custom web application for a local sandwich shop to handle pre-orders during l
 ## 🚀 Quick Start
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/YOUR_USERNAME/sandwich-shop-app.git
 cd sandwich-shop-app
 ```
 
 ### 2. Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Set up environment variables
+
 Create a `.env.local` file:
+
 ```bash
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
@@ -66,35 +73,82 @@ ADMIN_EMAIL=admin@yourdomain.com
 ```
 
 ### 4. Set up the database
+
 Run the SQL schema in your Supabase project:
+
 ```bash
 # Copy the contents of supabase-schema.sql to your Supabase SQL editor
 ```
 
 ### 5. Run the development server
+
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## 🗄 Database Setup
+## 🗄 Database Structure
 
-The app uses the following main tables:
-- `products` - Available sandwich items
-- `daily_inventory` - Daily inventory quantities
-- `orders` - Customer orders
-- `order_items` - Items within each order
-- `admin_users` - Admin authentication
+### Core Tables
 
-See `supabase-schema.sql` for the complete database schema.
+The app uses a modern "drop-based" system where inventory and orders are tied to specific "drops" (events) rather than daily inventory:
+
+- **`products`** - Available sandwich items with production costs
+- **`product_images`** - Multiple images per product with sorting
+- **`locations`** - Pickup/delivery points with pickup hours
+- **`drops`** - Daily drop events (formerly "sells")
+- **`drop_products`** - Products available in each drop with pricing
+- **`clients`** - Customer information and order history
+- **`orders`** - Customer orders for specific drops
+- **`order_products`** - Items within each order (links to drop_products)
+- **`admin_users`** - Admin authentication
+
+### Key Benefits of New Structure
+
+- **Better Price Management**: Prices captured at drop level for historical tracking
+- **Location Flexibility**: Multiple drops per date at different locations
+- **Improved Analytics**: Better insights into product performance and customer behavior
+- **Inventory Optimization**: Centralized inventory management at drop level
+- **Cleaner Relationships**: More intuitive table relationships and constraints
+
+### Database Schema
+
+See `supabase-schema.sql` for the complete database schema with all tables, functions, and constraints.
+
+## 📊 Business Logic
+
+### Drop-Based System
+
+Instead of daily inventory, the app uses "drops" - specific events where:
+
+1. **Admin creates drops** in advance with dates and locations
+2. **Inventory is set per drop** with individual pricing
+3. **Customers order from active drops** with real-time availability
+4. **Orders are processed** through the drop lifecycle
+
+### Order Flow
+
+1. **Customer views active drop** with available products
+2. **Adds items to cart** with real-time stock checking
+3. **Selects pickup time** (15-minute intervals within location hours)
+4. **Provides contact information** and completes order
+5. **Receives email confirmation** with order details
+6. **Admin manages orders** through dashboard with status updates
+
+### Inventory Management
+
+- **Drops created in advance** with specific dates and locations
+- **Inventory quantities set per drop** with individual pricing
+- **Real-time availability checking** prevents overselling
+- **Reserved quantities tracked** during order process
 
 ## 🚀 Deployment
 
 ### Vercel Deployment
 
 1. **Connect to GitHub**: Push your code to GitHub
-2. **Deploy to Vercel**: 
+2. **Deploy to Vercel**:
    - Go to [vercel.com](https://vercel.com)
    - Import your GitHub repository
    - Configure environment variables
@@ -103,6 +157,7 @@ See `supabase-schema.sql` for the complete database schema.
 ### Environment Variables for Production
 
 Set these in your Vercel dashboard:
+
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -118,7 +173,7 @@ Set these in your Vercel dashboard:
 ```
 src/
 ├── app/                    # Next.js App Router
-│   ├── (admin)/           # Admin routes
+│   ├── admin/             # Admin routes
 │   ├── api/               # API routes
 │   └── globals.css        # Global styles
 ├── components/            # React components
@@ -149,20 +204,28 @@ src/
 - Prettier for code formatting
 - Tailwind CSS for styling
 
-## 📈 Business Logic
+## 📈 Analytics Capabilities
 
-### Inventory Management
-- Daily inventory is set each morning by admin
-- Real-time availability checking prevents overselling
-- Reserved quantities are tracked during order process
+The new data model provides comprehensive business insights:
 
-### Order Flow
-1. Customer views available products
-2. Adds items to cart
-3. Selects pickup time (15-minute intervals)
-4. Provides contact information
-5. Receives email confirmation
-6. Admin manages orders through dashboard
+### Product Analytics
+
+- Best-selling products across all drops and time periods
+- Category performance analysis
+- Price optimization insights
+
+### Customer Analytics
+
+- Customer lifetime value analysis
+- Order history and preferences
+- Customer segmentation
+
+### Business Analytics
+
+- Revenue tracking by drop, location, and category
+- Location performance metrics
+- Inventory optimization insights
+- Seasonal trend analysis
 
 ## 🤝 Contributing
 

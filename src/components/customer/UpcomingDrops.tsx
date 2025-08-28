@@ -1,6 +1,6 @@
 'use client';
 
-import { DropWithCalculatedFields } from '@/types/database';
+import { DropWithCalculatedFields } from '@/lib/api/drops';
 import { Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { fetchDrops } from '@/lib/api/drops';
