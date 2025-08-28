@@ -28,14 +28,13 @@ import {
   ArrowLeft,
   Search,
   Filter,
-  Eye,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  XCircle,
-  Euro,
   Calendar,
   MapPin,
+  Clock,
+  Euro,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
 } from 'lucide-react';
 
 // Use types from database instead of duplicate interfaces
@@ -65,7 +64,9 @@ interface OrderWithDrop extends Order {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDrop[]>([]);
-  const [drops, setDrops] = useState<Database['public']['Tables']['drops']['Row'][]>([]);
+  const [drops, setDrops] = useState<
+    Database['public']['Tables']['drops']['Row'][]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -134,7 +135,8 @@ export default function OrdersPage() {
       // Load all orders with related data
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
+        .select(
+          `
           *,
           clients (
             name,
@@ -160,7 +162,8 @@ export default function OrdersPage() {
               )
             )
           )
-        `)
+        `
+        )
         .order('created_at', { ascending: false });
 
       if (ordersError) {
@@ -232,8 +235,8 @@ export default function OrdersPage() {
       .includes(searchTerm.toLowerCase());
 
     const matchesDrop = dropFilter === 'all' || order.drop_id === dropFilter;
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const dropDate = order.drops?.date || 'No Drop Date';
+    const matchesStatus =
+      statusFilter === 'all' || order.status === statusFilter;
 
     return matchesSearch && matchesDrop && matchesStatus;
   });
@@ -356,8 +359,14 @@ export default function OrdersPage() {
                   ordersForDate[0]?.drops?.locations && (
                     <div className="ml-4 flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {ordersForDate[0].drops?.locations?.name || 'Unknown Location'} -{' '}
-                      {ordersForDate[0].drops?.locations?.pickup_hour_start || 'Unknown'} - {ordersForDate[0].drops?.locations?.pickup_hour_end || 'Unknown'}
+                      {ordersForDate[0].drops?.locations?.name ||
+                        'Unknown Location'}{' '}
+                      -{' '}
+                      {ordersForDate[0].drops?.locations?.pickup_hour_start ||
+                        'Unknown'}{' '}
+                      -{' '}
+                      {ordersForDate[0].drops?.locations?.pickup_hour_end ||
+                        'Unknown'}
                     </div>
                   )}
               </CardTitle>
@@ -382,14 +391,21 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm text-gray-600">
-                          {order.drops?.date ? new Date(order.drops.date).toLocaleDateString() : 'No Date'} - {order.pickup_time}
+                          {order.drops?.date
+                            ? new Date(order.drops.date).toLocaleDateString()
+                            : 'No Date'}{' '}
+                          - {order.pickup_time}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(order.status || 'pending')}>
+                        <Badge
+                          className={getStatusColor(order.status || 'pending')}
+                        >
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(order.status || 'pending')}
-                            <span className="capitalize">{order.status || 'pending'}</span>
+                            <span className="capitalize">
+                              {order.status || 'pending'}
+                            </span>
                           </div>
                         </Badge>
                       </TableCell>
@@ -402,12 +418,14 @@ export default function OrdersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleDateString()
+                          : 'Unknown'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end space-x-2">
                           <Select
-                            value={order.status}
+                            value={order.status || 'pending'}
                             onValueChange={value =>
                               updateOrderStatus(order.id, value)
                             }

@@ -7,12 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/lib/supabase/client';
-import type { Database } from '@/types/database';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Save, Settings, Clock, Loader2 } from 'lucide-react';
-
-// Use types from database instead of duplicate interfaces
-type AdminUser = Database['public']['Tables']['admin_users']['Row'];
 
 // Define the settings interface
 interface ShopSettings {

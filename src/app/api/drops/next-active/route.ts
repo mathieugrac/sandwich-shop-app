@@ -1,25 +1,17 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
-import type { Database } from '@/types/database';
 
-// Use types from database instead of duplicate interfaces
-type DropProduct = Database['public']['Tables']['drop_products']['Row'];
-type Product = Database['public']['Tables']['products']['Row'];
-type Drop = Database['public']['Tables']['drops']['Row'];
-type Location = Database['public']['Tables']['locations']['Row'];
-
-// Extended interface for drops with products and location
-type DropWithProductsAndLocation = Drop & {
-  drop_products: Array<
-    DropProduct & {
-      products: Product;
-    }
-  >;
-  locations: Location;
-};
-
-export async function GET(request: Request) {
+export async function GET() {
   try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     // Single query to get next active drop with all related data
     const { data: dropData, error: dropError } = await supabase
       .from('drops')
@@ -63,7 +55,7 @@ export async function GET(request: Request) {
       .single();
 
     if (dropError || !dropData) {
-      if (dropError.code === 'PGRST116') {
+      if (dropError?.code === 'PGRST116') {
         // No active drops found
         return NextResponse.json(null);
       }
@@ -76,13 +68,24 @@ export async function GET(request: Request) {
 
     // Filter active products and transform data
     const products = dropData.drop_products
-      .filter((dp: DropProduct) => dp.products?.[0]?.active)
+      .filter((dp: { products?: Array<{ active?: boolean }> }) => dp.products?.[0]?.active)
       .sort(
-        (a: DropProduct, b: DropProduct) =>
+        (a: { products?: Array<{ sort_order?: number }> }, b: { products?: Array<{ sort_order?: number }> }) =>
           (a.products?.[0]?.sort_order || 0) -
           (b.products?.[0]?.sort_order || 0)
       )
-      .map((dp: DropProduct) => ({
+      .map((dp: { 
+        id: string; 
+        selling_price: number; 
+        available_quantity: number | null;
+        products?: Array<{ 
+          name?: string; 
+          description?: string | null; 
+          category?: string; 
+          active?: boolean; 
+          sort_order?: number 
+        }> 
+      }) => ({
         id: dp.id,
         name: dp.products?.[0]?.name || '',
         description: dp.products?.[0]?.description || null,

@@ -45,29 +45,40 @@ export async function PUT(
       );
     }
 
-    // Use the enhanced function from Phase 1
+    // Check if user is admin
+    const { data: adminUser, error: adminCheckError } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
 
-    // Test if the function exists first
+    if (adminCheckError || !adminUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    // Use the enhanced function from Phase 1
     try {
       // First, ensure the admin user exists in admin_users table
       let adminUserId: string;
 
       try {
-        const { data: adminUser, error: adminError } = await supabase
+        const { data: existingAdminUser } = await supabase
           .from('admin_users')
           .select('id')
           .eq('email', user.email)
           .single();
 
-        if (adminUser) {
+        if (existingAdminUser) {
           // Admin user exists, use their ID
-          adminUserId = adminUser.id;
+          adminUserId = existingAdminUser.id;
         } else {
           throw new Error('No admin user found');
         }
-      } catch (error: unknown) {
+      } catch {
         // Admin user doesn't exist, create one
-
         const { data: newAdminUser, error: createError } = await supabase
           .from('admin_users')
           .insert({
@@ -86,7 +97,7 @@ export async function PUT(
         adminUserId = newAdminUser.id;
       }
 
-      const { data: testData, error: testError } = await supabase.rpc(
+      const { error: rpcError } = await supabase.rpc(
         'change_drop_status',
         {
           p_drop_id: id,
@@ -95,9 +106,10 @@ export async function PUT(
         }
       );
 
-      if (testError) {
-        throw testError;
+      if (rpcError) {
+        throw rpcError;
       }
+      
       return NextResponse.json({
         success: true,
         message: `Drop status changed to ${newStatus} successfully`,
@@ -114,11 +126,6 @@ export async function PUT(
         { status: 500 }
       );
     }
-
-    return NextResponse.json({
-      success: true,
-      message: `Drop status changed to ${newStatus} successfully`,
-    });
   } catch (error) {
     console.error('Unexpected error in change drop status:', error);
     return NextResponse.json(

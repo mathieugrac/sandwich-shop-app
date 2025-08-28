@@ -120,9 +120,9 @@ export default function ProductsPage() {
       description: product.description || '',
       sell_price: product.sell_price.toString(),
       production_cost: product.production_cost.toString(),
-      category: product.category,
-      active: product.active,
-      sort_order: product.sort_order,
+      category: (product.category as 'sandwich' | 'side' | 'dessert' | 'beverage') || 'sandwich',
+      active: product.active || false,
+      sort_order: product.sort_order || 0,
     });
 
     // Load existing image if any

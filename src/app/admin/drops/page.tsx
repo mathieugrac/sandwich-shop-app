@@ -22,14 +22,10 @@ import {
 import { Plus } from 'lucide-react';
 import type { Database } from '@/types/database';
 
+// Use types from database instead of duplicate interfaces
 type Drop = Database['public']['Tables']['drops']['Row'];
 type Location = Database['public']['Tables']['locations']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
-
-interface ExtendedDrop extends AdminDrop {
-  drop_products_count?: number;
-  drop_products_total?: number;
-}
 
 export default function DropManagementPage() {
   // Consolidate drops state
@@ -195,16 +191,14 @@ export default function DropManagementPage() {
         formState.newDrop.location
       );
 
-      const { data: drop, error } = await supabase
+      const { error } = await supabase
         .from('drops')
         .insert({
           date: formState.newDrop.date,
           location_id: formState.newDrop.location,
           status: formState.newDrop.status,
           pickup_deadline: deadline,
-        })
-        .select()
-        .single();
+        });
 
       if (error) {
         console.error('Supabase error:', error);

@@ -31,11 +31,8 @@ import {
   Trash2,
   Save,
   X,
-  Users,
-  Mail,
   Phone,
   Calendar,
-  Euro,
 } from 'lucide-react';
 
 // Use types from database instead of duplicate interfaces
@@ -368,7 +365,7 @@ export default function ClientsPage() {
                     <TableCell className="font-medium">{client.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
+                        {/* Removed Mail icon */}
                         <span>{client.email}</span>
                       </div>
                     </TableCell>
@@ -541,7 +538,7 @@ export default function ClientsPage() {
                 </Table>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  {/* Removed Users icon */}
                   <p>No orders found for this client</p>
                 </div>
               )}
