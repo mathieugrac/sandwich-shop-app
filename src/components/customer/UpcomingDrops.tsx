@@ -84,6 +84,7 @@ export function UpcomingDrops() {
 
   return (
     <Card className="p-3">
+      <h2 className="text-2xl font-bold text-black mb-2 p-3">Upcoming Drops</h2>
       <div className="space-y-3">
         {validDrops.map(drop => (
           <DropItem key={drop.id} drop={drop} />
