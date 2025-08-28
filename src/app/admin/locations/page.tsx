@@ -31,7 +31,6 @@ import {
   Trash2,
   Save,
   X,
-  MapPin,
   ExternalLink,
 } from 'lucide-react';
 import type { Database } from '@/types/database';

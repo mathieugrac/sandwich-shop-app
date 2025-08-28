@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/lib/supabase/client';
 import type { Database } from '@/types/database';
 import {
@@ -357,8 +356,8 @@ export default function OrdersPage() {
                   ordersForDate[0]?.drops?.locations && (
                     <div className="ml-4 flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {ordersForDate[0].drops.locations.name || 'Unknown Location'} -{' '}
-                      {ordersForDate[0].drops.locations.pickup_hour_start || 'Unknown'} - {ordersForDate[0].drops.locations.pickup_hour_end || 'Unknown'}
+                      {ordersForDate[0].drops?.locations?.name || 'Unknown Location'} -{' '}
+                      {ordersForDate[0].drops?.locations?.pickup_hour_start || 'Unknown'} - {ordersForDate[0].drops?.locations?.pickup_hour_end || 'Unknown'}
                     </div>
                   )}
               </CardTitle>
@@ -387,10 +386,10 @@ export default function OrdersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusColor(order.status)}>
+                        <Badge className={getStatusColor(order.status || 'pending')}>
                           <div className="flex items-center space-x-1">
-                            {getStatusIcon(order.status)}
-                            <span className="capitalize">{order.status}</span>
+                            {getStatusIcon(order.status || 'pending')}
+                            <span className="capitalize">{order.status || 'pending'}</span>
                           </div>
                         </Badge>
                       </TableCell>

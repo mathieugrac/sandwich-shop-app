@@ -2,29 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
-import { ArrowLeft, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import type { Database } from '@/types/database';
+import { ArrowLeft, Package } from 'lucide-react';
 
 // Use types from database instead of duplicate interfaces
 type Product = Database['public']['Tables']['products']['Row'];
@@ -32,14 +19,17 @@ type Drop = Database['public']['Tables']['drops']['Row'];
 type DropProduct = Database['public']['Tables']['drop_products']['Row'];
 
 export default function DropProductsPage() {
-  const [dropProducts, setDropProducts] = useState<Array<DropProduct & { 
-    product?: Product; 
-    drop?: Drop & { location?: { name: string; address: string } } 
-  }>>([]);
   const [drops, setDrops] = useState<
     Array<Drop & { location?: { name: string; address: string } }>
   >([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [dropProducts, setDropProducts] = useState<
+    Array<
+      DropProduct & {
+        product?: Product;
+        drop?: Drop & { location?: { name: string; address: string } };
+      }
+    >
+  >([]);
   const [loading, setLoading] = useState(true);
   const [selectedDrop, setSelectedDrop] = useState<string>('all');
   const [editingProduct, setEditingProduct] = useState<DropProduct | null>(
@@ -107,19 +97,6 @@ export default function DropProductsPage() {
             : drop.location,
         }));
         setDrops(transformedDrops);
-      }
-
-      // Load products
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('active', true)
-        .order('name');
-
-      if (productsError) {
-        console.error('❌ Error loading products:', productsError);
-      } else {
-        setProducts(productsData || []);
       }
 
       // Load drop products with related data

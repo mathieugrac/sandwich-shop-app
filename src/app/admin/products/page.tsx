@@ -6,8 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
 import type { Database } from '@/types/database';
@@ -26,12 +31,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  Save,
+  X,
+  Upload,
+  Image as ImageIcon,
+} from 'lucide-react';
 import Image from 'next/image';
 
 // Use types from database instead of duplicate interfaces
 type Product = Database['public']['Tables']['products']['Row'];
-type ProductImage = Database['public']['Tables']['product_images']['Row'];
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -111,7 +124,7 @@ export default function ProductsPage() {
       active: product.active,
       sort_order: product.sort_order,
     });
-    
+
     // Load existing image if any
     try {
       const { data: images } = await supabase
@@ -120,14 +133,14 @@ export default function ProductsPage() {
         .eq('product_id', product.id)
         .order('sort_order', { ascending: true })
         .limit(1);
-      
+
       if (images && images.length > 0) {
         setImagePreview(images[0].image_url);
       }
     } catch (error) {
       console.error('Error loading product images:', error);
     }
-    
+
     setEditingProduct(product);
   };
 
@@ -142,7 +155,7 @@ export default function ProductsPage() {
     if (file) {
       setSelectedImage(file);
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
@@ -154,7 +167,7 @@ export default function ProductsPage() {
 
     try {
       setUploadingImage(true);
-      
+
       // Upload to Supabase Storage
       const fileExt = selectedImage.name.split('.').pop();
       const fileName = `${productId}-${Date.now()}.${fileExt}`;
@@ -167,9 +180,9 @@ export default function ProductsPage() {
       if (uploadError) throw uploadError;
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('product-images')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('product-images').getPublicUrl(filePath);
 
       return publicUrl;
     } catch (error) {
@@ -293,7 +306,7 @@ export default function ProductsPage() {
           <p className="text-gray-600">Loading products...</p>
         </div>
       </div>
- );
+    );
   }
 
   return (
@@ -454,7 +467,9 @@ export default function ProductsPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => document.getElementById('image')?.click()}
+                        onClick={() =>
+                          document.getElementById('image')?.click()
+                        }
                       >
                         Choose Image
                       </Button>
@@ -589,7 +604,11 @@ export default function ProductsPage() {
                 disabled={uploadingImage}
               >
                 <Save className="w-4 h-4 mr-2" />
-                {uploadingImage ? 'Uploading...' : editingProduct ? 'Update' : 'Create'}
+                {uploadingImage
+                  ? 'Uploading...'
+                  : editingProduct
+                    ? 'Update'
+                    : 'Create'}
               </Button>
             </div>
           </DialogContent>
