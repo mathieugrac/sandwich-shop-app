@@ -1,21 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase/client';
+import type { Database } from '@/types/database';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Save, Settings, Clock, Loader2 } from 'lucide-react';
 
+// Use types from database instead of duplicate interfaces
+type AdminUser = Database['public']['Tables']['admin_users']['Row'];
+
+// Define the settings interface
 interface ShopSettings {
   shopName: string;
   shopEmail: string;
@@ -165,9 +164,6 @@ export default function SettingsPage() {
                 <Settings className="h-5 w-5 mr-2" />
                 Shop Information
               </CardTitle>
-              <CardDescription>
-                Basic shop details and contact information
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -222,9 +218,6 @@ export default function SettingsPage() {
                 <Clock className="h-5 w-5 mr-2" />
                 Operating Hours
               </CardTitle>
-              <CardDescription>
-                Set your shop&apos;s operating hours and pickup times
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -286,9 +279,6 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Order Settings</CardTitle>
-              <CardDescription>
-                Configure order-related settings
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -329,9 +319,6 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>System Information</CardTitle>
-              <CardDescription>
-                Current system status and version
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">

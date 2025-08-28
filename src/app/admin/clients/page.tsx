@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
+import type { Database } from '@/types/database';
 import {
   ArrowLeft,
   Plus,
@@ -37,34 +38,43 @@ import {
   Euro,
 } from 'lucide-react';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  created_at: string;
-  updated_at: string;
-  total_orders?: number;
-  total_spent?: number;
-}
+// Use types from database instead of duplicate interfaces
+type Client = Database['public']['Tables']['clients']['Row'];
 
-interface Order {
+// Interface for client orders with drop information
+interface ClientOrder {
   id: string;
   order_number: string;
   order_date: string;
   status: string;
   total_amount: number;
   created_at: string;
+  client_id: string;
+  drop_id: string;
+  pickup_time: string;
+  special_instructions: string | null;
+  updated_at: string;
+  drops?: {
+    date: string;
+  } | null;
+}
+
+// Extended client interface with computed properties
+interface ClientWithStats extends Client {
+  total_orders?: number;
+  total_spent?: number;
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ClientWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [showOrdersModal, setShowOrdersModal] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [clientOrders, setClientOrders] = useState<Order[]>([]);
+  const [selectedClient, setSelectedClient] = useState<ClientWithStats | null>(
+    null
+  );
+  const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -233,14 +243,19 @@ export default function ClientsPage() {
         .select(
           `
           id,
-                  order_number,
-        order_date,
-        status,
-        total_amount,
-        created_at,
-        drops (
-          date
-        )
+          order_number,
+          order_date,
+          status,
+          total_amount,
+          created_at,
+          client_id,
+          drop_id,
+          pickup_time,
+          special_instructions,
+          updated_at,
+          drops (
+            date
+          )
         `
         )
         .eq('client_id', client.id)
@@ -250,7 +265,38 @@ export default function ClientsPage() {
         console.error('Error loading client orders:', ordersError);
         setClientOrders([]);
       } else {
-        setClientOrders(ordersData || []);
+        // Transform the data to match our interface
+        const transformedOrders: ClientOrder[] = (ordersData || []).map(
+          (order: {
+            id: string;
+            order_number: string;
+            order_date: string;
+            status: string;
+            total_amount: number;
+            created_at: string;
+            client_id: string;
+            drop_id: string;
+            pickup_time: string;
+            special_instructions: string | null;
+            updated_at: string;
+            drops: { date: string }[] | null;
+          }) => ({
+            id: order.id,
+            order_number: order.order_number,
+            order_date: order.order_date,
+            status: order.status,
+            total_amount: order.total_amount,
+            created_at: order.created_at,
+            client_id: order.client_id,
+            drop_id: order.drop_id,
+            pickup_time: order.pickup_time,
+            special_instructions: order.special_instructions,
+            updated_at: order.updated_at,
+            drops:
+              order.drops && order.drops.length > 0 ? order.drops[0] : null,
+          })
+        );
+        setClientOrders(transformedOrders);
       }
     } catch (error) {
       console.error('Error loading client orders:', error);
@@ -342,13 +388,14 @@ export default function ClientsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Euro className="w-4 h-4 text-gray-400" />
-                        <span>{(client.total_spent || 0).toFixed(2)}</span>
-                      </div>
+                      <Badge variant="outline">
+                        €{(client.total_spent || 0).toFixed(2)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(client.created_at).toLocaleDateString()}
+                      {client.created_at
+                        ? new Date(client.created_at).toLocaleDateString()
+                        : 'Unknown'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">

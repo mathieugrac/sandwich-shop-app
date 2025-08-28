@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/lib/supabase/client';
+import type { Database } from '@/types/database';
 import {
   Table,
   TableBody,
@@ -21,8 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase/client';
 import {
   ArrowLeft,
   Search,
@@ -37,41 +39,38 @@ import {
   MapPin,
 } from 'lucide-react';
 
-interface Order {
-  id: string;
-  order_number: string;
-  pickup_time: string;
-  status: 'pending' | 'confirmed' | 'prepared' | 'completed' | 'cancelled';
-  total_amount: number;
-  special_instructions: string | null;
-  created_at: string;
-  drop_id: string;
-  client_id: string | null;
-}
+// Use types from database instead of duplicate interfaces
+type Order = Database['public']['Tables']['orders']['Row'];
+type Client = Database['public']['Tables']['clients']['Row'];
+type Drop = Database['public']['Tables']['drops']['Row'];
+type Location = Database['public']['Tables']['locations']['Row'];
 
-interface Drop {
-  id: string;
-  date: string;
-  status: string;
-  locations?: {
-    name: string;
-    address: string;
-    pickup_hour_start: string;
-    pickup_hour_end: string;
-  };
-}
-
+// Extended interface for orders with related data
 interface OrderWithDrop extends Order {
-  drop?: Drop;
+  clients?: Client;
+  drops?: Drop & {
+    locations?: Location;
+  };
+  order_products?: Array<{
+    id: string;
+    order_quantity: number;
+    drop_products?: {
+      selling_price?: number;
+      products?: {
+        name?: string;
+        description?: string;
+      };
+    };
+  }>;
 }
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderWithDrop[]>([]);
-  const [drops, setDrops] = useState<Drop[]>([]);
+  const [drops, setDrops] = useState<Database['public']['Tables']['drops']['Row'][]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dropFilter, setDropFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dropFilter, setDropFilter] = useState('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -114,30 +113,62 @@ export default function OrdersPage() {
         console.error('❌ Error loading drops:', dropsError);
       } else {
         console.log('✅ Drops loaded:', dropsData);
-        setDrops(dropsData || []);
+        // Transform the data to match our interface
+        const transformedDrops = (dropsData || []).map(drop => ({
+          id: drop.id,
+          date: drop.date,
+          status: drop.status,
+          location_id: null, // Not available in this query
+          notes: null, // Not available in this query
+          created_at: null, // Not available in this query
+          updated_at: null, // Not available in this query
+          last_modified_by: null, // Not available in this query
+          status_changed_at: null, // Not available in this query
+          pickup_deadline: null, // Not available in this query
+          location: Array.isArray(drop.location)
+            ? drop.location[0]
+            : drop.location,
+        }));
+        setDrops(transformedDrops);
       }
 
-      // Load all orders
+      // Load all orders with related data
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('*')
+        .select(`
+          *,
+          clients (
+            name,
+            email,
+            phone
+          ),
+          drops (
+            *,
+            locations (
+              name,
+              address,
+              pickup_hour_start,
+              pickup_hour_end
+            )
+          ),
+          order_products (
+            *,
+            drop_products (
+              *,
+              products (
+                name,
+                description
+              )
+            )
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (ordersError) {
         console.error('❌ Error loading orders:', ordersError);
       } else {
         console.log('✅ Orders loaded:', ordersData);
-
-        // Combine orders with drop information
-        const ordersWithDrops = (ordersData || []).map(order => {
-          const drop = dropsData?.find(d => d.id === order.drop_id);
-          return {
-            ...order,
-            drop: drop || undefined,
-          };
-        });
-
-        setOrders(ordersWithDrops);
+        setOrders(ordersData || []);
       }
     } catch (error) {
       console.error('❌ Unexpected error in loadData:', error);
@@ -201,16 +232,16 @@ export default function OrdersPage() {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === 'all' || order.status === statusFilter;
     const matchesDrop = dropFilter === 'all' || order.drop_id === dropFilter;
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    const dropDate = order.drops?.date || 'No Drop Date';
 
-    return matchesSearch && matchesStatus && matchesDrop;
+    return matchesSearch && matchesDrop && matchesStatus;
   });
 
   const groupedOrders = filteredOrders.reduce(
     (groups, order) => {
-      const dropDate = order.drop?.date || 'No Drop Date';
+      const dropDate = order.drops?.date || 'No Drop Date';
       if (!groups[dropDate]) {
         groups[dropDate] = [];
       }
@@ -323,11 +354,11 @@ export default function OrdersPage() {
                   ? 'Orders Without Drop Date'
                   : `Drop Date: ${new Date(dropDate).toLocaleDateString()}`}
                 {dropDate !== 'No Drop Date' &&
-                  ordersForDate[0]?.drop?.locations && (
+                  ordersForDate[0]?.drops?.locations && (
                     <div className="ml-4 flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mr-1" />
-                      {ordersForDate[0].drop.locations.name} -{' '}
-                      {ordersForDate[0].drop.locations.pickup_hour_start} - {ordersForDate[0].drop.locations.pickup_hour_end}
+                      {ordersForDate[0].drops.locations.name || 'Unknown Location'} -{' '}
+                      {ordersForDate[0].drops.locations.pickup_hour_start || 'Unknown'} - {ordersForDate[0].drops.locations.pickup_hour_end || 'Unknown'}
                     </div>
                   )}
               </CardTitle>
@@ -350,7 +381,11 @@ export default function OrdersPage() {
                       <TableCell className="font-medium">
                         {order.order_number}
                       </TableCell>
-                      <TableCell>{order.pickup_time}</TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-600">
+                          {order.drops?.date ? new Date(order.drops.date).toLocaleDateString() : 'No Date'} - {order.pickup_time}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(order.status)}>
                           <div className="flex items-center space-x-1">

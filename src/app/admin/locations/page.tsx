@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,19 +34,10 @@ import {
   MapPin,
   ExternalLink,
 } from 'lucide-react';
+import type { Database } from '@/types/database';
 
-interface Location {
-  id: string;
-  name: string;
-  district: string;
-  address: string;
-  location_url: string | null;
-  pickup_hour_start: string;
-  pickup_hour_end: string;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+// Use types from database instead of duplicate interfaces
+type Location = Database['public']['Tables']['locations']['Row'];
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -119,7 +110,7 @@ export default function LocationsPage() {
       location_url: location.location_url || '',
       pickup_hour_start: location.pickup_hour_start,
       pickup_hour_end: location.pickup_hour_end,
-      active: location.active,
+      active: location.active || false,
     });
     setEditingLocation(location);
   };

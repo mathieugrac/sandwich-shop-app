@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,41 +24,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
 import { ArrowLeft, Package, TrendingUp, TrendingDown } from 'lucide-react';
+import type { Database } from '@/types/database';
 
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  sell_price: number;
-  production_cost: number;
-}
-
-interface Drop {
-  id: string;
-  date: string;
-  status: string;
-  location: {
-    name: string;
-    address: string;
-  };
-}
-
-interface DropProduct {
-  id: string;
-  drop_id: string;
-  product_id: string;
-  stock_quantity: number;
-  reserved_quantity: number;
-  available_quantity: number;
-  selling_price: number;
-  product?: Product;
-  drop?: Drop;
-}
+// Use types from database instead of duplicate interfaces
+type Product = Database['public']['Tables']['products']['Row'];
+type Drop = Database['public']['Tables']['drops']['Row'];
+type DropProduct = Database['public']['Tables']['drop_products']['Row'];
 
 export default function DropProductsPage() {
-  const [dropProducts, setDropProducts] = useState<DropProduct[]>([]);
-  const [drops, setDrops] = useState<Drop[]>([]);
+  const [drops, setDrops] = useState<
+    Array<Drop & { location?: { name: string; address: string } }>
+  >([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [dropProducts, setDropProducts] = useState<
+    Array<
+      DropProduct & {
+        product?: Product;
+        drop?: Drop & { location?: { name: string; address: string } };
+      }
+    >
+  >([]);
   const [loading, setLoading] = useState(true);
   const [selectedDrop, setSelectedDrop] = useState<string>('all');
   const [editingProduct, setEditingProduct] = useState<DropProduct | null>(
@@ -111,7 +96,16 @@ export default function DropProductsPage() {
       } else {
         // Transform the data to match our interface
         const transformedDrops = (dropsData || []).map(drop => ({
-          ...drop,
+          id: drop.id,
+          date: drop.date,
+          status: drop.status,
+          location_id: null, // Not available in this query
+          notes: null, // Not available in this query
+          created_at: null, // Not available in this query
+          updated_at: null, // Not available in this query
+          last_modified_by: null, // Not available in this query
+          status_changed_at: null, // Not available in this query
+          pickup_deadline: null, // Not available in this query
           location: Array.isArray(drop.location)
             ? drop.location[0]
             : drop.location,
@@ -333,9 +327,9 @@ export default function DropProductsPage() {
               <TableBody>
                 {filteredDropProducts.map(dropProduct => {
                   const stockStatus = getStockStatus(
-                    dropProduct.available_quantity,
+                    dropProduct.available_quantity || 0,
                     dropProduct.stock_quantity,
-                    dropProduct.reserved_quantity
+                    dropProduct.reserved_quantity || 0
                   );
                   return (
                     <TableRow key={dropProduct.id}>

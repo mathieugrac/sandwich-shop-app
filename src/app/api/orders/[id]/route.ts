@@ -1,17 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
+import type { Database } from '@/types/database';
 
-interface OrderProduct {
-  id: string;
-  order_quantity: number;
-  drop_products?: {
-    selling_price?: number;
-    products?: {
-      name?: string;
-      description?: string;
-    };
+// Use types from database instead of duplicate interfaces
+type OrderProduct = Database['public']['Tables']['order_products']['Row'] & {
+  drop_products?: Database['public']['Tables']['drop_products']['Row'] & {
+    products?: Database['public']['Tables']['products']['Row'];
   };
-}
+};
 
 export async function GET(
   request: Request,

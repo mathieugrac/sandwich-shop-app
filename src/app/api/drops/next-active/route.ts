@@ -1,40 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
+import type { Database } from '@/types/database';
 
-// Types for Supabase response structure
-interface DropProductWithProduct {
-  id: string;
-  stock_quantity: number;
-  reserved_quantity: number;
-  available_quantity: number;
-  selling_price: number;
-  products: {
-    id: string;
-    name: string;
-    description: string | null;
-    category: 'sandwich' | 'side' | 'dessert' | 'beverage';
-    active: boolean;
-    sort_order: number;
-  }[];
-}
+// Use types from database instead of duplicate interfaces
+type DropProduct = Database['public']['Tables']['drop_products']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
+type Drop = Database['public']['Tables']['drops']['Row'];
+type Location = Database['public']['Tables']['locations']['Row'];
 
-interface DropWithProductsAndLocation {
-  id: string;
-  date: string;
-  status: string;
-  pickup_deadline: string | null;
-  locations: {
-    id: string;
-    name: string;
-    address: string;
-    location_url: string | null;
-    pickup_hour_start: string;
-    pickup_hour_end: string;
-  };
-  drop_products: DropProductWithProduct[];
-}
+// Extended interface for drops with products and location
+type DropWithProductsAndLocation = Drop & {
+  drop_products: Array<
+    DropProduct & {
+      products: Product;
+    }
+  >;
+  locations: Location;
+};
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     // Single query to get next active drop with all related data
     const { data: dropData, error: dropError } = await supabase
@@ -72,9 +56,9 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq('status', 'active')
-      .not('pickup_deadline', 'is', null)  // Ensure deadline is set
-      .gt('pickup_deadline', new Date().toISOString())  // Use deadline instead of date
-      .order('pickup_deadline', { ascending: true })  // Order by deadline
+      .not('pickup_deadline', 'is', null) // Ensure deadline is set
+      .gt('pickup_deadline', new Date().toISOString()) // Use deadline instead of date
+      .order('pickup_deadline', { ascending: true }) // Order by deadline
       .limit(1)
       .single();
 
@@ -92,9 +76,13 @@ export async function GET(request: NextRequest) {
 
     // Filter active products and transform data
     const products = dropData.drop_products
-      .filter((dp: DropProductWithProduct) => dp.products?.[0]?.active)
-      .sort((a: DropProductWithProduct, b: DropProductWithProduct) => (a.products?.[0]?.sort_order || 0) - (b.products?.[0]?.sort_order || 0))
-      .map((dp: DropProductWithProduct) => ({
+      .filter((dp: DropProduct) => dp.products?.[0]?.active)
+      .sort(
+        (a: DropProduct, b: DropProduct) =>
+          (a.products?.[0]?.sort_order || 0) -
+          (b.products?.[0]?.sort_order || 0)
+      )
+      .map((dp: DropProduct) => ({
         id: dp.id,
         name: dp.products?.[0]?.name || '',
         description: dp.products?.[0]?.description || null,
@@ -111,11 +99,13 @@ export async function GET(request: NextRequest) {
       const deadline = new Date(dropData.pickup_deadline);
       const now = new Date();
       const diffMs = deadline.getTime() - now.getTime();
-      
+
       if (diffMs > 0) {
         const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-        
+        const diffMinutes = Math.floor(
+          (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+        );
+
         if (diffHours > 0) {
           timeUntilDeadline = `${diffHours}h ${diffMinutes}m`;
         } else {
