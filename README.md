@@ -131,10 +131,16 @@ Instead of daily inventory, the app uses "drops" - specific events where:
 
 1. **Customer views active drop** with available products
 2. **Adds items to cart** with real-time stock checking
-3. **Selects pickup time** (15-minute intervals within location hours)
-4. **Provides contact information** and completes order
-5. **Receives email confirmation** with order details
-6. **Admin manages orders** through dashboard with status updates
+3. **Provides contact information** and completes order
+4. **Receives email confirmation** with order details
+5. **Admin manages orders** through dashboard with status updates
+
+### Drop Status Management
+
+- **Manual Control**: Admin manually opens and closes drops (no automatic time-based completion)
+- **Simple Status Flow**: upcoming → active → completed
+- **Business Flexibility**: Extend drops, close early, or reopen as needed
+- **Full Visibility**: Clear status in admin dashboard
 
 ### Inventory Management
 

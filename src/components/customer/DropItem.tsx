@@ -4,7 +4,6 @@ import { DropWithCalculatedFields } from '@/lib/api/drops';
 import { Button } from '@/components/ui/button';
 import { Calendar, MapPin, Clock, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { validateDropDeadline } from '@/lib/utils';
 
 interface DropItemProps {
   drop: DropWithCalculatedFields;
@@ -22,53 +21,24 @@ export function DropItem({ drop }: DropItemProps) {
     };
   };
 
-  // Format pickup deadline internally
-  const formatPickupDeadline = (deadlineString: string | null) => {
-    if (!deadlineString) return null;
-
-    const deadline = new Date(deadlineString);
-    const now = new Date();
-    const diffMs = deadline.getTime() - now.getTime();
-
-    if (diffMs <= 0) return 'Closed';
-
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (diffHours > 0) {
-      return `${diffHours}h ${diffMinutes}m left`;
-    } else if (diffMinutes > 0) {
-      return `${diffMinutes}m left`;
-    } else {
-      return 'Closing soon';
-    }
-  };
-
   // Get status color internally
-  const getStatusColor = (status: string | null, deadline: string | null) => {
+  const getStatusColor = (status: string | null) => {
     if (!status) return 'text-gray-500';
 
     if (status === 'completed' || status === 'cancelled')
       return 'text-gray-500';
     if (status === 'active') {
-      if (deadline && new Date(deadline) <= new Date()) {
-        return 'text-red-600';
-      }
       return 'text-black';
     }
     return 'text-black';
   };
 
   const { day, month } = formatDate(drop.date);
-  const timeRemaining = formatPickupDeadline(drop.pickup_deadline);
-  const statusColor = getStatusColor(drop.status, drop.pickup_deadline);
-
-  // Use centralized deadline validation
-  const deadlineValidation = validateDropDeadline(drop.pickup_deadline);
+  const statusColor = getStatusColor(drop.status);
 
   const handlePreOrder = () => {
-    if (drop.status === 'active' && deadlineValidation.isValid) {
-              router.push(`/drop/${drop.id}`);
+    if (drop.status === 'active') {
+      router.push(`/drop/${drop.id}`);
     }
   };
 
@@ -110,12 +80,6 @@ export function DropItem({ drop }: DropItemProps) {
                     ? `${drop.total_available || 0} left 🥪`
                     : 'Coming Soon'}
                 </span>
-                {timeRemaining && drop.status === 'active' && (
-                  <span className="text-xs text-gray-500 flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{timeRemaining}</span>
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -128,13 +92,8 @@ export function DropItem({ drop }: DropItemProps) {
               onClick={handlePreOrder}
               className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
               size="lg"
-              disabled={!deadlineValidation.isValid}
             >
-              {deadlineValidation.isExpired
-                ? 'Closed'
-                : deadlineValidation.isGracePeriod
-                  ? 'Grace Period'
-                  : 'Pre-Order'}
+              Pre-Order
             </Button>
           ) : (
             <Button

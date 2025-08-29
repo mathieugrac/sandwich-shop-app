@@ -181,25 +181,6 @@ export async function changeDropStatus(
   return response.json();
 }
 
-export async function calculatePickupDeadline(
-  dropDate: string,
-  locationId: string
-): Promise<{ deadline: string }> {
-  const response = await fetch('/api/drops/calculate-deadline', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ dropDate, locationId }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to calculate pickup deadline');
-  }
-
-  return response.json();
-}
-
 export async function isDropOrderable(
   dropId: string
 ): Promise<{ orderable: boolean }> {

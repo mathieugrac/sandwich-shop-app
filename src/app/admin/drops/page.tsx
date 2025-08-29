@@ -9,7 +9,6 @@ import {
   fetchAdminUpcomingDrops,
   fetchAdminPastDrops,
   changeDropStatus,
-  calculatePickupDeadline,
   AdminDrop,
 } from '@/lib/api/drops';
 import {
@@ -185,20 +184,11 @@ export default function DropManagementPage() {
     setMessage(null);
 
     try {
-      // Calculate pickup deadline automatically
-      const { deadline } = await calculatePickupDeadline(
-        formState.newDrop.date,
-        formState.newDrop.location
-      );
-
-      const { error } = await supabase
-        .from('drops')
-        .insert({
-          date: formState.newDrop.date,
-          location_id: formState.newDrop.location,
-          status: formState.newDrop.status,
-          pickup_deadline: deadline,
-        });
+      const { error } = await supabase.from('drops').insert({
+        date: formState.newDrop.date,
+        location_id: formState.newDrop.location,
+        status: formState.newDrop.status,
+      });
 
       if (error) {
         console.error('Supabase error:', error);

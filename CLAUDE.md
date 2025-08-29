@@ -280,6 +280,12 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 4. **Morning of Drop:** wrapping the order for delivery
 5. **Customer Access:** Only have access to the upcoming drop's menu (not future drops)
 
+### Drop Management Workflow
+
+- **Manual Control:** Admin manually opens and closes drops (no automatic time-based completion)
+- **Simple Status Flow:** upcoming → active → completed
+- **Business Flexibility:** Extend drops if needed, close early if sold out, reopen if necessary
+
 ### Order Management Workflow
 
 - **Order Placement:** Expecting customers will order the day before (20%) and during the morning of the drop (80%)
@@ -295,6 +301,7 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 - **Guest Checkout:** Option for one-time orders without account
 - **Auto-complete:** Common names/emails from localStorage
 - **Estimated Pickup Time:** Show based on current time + prep time
+- **Order Status Updates:** Real-time status updates (preparing, ready, etc.)
 - **Order Again Feature:** Quick reorder from previous orders
 - **Order Banner:** Smart banner to remind users of active orders and prevent duplicate ordering
 

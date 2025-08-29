@@ -45,82 +45,41 @@ export async function PUT(
       );
     }
 
-    // Check if user is admin
-    const { data: adminUser, error: adminCheckError } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    console.log('✅ User authenticated:', user.email);
 
-    if (adminCheckError || !adminUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized: Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // Use the enhanced function from Phase 1
     try {
-      // First, ensure the admin user exists in admin_users table
-      let adminUserId: string;
+      // Direct database update - simplified approach
+      const { error: updateError } = await supabase
+        .from('drops')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id);
 
-      try {
-        const { data: existingAdminUser } = await supabase
-          .from('admin_users')
-          .select('id')
-          .eq('email', user.email)
-          .single();
-
-        if (existingAdminUser) {
-          // Admin user exists, use their ID
-          adminUserId = existingAdminUser.id;
-        } else {
-          throw new Error('No admin user found');
-        }
-      } catch {
-        // Admin user doesn't exist, create one
-        const { data: newAdminUser, error: createError } = await supabase
-          .from('admin_users')
-          .insert({
-            email: user.email,
-            name: user.user_metadata?.full_name || user.email,
-            role: 'admin',
-          })
-          .select('id')
-          .single();
-
-        if (createError) {
-          console.error('❌ Error creating admin user:', createError);
-          throw createError;
-        }
-
-        adminUserId = newAdminUser.id;
+      if (updateError) {
+        console.error('❌ Database update error:', updateError);
+        throw updateError;
       }
 
-      const { error: rpcError } = await supabase.rpc(
-        'change_drop_status',
-        {
-          p_drop_id: id,
-          p_new_status: newStatus,
-          p_admin_user_id: adminUserId,
-        }
-      );
+      console.log('✅ Drop status updated successfully:', {
+        dropId: id,
+        newStatus,
+      });
 
-      if (rpcError) {
-        throw rpcError;
-      }
-      
       return NextResponse.json({
         success: true,
         message: `Drop status changed to ${newStatus} successfully`,
       });
-    } catch (rpcError: unknown) {
-      console.error('❌ RPC function failed:', rpcError);
+    } catch (updateError: unknown) {
+      console.error('❌ Database update failed:', updateError);
       const errorMessage =
-        rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
+        updateError instanceof Error
+          ? updateError.message
+          : 'Unknown database error';
       return NextResponse.json(
         {
-          error: 'RPC function failed',
+          error: 'Failed to update drop status',
           details: errorMessage,
         },
         { status: 500 }

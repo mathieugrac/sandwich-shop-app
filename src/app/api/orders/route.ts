@@ -37,7 +37,6 @@ export async function POST(request: Request) {
         `
         id,
         location_id,
-        pickup_deadline,
         locations (
           name,
           address,
@@ -46,11 +45,6 @@ export async function POST(request: Request) {
       `
       )
       .eq('status', 'active')
-      .not('pickup_deadline', 'is', null) // Ensure deadline is set
-      .or(
-        `pickup_deadline.gt.${new Date().toISOString()},pickup_deadline.gt.${new Date(Date.now() - 15 * 60 * 1000).toISOString()}`
-      ) // Within deadline or grace period
-      .order('pickup_deadline', { ascending: true })
       .limit(1)
       .single();
 
