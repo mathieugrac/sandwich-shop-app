@@ -135,6 +135,8 @@ export type Database = {
           location_id?: string | null;
           notes?: string | null;
           status?: string | null;
+          last_modified_by?: string | null;
+          status_changed_at?: string | null;
           updated_at?: string | null;
         };
         Update: {
@@ -144,6 +146,8 @@ export type Database = {
           location_id?: string | null;
           notes?: string | null;
           status?: string | null;
+          last_modified_by?: string | null;
+          status_changed_at?: string | null;
           updated_at?: string | null;
         };
         Relationships: [

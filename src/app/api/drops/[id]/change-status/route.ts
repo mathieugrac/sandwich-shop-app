@@ -53,6 +53,8 @@ export async function PUT(
         .from('drops')
         .update({
           status: newStatus,
+          status_changed_at: new Date().toISOString(),
+          last_modified_by: user.id,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id);

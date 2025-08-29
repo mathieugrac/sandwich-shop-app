@@ -50,7 +50,9 @@ CREATE TABLE drops (
   status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'completed', 'cancelled')),
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  last_modified_by UUID REFERENCES admin_users(id),
+  status_changed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Drop products table (quantities of products available for a specific drop)
