@@ -316,7 +316,7 @@ export default function CartPage() {
                     <Button
                       onClick={() => {
                         if (dropInfo?.id) {
-                          router.push(`/menu/${dropInfo.id}`);
+                          router.push(`/drop/${dropInfo.id}`);
                         } else {
                           router.push('/');
                         }
@@ -356,7 +356,7 @@ export default function CartPage() {
                   <Button
                     onClick={() => {
                       if (dropInfo?.id) {
-                        router.push(`/menu/${dropInfo.id}`);
+                        router.push(`/drop/${dropInfo.id}`);
                       } else {
                         router.push('/');
                       }

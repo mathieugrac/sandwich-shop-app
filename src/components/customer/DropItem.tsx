@@ -68,7 +68,7 @@ export function DropItem({ drop }: DropItemProps) {
 
   const handlePreOrder = () => {
     if (drop.status === 'active' && deadlineValidation.isValid) {
-      router.push(`/menu/${drop.id}`);
+              router.push(`/drop/${drop.id}`);
     }
   };
 

@@ -13,8 +13,8 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { PageHeader, PageLayout } from '@/components/shared';
 
-export default function MenuPage() {
-  const { dropId } = useParams();
+export default function DropPage() {
+  const { id } = useParams();
   const { addToCart, updateQuantity, removeFromCart, items } = useCart();
   const router = useRouter();
   const [dropData, setDropData] = useState<DropWithProducts | null>(null);
@@ -25,9 +25,9 @@ export default function MenuPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Loading drop data for:', dropId);
+        console.log('🔄 Loading drop data for:', id);
 
-        const drop = await fetchDropWithProducts(dropId as string);
+        const drop = await fetchDropWithProducts(id as string);
         console.log('✅ Drop data loaded:', drop);
         console.log('✅ Drop data structure:', {
           hasDropProducts: !!drop?.dropProducts,
@@ -54,10 +54,10 @@ export default function MenuPage() {
       }
     };
 
-    if (dropId) {
+    if (id) {
       loadData();
     }
-  }, [dropId]);
+  }, [id]);
 
   // Debug current state
   console.log('🔍 Component state:', {
@@ -169,7 +169,7 @@ export default function MenuPage() {
         <div className="max-w-[480px] mx-auto bg-white min-h-screen">
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading menu...</p>
+            <p className="text-gray-600">Loading drop...</p>
           </div>
         </div>
       </div>
@@ -217,9 +217,9 @@ export default function MenuPage() {
   }
 
   // Filter only products with available stock
-  console.log('🔍 Menu: dropData.dropProducts:', dropData.dropProducts);
+  console.log('🔍 Drop: dropData.dropProducts:', dropData.dropProducts);
   console.log(
-    '🔍 Menu: dropData.dropProducts.length:',
+    '🔍 Drop: dropData.dropProducts.length:',
     dropData.dropProducts?.length
   );
 
@@ -231,9 +231,9 @@ export default function MenuPage() {
   // If no drop products exist yet, show a message about setup
   const hasNoDropProducts = availableProducts.length === 0;
 
-  console.log('🔍 Menu: availableProducts:', availableProducts);
-  console.log('🔍 Menu: availableProducts.length:', availableProducts.length);
-  console.log('🔍 Menu: hasNoDropProducts:', hasNoDropProducts);
+  console.log('🔍 Drop: availableProducts:', availableProducts);
+  console.log('🔍 Drop: availableProducts.length:', availableProducts.length);
+  console.log('🔍 Drop: hasNoDropProducts:', hasNoDropProducts);
 
   return (
     <PageLayout>
@@ -271,9 +271,9 @@ export default function MenuPage() {
       <main className="px-5">
         <div className="space-y-6 py-5">
           {/* Order Status Banner - Only show for active drops */}
-          {!isDropCompleted && <OrderBanner dropId={dropId as string} />}
+          {!isDropCompleted && <OrderBanner dropId={id as string} />}
 
-          {/* Menu Section */}
+          {/* Drop Products Section */}
           {isDropCompleted ? (
             <div className="text-center py-8">
               <div className="max-w-md mx-auto">
@@ -324,12 +324,12 @@ export default function MenuPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        d="M12 8v4l3 3m6-3a9 9 0 0118 0z"
                       />
                     </svg>
                   </div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Menu not ready yet
+                    Products not ready yet
                   </h3>
                   <p className="text-gray-600 mb-4">
                     Products are being added to this drop. Please check back
