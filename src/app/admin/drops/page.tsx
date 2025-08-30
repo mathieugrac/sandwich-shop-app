@@ -507,7 +507,7 @@ export default function DropManagementPage() {
   };
 
   const handleViewOrders = (dropId: string) => {
-    router.push(`/admin/orders?drop=${dropId}`);
+    router.push(`/admin/analytics?drop=${dropId}`);
   };
 
   const handleInventoryChange = (productId: string, quantity: number) => {

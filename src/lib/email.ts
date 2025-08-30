@@ -86,9 +86,7 @@ export async function sendOrderStatusUpdateEmail(
     }
 
     const statusMessages = {
-      confirmed: 'Your order has been confirmed and is being prepared!',
-      ready: 'Your order is ready for pickup!',
-      completed: 'Thank you for your order!',
+      delivered: 'Your order has been delivered! Thank you for choosing Fomé!',
     };
 
     const statusMessage =

@@ -122,7 +122,7 @@ function ConfirmationContent() {
             totalAmount: apiOrder.total_amount || 0,
             specialInstructions: apiOrder.special_instructions || null,
             order_products: apiOrder.order_products || [],
-            status: 'confirmed', // API orders are already confirmed
+            status: 'active', // API orders are active by default
             createdAt: apiOrder.created_at || new Date().toISOString(),
             dropInfo: apiOrder.drop_info || undefined,
           };
@@ -261,7 +261,7 @@ function ConfirmationContent() {
                     },
                   }))
                 : [],
-            status: 'pending', // Assuming a default status
+            status: 'active', // Default status for new orders
             createdAt: new Date().toISOString(),
           };
         } catch (fallbackError) {
@@ -277,7 +277,7 @@ function ConfirmationContent() {
             totalAmount: 0,
             specialInstructions: '',
             order_products: [],
-            status: 'pending',
+            status: 'active',
             createdAt: new Date().toISOString(),
           };
         }

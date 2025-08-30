@@ -7,6 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 interface AdminLayoutProps {
   children: React.ReactNode;
   title: string;
+  subtitle?: string;
   backUrl?: string;
   actionButton?: React.ReactNode;
 }
@@ -14,6 +15,7 @@ interface AdminLayoutProps {
 export default function AdminLayout({
   children,
   title,
+  subtitle,
   backUrl = '/admin/dashboard',
   actionButton,
 }: AdminLayoutProps) {
@@ -35,6 +37,9 @@ export default function AdminLayout({
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
+              {subtitle && (
+                <p className="text-gray-600 text-sm mt-1">{subtitle}</p>
+              )}
             </div>
           </div>
           {actionButton}

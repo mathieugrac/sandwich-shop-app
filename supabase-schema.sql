@@ -90,7 +90,7 @@ CREATE TABLE orders (
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   pickup_time TIME NOT NULL, -- 15-min slot within location pickup hours
   order_date DATE NOT NULL,
-  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'prepared', 'completed', 'cancelled')),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'delivered')),
   total_amount DECIMAL(10,2) NOT NULL,
   special_instructions TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

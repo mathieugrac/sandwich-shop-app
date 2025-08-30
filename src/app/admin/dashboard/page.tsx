@@ -133,17 +133,19 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Orders */}
+          {/* Analytics */}
           <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/orders')}
+            onClick={() => navigateTo('/admin/analytics')}
           >
             <CardHeader className="text-center">
               <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-red-600" />
-              <CardTitle>Orders</CardTitle>
+              <CardTitle>Analytics</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              <p className="text-gray-600">Track and manage customer orders</p>
+              <p className="text-gray-600">
+                View drop analytics and order history
+              </p>
             </CardContent>
           </Card>
 

@@ -10,6 +10,17 @@ export async function PUT(
     const { status } = await request.json();
     const { id: orderId } = await params;
 
+    // Validate status
+    const validStatuses = ['active', 'delivered'];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json(
+        {
+          error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Update order status
     const { data: order, error: updateError } = await supabase
       .from('orders')
@@ -26,8 +37,8 @@ export async function PUT(
       );
     }
 
-    // Send status update email for certain statuses
-    if (['confirmed', 'ready', 'completed'].includes(status)) {
+    // Send status update email only for delivered status (optional)
+    if (status === 'delivered') {
       try {
         const emailResult = await sendOrderStatusUpdateEmail(
           order.customer_email,
