@@ -3,13 +3,13 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Single query to get next active drop with all related data
@@ -20,7 +20,6 @@ export async function GET() {
         id,
         date,
         status,
-        pickup_deadline,
         location_id,
         locations (
           id,
@@ -48,9 +47,8 @@ export async function GET() {
       `
       )
       .eq('status', 'active')
-      .not('pickup_deadline', 'is', null) // Ensure deadline is set
-      .gt('pickup_deadline', new Date().toISOString()) // Use deadline instead of date
-      .order('pickup_deadline', { ascending: true }) // Order by deadline
+      .gte('date', new Date().toISOString().split('T')[0]) // Use date instead of pickup_deadline
+      .order('date', { ascending: true }) // Order by date
       .limit(1)
       .single();
 
@@ -68,51 +66,61 @@ export async function GET() {
 
     // Filter active products and transform data
     const products = dropData.drop_products
-      .filter((dp: { products?: Array<{ active?: boolean }> }) => dp.products?.[0]?.active)
+      .filter(
+        (dp: { products?: Array<{ active?: boolean }> }) =>
+          dp.products?.[0]?.active
+      )
       .sort(
-        (a: { products?: Array<{ sort_order?: number }> }, b: { products?: Array<{ sort_order?: number }> }) =>
+        (
+          a: { products?: Array<{ sort_order?: number }> },
+          b: { products?: Array<{ sort_order?: number }> }
+        ) =>
           (a.products?.[0]?.sort_order || 0) -
           (b.products?.[0]?.sort_order || 0)
       )
-      .map((dp: { 
-        id: string; 
-        selling_price: number; 
-        available_quantity: number | null;
-        products?: Array<{ 
-          name?: string; 
-          description?: string | null; 
-          category?: string; 
-          active?: boolean; 
-          sort_order?: number 
-        }> 
-      }) => ({
-        id: dp.id,
-        name: dp.products?.[0]?.name || '',
-        description: dp.products?.[0]?.description || null,
-        selling_price: dp.selling_price,
-        category: dp.products?.[0]?.category || 'sandwich',
-        active: dp.products?.[0]?.active || false,
-        sort_order: dp.products?.[0]?.sort_order || 0,
-        availableStock: dp.available_quantity || 0,
-      }));
+      .map(
+        (dp: {
+          id: string;
+          selling_price: number;
+          available_quantity: number | null;
+          products?: Array<{
+            name?: string;
+            description?: string | null;
+            category?: string;
+            active?: boolean;
+            sort_order?: number;
+          }>;
+        }) => ({
+          id: dp.id,
+          name: dp.products?.[0]?.name || '',
+          description: dp.products?.[0]?.description || null,
+          selling_price: dp.selling_price,
+          category: dp.products?.[0]?.category || 'sandwich',
+          active: dp.products?.[0]?.active || false,
+          sort_order: dp.products?.[0]?.sort_order || 0,
+          availableStock: dp.available_quantity || 0,
+        })
+      );
 
-    // Calculate time until pickup deadline
+    // Calculate time until drop date
     let timeUntilDeadline = null;
-    if (dropData.pickup_deadline) {
-      const deadline = new Date(dropData.pickup_deadline);
+    if (dropData.date) {
+      const dropDate = new Date(dropData.date);
       const now = new Date();
-      const diffMs = deadline.getTime() - now.getTime();
+      const diffMs = dropDate.getTime() - now.getTime();
 
       if (diffMs > 0) {
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffMinutes = Math.floor(
-          (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffHours = Math.floor(
+          (diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
         );
 
-        if (diffHours > 0) {
-          timeUntilDeadline = `${diffHours}h ${diffMinutes}m`;
+        if (diffDays > 0) {
+          timeUntilDeadline = `${diffDays}d ${diffHours}h`;
+        } else if (diffHours > 0) {
+          timeUntilDeadline = `${diffHours}h`;
         } else {
-          timeUntilDeadline = `${diffMinutes}m`;
+          timeUntilDeadline = 'Today';
         }
       }
     }
@@ -122,11 +130,10 @@ export async function GET() {
         id: dropData.id,
         date: dropData.date,
         status: dropData.status,
-        pickup_deadline: dropData.pickup_deadline,
-        time_until_deadline: timeUntilDeadline,
         location: dropData.locations,
       },
       products,
+      timeUntilDeadline,
     };
 
     return NextResponse.json(result);
