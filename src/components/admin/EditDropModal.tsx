@@ -58,7 +58,7 @@ export default function EditDropModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="edit-drop-date">Drop Date</Label>
             <Input
               id="edit-drop-date"
@@ -68,7 +68,7 @@ export default function EditDropModal({
               min={new Date().toISOString().split('T')[0]}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="edit-drop-location">Location</Label>
             <Select
               value={editDropLocation}
@@ -86,7 +86,7 @@ export default function EditDropModal({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="edit-drop-status">Status</Label>
             <Select
               value={editDropStatus}

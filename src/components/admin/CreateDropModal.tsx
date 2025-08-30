@@ -61,7 +61,7 @@ export default function CreateDropModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="drop-date">Drop Date</Label>
             <Input
               id="drop-date"
@@ -71,7 +71,7 @@ export default function CreateDropModal({
               min={new Date().toISOString().split('T')[0]}
             />
           </div>
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="drop-location">Location</Label>
             <Select
               value={newDropLocation}
@@ -89,7 +89,7 @@ export default function CreateDropModal({
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="space-y-3">
             <Label htmlFor="drop-status">Status</Label>
             <Select
               value={newDropStatus}

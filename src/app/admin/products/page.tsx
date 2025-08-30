@@ -120,7 +120,9 @@ export default function ProductsPage() {
       description: product.description || '',
       sell_price: product.sell_price.toString(),
       production_cost: product.production_cost.toString(),
-      category: (product.category as 'sandwich' | 'side' | 'dessert' | 'beverage') || 'sandwich',
+      category:
+        (product.category as 'sandwich' | 'side' | 'dessert' | 'beverage') ||
+        'sandwich',
       active: product.active || false,
       sort_order: product.sort_order || 0,
     });
@@ -425,7 +427,7 @@ export default function ProductsPage() {
 
             <div className="space-y-4">
               {/* Image Upload */}
-              <div>
+              <div className="space-y-3">
                 <Label htmlFor="image">Product Image</Label>
                 <div className="mt-2">
                   {imagePreview ? (
@@ -478,7 +480,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-3">
                 <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
@@ -490,7 +492,7 @@ export default function ProductsPage() {
                 />
               </div>
 
-              <div>
+              <div className="space-y-3">
                 <Label htmlFor="description">Description</Label>
                 <Input
                   id="description"
@@ -503,7 +505,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-3">
                   <Label htmlFor="sell_price">Selling Price (€)</Label>
                   <Input
                     id="sell_price"
@@ -517,7 +519,7 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                <div>
+                <div className="space-y-3">
                   <Label htmlFor="production_cost">Production Cost (€)</Label>
                   <Input
                     id="production_cost"
@@ -535,7 +537,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div>
+              <div className="space-y-3">
                 <Label htmlFor="category">Category</Label>
                 <Select
                   value={formData.category}
@@ -563,7 +565,7 @@ export default function ProductsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-3">
                   <Label htmlFor="sort_order">Sort Order</Label>
                   <Input
                     id="sort_order"
