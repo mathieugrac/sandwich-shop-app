@@ -342,16 +342,6 @@ NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
 
 ---
 
-## Other
-
-### **⚠️ Important Notes for Production:**
-
-- **Domain Verification Required:** Must verify a domain at resend.com/domains for production use
-- **From Address:** Currently using `onboarding@resend.dev` for testing, needs to be changed to verified domain
-- **Test Emails:** Can only send test emails to `mathieugrac@gmail.com` (verified email)
-- **Production Setup:** Update `from` address in `src/lib/email.ts` to use verified domain
-- **Error Handling:** Need to improve error handling for email failures (currently logs but doesn’t fail orders)
-
 ### **🚨 CRITICAL SECURITY TASK - ROTATE API KEYS:**
 
 **URGENT:** API keys were exposed in Git history and need to be rotated:

@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    // Single query with JOIN to get drops, locations, and total available quantities
+    // Single query with LEFT JOIN to get drops, locations, and total available quantities
+    // This will include drops even if they have no products in inventory
     const { data: drops, error } = await supabase
       .from('drops')
       .select(
@@ -18,7 +19,7 @@ export async function GET() {
           pickup_hour_start,
           pickup_hour_end
         ),
-        drop_products!inner (
+        drop_products (
           available_quantity
         )
       `
@@ -33,14 +34,16 @@ export async function GET() {
       );
     }
 
-    // Transform data to include total_available using database view
+    // Transform data to include total_available, handling drops without inventory
     const dropsWithTotal = drops.map(drop => {
-      const total_available =
-        drop.drop_products?.reduce(
-          (sum: number, dp: { available_quantity: number | null }) =>
-            sum + (dp.available_quantity || 0),
-          0
-        ) || 0;
+      // Handle cases where drop_products is null, undefined, or empty array
+      const total_available = Array.isArray(drop.drop_products)
+        ? drop.drop_products.reduce(
+            (sum: number, dp: { available_quantity: number | null }) =>
+              sum + (dp.available_quantity || 0),
+            0
+          )
+        : 0;
 
       // Remove drop_products from response, keep only total
       const { drop_products, ...dropData } = drop;

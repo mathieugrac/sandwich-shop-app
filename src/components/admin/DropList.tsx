@@ -152,10 +152,8 @@ export default function DropList({
                           size="sm"
                           variant="default"
                           onClick={() => onStatusChange(drop.id, 'active')}
-                          className="flex items-center space-x-2"
                         >
-                          <Eye className="w-4 h-4" />
-                          <span>Activate</span>
+                          Activate
                         </Button>
                       )}
 
@@ -164,10 +162,8 @@ export default function DropList({
                           size="sm"
                           variant="outline"
                           onClick={() => onStatusChange(drop.id, 'completed')}
-                          className="flex items-center space-x-2"
                         >
-                          <Package className="w-4 h-4" />
-                          <span>Complete</span>
+                          Complete
                         </Button>
                       )}
 

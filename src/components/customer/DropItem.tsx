@@ -93,7 +93,7 @@ export function DropItem({ drop }: DropItemProps) {
               className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
               size="lg"
             >
-              Pre-Order
+              Order now
             </Button>
           ) : (
             <Button

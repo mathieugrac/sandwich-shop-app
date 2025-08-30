@@ -39,11 +39,11 @@ export default function InventoryModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[800px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+        <DialogHeader className="mb-5">
           <DialogTitle>Inventory Management</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           {/* Product Selection and Quantity Management */}
           {products.map(product => {
             const currentQuantity = inventory[product.id] || 0;
@@ -52,7 +52,7 @@ export default function InventoryModal({
             return (
               <div
                 key={product.id}
-                className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
+                className={`flex items-center justify-between px-3 py-2 border rounded-lg transition-colors ${
                   isInMenu
                     ? 'border-green-200 bg-green-50'
                     : 'border-gray-200 bg-gray-50'
@@ -67,18 +67,6 @@ export default function InventoryModal({
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const newQty = Math.max(0, currentQuantity - 1);
-                      onInventoryChange(product.id, newQty);
-                    }}
-                    disabled={currentQuantity === 0}
-                  >
-                    -
-                  </Button>
-
                   <Input
                     id={`qty-${product.id}`}
                     type="number"
@@ -90,6 +78,18 @@ export default function InventoryModal({
                     }}
                     className="w-20 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const newQty = Math.max(0, currentQuantity - 1);
+                      onInventoryChange(product.id, newQty);
+                    }}
+                    disabled={currentQuantity === 0}
+                  >
+                    -
+                  </Button>
 
                   <Button
                     size="sm"

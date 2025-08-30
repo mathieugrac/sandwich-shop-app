@@ -537,7 +537,6 @@ export default function DropManagementPage() {
           onClick={() => updateUiState({ showCreateForm: true })}
           className="bg-black hover:bg-gray-800"
         >
-          <Plus className="w-4 h-4 mr-2" />
           Create Drop
         </Button>
       }

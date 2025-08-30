@@ -422,23 +422,7 @@ function ConfirmationContent() {
               <h3 className="text-xl font-semibold mb-4">Pickup Information</h3>
               <Card className="p-4">
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Clock className="h-5 w-5 text-gray-600" />
-                    <div>
-                      <p className="text-sm text-gray-600">Pickup Time</p>
-                      <p className="font-medium">
-                        {orderData.order.pickupTime
-                          ? new Date(
-                              `2000-01-01T${orderData.order.pickupTime}`
-                            ).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })
-                          : 'Not specified'}
-                      </p>
-                    </div>
-                  </div>
+                  {/* 1. Pickup Location */}
                   <div className="flex items-center space-x-3">
                     <MapPin className="h-5 w-5 text-gray-600" />
                     <div className="flex-1">
@@ -516,37 +500,43 @@ function ConfirmationContent() {
                           return 'Rua da Penha de França, 4, 1170-112 Lisboa, Portugal';
                         })()}
                       </p>
+                    </div>
+                  </div>
 
-                      {/* Show Map Button */}
-                      <div className="mt-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const currentDrop =
-                              localStorage.getItem('currentDrop');
-                            if (currentDrop) {
-                              try {
-                                const dropInfo = JSON.parse(currentDrop);
-                                if (dropInfo.location?.location_url) {
-                                  window.open(
-                                    dropInfo.location.location_url,
-                                    '_blank'
-                                  );
-                                } else {
-                                  // Fallback to default location
-                                  window.open(
-                                    'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
-                                    '_blank'
-                                  );
-                                }
-                              } catch (e) {
-                                // Fallback to default location
-                                window.open(
-                                  'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
-                                  '_blank'
-                                );
-                              }
+                  {/* 2. Pickup Time */}
+                  <div className="flex items-center space-x-3">
+                    <Clock className="h-5 w-5 text-gray-600" />
+                    <div>
+                      <p className="text-sm text-gray-600">Pickup Time</p>
+                      <p className="font-medium">
+                        {orderData.order.pickupTime
+                          ? new Date(
+                              `2000-01-01T${orderData.order.pickupTime}`
+                            ).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              hour12: true,
+                            })
+                          : 'Not specified'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 3. Show Map Button - Full Width */}
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const currentDrop = localStorage.getItem('currentDrop');
+                        if (currentDrop) {
+                          try {
+                            const dropInfo = JSON.parse(currentDrop);
+                            if (dropInfo.location?.location_url) {
+                              window.open(
+                                dropInfo.location.location_url,
+                                '_blank'
+                              );
                             } else {
                               // Fallback to default location
                               window.open(
@@ -554,31 +544,29 @@ function ConfirmationContent() {
                                 '_blank'
                               );
                             }
-                          }}
-                          className="w-full"
-                        >
-                          Show on Map
-                        </Button>
-                      </div>
-                    </div>
+                          } catch (e) {
+                            // Fallback to default location
+                            window.open(
+                              'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
+                              '_blank'
+                            );
+                          }
+                        } else {
+                          // Fallback to default location
+                          window.open(
+                            'https://maps.google.com/?q=Impact+Hub+Penha+Lisboa',
+                            '_blank'
+                          );
+                        }
+                      }}
+                      className="w-full"
+                    >
+                      Show on Map
+                    </Button>
                   </div>
                 </div>
               </Card>
             </section>
-
-            {/* Special Instructions */}
-            {orderData.order.specialInstructions && (
-              <section>
-                <h3 className="text-xl font-semibold mb-4">
-                  Special Instructions
-                </h3>
-                <Card className="p-4">
-                  <p className="text-gray-700">
-                    {orderData.order.specialInstructions}
-                  </p>
-                </Card>
-              </section>
-            )}
           </div>
         </main>
 

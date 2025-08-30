@@ -121,8 +121,7 @@ export default function CreateDropModal({
             disabled={creating}
             className="bg-black hover:bg-gray-800"
           >
-            {creating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Create Drop
+            {creating ? 'Creating...' : 'Create Drop'}
           </Button>
         </div>
       </DialogContent>
