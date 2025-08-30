@@ -142,7 +142,9 @@ export default function AdminDashboardPage() {
           date: dropData.date,
           status: dropData.status,
           location: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             name: (dropData.locations as any)?.name || '',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             address: (dropData.locations as any)?.address || '',
           },
         },
