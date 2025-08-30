@@ -222,7 +222,7 @@ export default function DeliveryPage() {
 
         // Calculate total active orders for this product
         const totalActiveOrders =
-          dropProduct.order_products?.reduce((sum, orderProduct) => {
+          dropProduct.order_products?.reduce((sum: number, orderProduct) => {
             // Only count orders that are still active
             if (orderProduct.orders?.status === 'active') {
               return sum + orderProduct.order_quantity;
