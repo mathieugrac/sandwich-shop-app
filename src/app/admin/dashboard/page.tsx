@@ -142,8 +142,8 @@ export default function AdminDashboardPage() {
           date: dropData.date,
           status: dropData.status,
           location: {
-            name: Array.isArray(dropData.locations) ? dropData.locations[0]?.name || '' : dropData.locations?.name || '',
-            address: Array.isArray(dropData.locations) ? dropData.locations[0]?.address || '' : dropData.locations?.address || '',
+            name: (dropData.locations as any)?.name || '',
+            address: (dropData.locations as any)?.address || '',
           },
         },
         orderStats,
