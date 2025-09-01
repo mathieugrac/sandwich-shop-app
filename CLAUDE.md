@@ -161,7 +161,7 @@ Does this align with what you want? I'll be your complexity filter and always pu
 2. **Dashboard (`/admin/dashboard`)** - Overview of next drop orders and revenue
 3. **Order Management (`/admin/orders`)** - Process orders with status updates
 4. **Drop Management (`/admin/drops`)** - Create and manage drops in advance
-5. **Inventory Management (`/admin/inventory`)** - Set quantities per drop
+5. **Inventory Management** - Set quantities per drop (via "Inventory" button on drops page)
 
 ---
 

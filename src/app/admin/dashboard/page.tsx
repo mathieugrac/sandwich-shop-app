@@ -467,22 +467,6 @@ export default function AdminDashboardPage() {
               </p>
             </CardContent>
           </Card>
-
-          {/* Drop Products */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/drop-products')}
-          >
-            <CardHeader className="text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 text-indigo-600" />
-              <CardTitle>Drop Products</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                Monitor and edit product availability across drops
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
