@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,7 @@ interface DropAnalyticsData {
   completionRate: number;
 }
 
-export default function AnalyticsPage() {
+function AnalyticsContent() {
   const [loading, setLoading] = useState(true);
   const [drops, setDrops] = useState<DropWithLocation[]>([]);
   const [selectedDropId, setSelectedDropId] = useState<string | null>(null);
@@ -242,5 +242,15 @@ export default function AnalyticsPage() {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+    </div>}>
+      <AnalyticsContent />
+    </Suspense>
   );
 }
