@@ -10,9 +10,8 @@ import {
   MapPin,
   Calendar,
   Users,
-  ShoppingCart,
+  BarChart3,
   LogOut,
-  Zap,
 } from 'lucide-react';
 
 interface ActiveDropData {
@@ -185,12 +184,7 @@ export default function AdminDashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600">
-              Manage your sandwich shop operations
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">Fomé</h1>
           </div>
           <Button onClick={handleLogout} variant="outline">
             <LogOut className="w-4 h-4" />
@@ -198,11 +192,10 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Next Drop Card */}
-        <div className="mb-8">
+        <div className="mb-4">
           {loadingActiveDrop ? (
             <Card className="hover:shadow-lg transition-shadow">
               <CardHeader className="text-center">
-                <Zap className="w-12 h-12 mx-auto mb-4 text-blue-600" />
                 <CardTitle>Next Drop</CardTitle>
               </CardHeader>
               <CardContent className="text-center">
@@ -217,14 +210,13 @@ export default function AdminDashboardPage() {
               {/* Mobile Layout */}
               <div className="block md:hidden">
                 <CardHeader className="text-center">
-                  <Zap className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-                  <CardTitle className="text-lg font-semibold">
+                  <CardTitle className="text-md font-semibold mb-6">
                     Next Drop
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-center space-y-4">
                   <div>
-                    <p className="text-lg font-semibold mb-1">
+                    <p className="text-xl font-semibold mb-1">
                       {new Date(activeDropData.drop.date).toLocaleDateString(
                         'en-US',
                         {
@@ -275,12 +267,13 @@ export default function AdminDashboardPage() {
               <div className="hidden md:block">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    {/* Left Side: Icon + Title + Date + Location */}
+                    {/* Left Side: Title + Date + Location */}
                     <div className="flex items-center space-x-4">
-                      <Zap className="w-12 h-12 text-blue-600 flex-shrink-0" />
                       <div className="text-left">
-                        <h3 className="text-lg font-semibold">Next Drop</h3>
-                        <p className="text-lg font-semibold mb-1">
+                        <h3 className="text-md font-semibold mb-6">
+                          Next Drop
+                        </h3>
+                        <p className="text-xl font-semibold mb-1">
                           {new Date(
                             activeDropData.drop.date
                           ).toLocaleDateString('en-US', {
@@ -338,8 +331,7 @@ export default function AdminDashboardPage() {
               {/* Mobile Layout - Empty State */}
               <div className="block md:hidden">
                 <CardHeader className="text-center">
-                  <Zap className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-                  <CardTitle className="text-lg font-semibold">
+                  <CardTitle className="text-md font-semibold mb-6">
                     Next Drop
                   </CardTitle>
                 </CardHeader>
@@ -363,11 +355,12 @@ export default function AdminDashboardPage() {
               <div className="hidden md:block">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
-                    {/* Left Side: Icon + Title + Date + Location */}
+                    {/* Left Side: Title + Date + Location */}
                     <div className="flex items-center space-x-4">
-                      <Zap className="w-12 h-12 text-blue-600 flex-shrink-0" />
                       <div className="text-left">
-                        <h3 className="text-lg font-semibold">Next Drop</h3>
+                        <h3 className="text-md font-semibold mb-6">
+                          Next Drop
+                        </h3>
                         <p className="text-lg font-semibold mb-1">
                           No active drops scheduled
                         </p>
@@ -391,65 +384,16 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Navigation Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Products */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/products')}
-          >
-            <CardHeader className="text-center">
-              <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-              <CardTitle>Products</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">Manage sandwich menu and pricing</p>
-            </CardContent>
-          </Card>
-
-          {/* Locations */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/locations')}
-          >
-            <CardHeader className="text-center">
-              <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
-              <CardTitle>Locations</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                Manage delivery locations and timeframes
-              </p>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           {/* Drops */}
           <Card
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => navigateTo('/admin/drops')}
           >
-            <CardHeader className="text-center">
+            <CardHeader className="text-center py-8">
               <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
               <CardTitle>Drops</CardTitle>
             </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">Create and manage sandwich drops</p>
-            </CardContent>
-          </Card>
-
-          {/* Clients */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/clients')}
-          >
-            <CardHeader className="text-center">
-              <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
-              <CardTitle>Clients</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                View customer information and history
-              </p>
-            </CardContent>
           </Card>
 
           {/* Analytics */}
@@ -457,15 +401,43 @@ export default function AdminDashboardPage() {
             className="hover:shadow-lg transition-shadow cursor-pointer"
             onClick={() => navigateTo('/admin/analytics')}
           >
-            <CardHeader className="text-center">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-red-600" />
+            <CardHeader className="text-center py-8">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-red-600" />
               <CardTitle>Analytics</CardTitle>
             </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                View drop analytics and order history
-              </p>
-            </CardContent>
+          </Card>
+
+          {/* Products */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/products')}
+          >
+            <CardHeader className="text-center py-8">
+              <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+              <CardTitle>Products</CardTitle>
+            </CardHeader>
+          </Card>
+
+          {/* Clients */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/clients')}
+          >
+            <CardHeader className="text-center py-8">
+              <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
+              <CardTitle>Clients</CardTitle>
+            </CardHeader>
+          </Card>
+
+          {/* Locations */}
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => navigateTo('/admin/locations')}
+          >
+            <CardHeader className="text-center py-8">
+              <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
+              <CardTitle>Locations</CardTitle>
+            </CardHeader>
           </Card>
         </div>
       </div>
