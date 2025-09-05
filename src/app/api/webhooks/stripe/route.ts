@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function handleSuccessfulPayment(paymentIntent: any) {
+async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
   try {
     const metadata = paymentIntent.metadata;
     const cartItems = JSON.parse(metadata.cartItems);
@@ -136,7 +136,7 @@ async function handleSuccessfulPayment(paymentIntent: any) {
     }
 
     // Reserve inventory and create order products
-    const orderProducts = cartItems.map((item: any) => ({
+    const orderProducts = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
       drop_product_id: item.id,
       order_quantity: item.quantity,
     }));
@@ -165,7 +165,7 @@ async function handleSuccessfulPayment(paymentIntent: any) {
           customerName: metadata.customerName,
           customerEmail: metadata.customerEmail,
           customerPhone: metadata.customerPhone || undefined,
-          cartItems: cartItems.map((item: any) => ({
+          cartItems: cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
             name: item.name,
             quantity: item.quantity,
             price: item.price,
@@ -186,7 +186,7 @@ async function handleSuccessfulPayment(paymentIntent: any) {
     }
 
     // Create order products
-    const orderProductsForInsert = cartItems.map((item: any) => ({
+    const orderProductsForInsert = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
       order_id: order.id,
       drop_product_id: item.id,
       order_quantity: item.quantity,
@@ -203,7 +203,7 @@ async function handleSuccessfulPayment(paymentIntent: any) {
 
     // Send confirmation email
     try {
-      const emailItems = cartItems.map((item: any) => ({
+      const emailItems = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
         productName: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
@@ -265,7 +265,7 @@ async function handleSuccessfulPayment(paymentIntent: any) {
   }
 }
 
-async function handleFailedPayment(paymentIntent: any) {
+async function handleFailedPayment(paymentIntent: Stripe.PaymentIntent) {
   try {
     const metadata = paymentIntent.metadata;
     const cartItems = JSON.parse(metadata.cartItems);
@@ -285,7 +285,7 @@ async function handleFailedPayment(paymentIntent: any) {
         customerName: metadata.customerName,
         customerEmail: metadata.customerEmail,
         customerPhone: metadata.customerPhone || undefined,
-        cartItems: cartItems.map((item: any) => ({
+        cartItems: cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
           name: item.name,
           quantity: item.quantity,
           price: item.price,
