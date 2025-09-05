@@ -9,8 +9,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { StripePayment } from '@/components/checkout/StripePayment';
+import {
+  PaymentStatus,
+  PaymentStatus as PaymentStatusType,
+} from '@/components/checkout/PaymentStatus';
 
 import { PageHeader, PageLayout } from '@/components/shared';
+import { CartItem, CustomerInfo as PaymentCustomerInfo } from '@/lib/payments';
 
 // Interface for drop information
 interface DropInfo {
@@ -52,6 +58,19 @@ export default function CheckoutPage() {
     isValidatingDrop: false,
   });
 
+  // Payment flow state
+  const [paymentState, setPaymentState] = useState<{
+    showPayment: boolean;
+    status: PaymentStatusType | null;
+    message: string;
+    orderNumber: string;
+  }>({
+    showPayment: false,
+    status: null,
+    message: '',
+    orderNumber: '',
+  });
+
   // Separate state for drop info (complex object)
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
 
@@ -80,7 +99,10 @@ export default function CheckoutPage() {
       setFormState(prev => ({ ...prev, pickupTime: savedPickupTime }));
     }
     if (savedSpecialInstructions) {
-      setFormState(prev => ({ ...prev, specialInstructions: savedSpecialInstructions }));
+      setFormState(prev => ({
+        ...prev,
+        specialInstructions: savedSpecialInstructions,
+      }));
     }
 
     // Load drop information from localStorage
@@ -183,7 +205,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // Handle form submission
+  // Handle form submission - now shows payment form instead of creating order
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -191,8 +213,36 @@ export default function CheckoutPage() {
       return;
     }
 
-    updateUiState({ isLoading: true });
+    // Format phone number and save customer info
+    const formattedPhone = formState.customerInfo.phone.trim()
+      ? formatPhoneNumber(formState.customerInfo.phone.trim())
+      : '';
 
+    saveCustomerInfo({
+      ...formState.customerInfo,
+      phone: formattedPhone,
+    });
+
+    // Show payment form
+    setPaymentState({
+      showPayment: true,
+      status: null,
+      message: '',
+      orderNumber: '',
+    });
+  };
+
+  // Handle successful payment
+  const handlePaymentSuccess = async (paymentIntentId: string) => {
+    console.log('✅ Payment successful:', paymentIntentId);
+
+    setPaymentState(prev => ({
+      ...prev,
+      status: 'processing',
+      message: 'Payment successful! Creating your order...',
+    }));
+
+    // For local development, create order directly since webhook won't be called
     try {
       // Format phone number
       const formattedPhone = formState.customerInfo.phone.trim()
@@ -204,15 +254,16 @@ export default function CheckoutPage() {
         customerEmail: formState.customerInfo.email.trim(),
         customerPhone: formattedPhone,
         pickupTime: formState.pickupTime,
-        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
+        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0],
         items: (items || []).map(item => ({
-          id: item.dropProductId, // Use drop_product_id for the API
-          name: item.name, // Add the missing name field
+          id: item.dropProductId,
+          name: item.name,
           quantity: item.quantity,
           price: item.price,
         })),
         specialInstructions: formState.specialInstructions,
         totalAmount: totalPrice || 0,
+        paymentIntentId: paymentIntentId, // Add payment intent ID
       };
 
       const response = await fetch('/api/orders', {
@@ -225,8 +276,7 @@ export default function CheckoutPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Checkout: API error:', errorData);
-        throw new Error(errorData.error || 'Failed to place order');
+        throw new Error(errorData.error || 'Failed to create order');
       }
 
       const result = await response.json();
@@ -241,7 +291,7 @@ export default function CheckoutPage() {
       const activeOrder = {
         orderNumber: result.order.order_number,
         pickupTime: formState.pickupTime,
-        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0], // Use actual drop date
+        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0],
         items: (items || []).map(item => ({
           name: item.name,
           quantity: item.quantity,
@@ -257,47 +307,52 @@ export default function CheckoutPage() {
       }
       localStorage.removeItem('pickupTime');
       localStorage.removeItem('specialInstructions');
-      localStorage.removeItem('currentDrop'); // Also clear drop info
+      localStorage.removeItem('currentDrop');
 
-      // Redirect to confirmation
-      const confirmationUrl = `/confirmation?orderId=${result.order.id}`;
+      // Redirect to confirmation page
+      const orderId = result.order.id;
 
-      // Force navigation using window.location as fallback
-      try {
-        router.push(confirmationUrl);
-        // If router.push doesn't work, use window.location
-        setTimeout(() => {
-          if (window.location.pathname !== '/confirmation') {
-            window.location.href = confirmationUrl;
-          }
-        }, 100);
-      } catch (error) {
-        console.error('Checkout: Navigation error:', error);
-        window.location.href = confirmationUrl;
-      }
+      // Use window.location instead of router.push to force navigation
+      window.location.href = `/confirmation?orderId=${orderId}`;
     } catch (error) {
-      console.error('Order placement failed:', error);
-
-      // More user-friendly error message
-      let errorMessage = 'Failed to place order. Please try again.';
-      if (error instanceof Error) {
-        if (error.message.includes('No active drop available')) {
-          errorMessage =
-            'Sorry, there are no active orders at the moment. Please try again later.';
-        } else if (error.message.includes('Failed to reserve drop products')) {
-          errorMessage =
-            'Sorry, some items are no longer available. Please refresh and try again.';
-        } else if (error.message.includes('Missing required fields')) {
-          errorMessage = 'Please check your order details and try again.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-
-      alert(errorMessage);
-    } finally {
-      updateUiState({ isLoading: false });
+      console.error('❌ Order creation failed:', error);
+      setPaymentState(prev => ({
+        ...prev,
+        status: 'failed',
+        message:
+          'Payment successful but order creation failed. Please contact support.',
+      }));
     }
+  };
+
+  // Handle payment error
+  const handlePaymentError = (error: string) => {
+    console.error('❌ Payment failed:', error);
+
+    setPaymentState(prev => ({
+      ...prev,
+      status: 'failed',
+      message: error,
+    }));
+  };
+
+  // Handle payment cancellation
+  const handlePaymentCancel = () => {
+    setPaymentState({
+      showPayment: false,
+      status: null,
+      message: '',
+      orderNumber: '',
+    });
+  };
+
+  // Retry payment
+  const handlePaymentRetry = () => {
+    setPaymentState(prev => ({
+      ...prev,
+      status: null,
+      message: '',
+    }));
   };
 
   // Handle input changes
@@ -456,12 +511,11 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Information and Special Instructions */}
+              {/* Payment Information */}
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-600 text-sm">
-                    Payment in cash or mbway {dropInfo?.location?.name} during
-                    pickup
+                    Secure online payment with Stripe
                   </span>
                 </div>
               </div>
@@ -469,7 +523,11 @@ export default function CheckoutPage() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={uiState.isLoading || uiState.isValidatingDrop}
+                disabled={
+                  uiState.isLoading ||
+                  uiState.isValidatingDrop ||
+                  paymentState.showPayment
+                }
                 className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
                 size="lg"
@@ -481,12 +539,51 @@ export default function CheckoutPage() {
                   </div>
                 ) : uiState.isValidatingDrop ? (
                   'Validating...'
+                ) : paymentState.showPayment ? (
+                  'Payment in Progress...'
                 ) : (
-                  'Place Order'
+                  'Continue to Payment'
                 )}
               </Button>
             </div>
           </Card>
+
+          {/* Payment Form */}
+          {paymentState.showPayment && !paymentState.status && (
+            <StripePayment
+              items={(items || []).map(item => ({
+                id: item.dropProductId,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              }))}
+              customerInfo={{
+                name: formState.customerInfo.name.trim(),
+                email: formState.customerInfo.email.trim(),
+                phone: formState.customerInfo.phone.trim()
+                  ? formatPhoneNumber(formState.customerInfo.phone.trim())
+                  : undefined,
+                pickupTime: formState.pickupTime,
+                pickupDate:
+                  dropInfo?.date || new Date().toISOString().split('T')[0],
+                specialInstructions: formState.specialInstructions || undefined,
+              }}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onCancel={handlePaymentCancel}
+            />
+          )}
+
+          {/* Payment Status */}
+          {paymentState.status && (
+            <PaymentStatus
+              status={paymentState.status}
+              message={paymentState.message}
+              orderNumber={paymentState.orderNumber}
+              onRetry={handlePaymentRetry}
+              onContinue={() => router.push('/confirmation')}
+            />
+          )}
         </div>
       </main>
     </PageLayout>

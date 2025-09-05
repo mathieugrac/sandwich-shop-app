@@ -113,12 +113,6 @@ export async function POST(request: Request) {
       })
     );
 
-    console.log('🔍 Debug: Attempting to reserve inventory for:', {
-      items: items,
-      orderProducts: orderProducts,
-      activeDropId: activeDrop.id,
-    });
-
     // Reserve inventory for all items at once
     const { error: reservationError } = await supabase.rpc(
       'reserve_multiple_drop_products',

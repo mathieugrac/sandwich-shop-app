@@ -11,7 +11,7 @@ export async function PUT(
     const { id: orderId } = await params;
 
     // Validate status
-    const validStatuses = ['active', 'delivered'];
+    const validStatuses = ['confirmed', 'delivered'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         {

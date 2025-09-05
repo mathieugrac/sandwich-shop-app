@@ -67,6 +67,63 @@ export async function sendOrderConfirmationEmail(
   }
 }
 
+export interface PaymentFailureNotificationData {
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  cartItems: Array<{
+    name: string;
+    quantity: number;
+    price: number;
+  }>;
+  totalAmount: number;
+  errorReason: string;
+  paymentIntentId: string;
+  timestamp: string;
+}
+
+export async function sendPaymentFailureNotification(
+  data: PaymentFailureNotificationData
+) {
+  try {
+    // Get admin email from environment
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      console.error(
+        'ADMIN_EMAIL not configured - cannot send payment failure notification'
+      );
+      return null;
+    }
+
+    // Get shop information
+    const shopInfo = getShopInfo();
+
+    // Render email template
+    const html = renderTemplate('admin-payment-failed', {
+      ...data,
+      ...shopInfo,
+    });
+
+    const { data: emailData, error } = await resend.emails.send({
+      from: shopInfo.shopEmail,
+      to: adminEmail,
+      subject: `🚨 Payment Failed - ${data.customerName} (${data.paymentIntentId})`,
+      html,
+    });
+
+    if (error) {
+      console.error('Failed to send payment failure notification:', error);
+      return null;
+    }
+
+    console.log('✅ Payment failure notification sent to admin');
+    return emailData;
+  } catch (error) {
+    console.error('Payment failure notification error:', error);
+    return null;
+  }
+}
+
 export async function sendOrderStatusUpdateEmail(
   customerEmail: string,
   customerName: string,

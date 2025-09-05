@@ -14,29 +14,17 @@ export function UpcomingDrops() {
   useEffect(() => {
     const loadFutureDrops = async () => {
       try {
-        console.log('🔄 UpcomingDrops: Starting to load future drops...');
         const futureDrops = await fetchDrops();
-        console.log('✅ UpcomingDrops: Future drops loaded:', futureDrops);
         setDrops(futureDrops);
       } catch (error) {
-        console.error('❌ UpcomingDrops: Error loading future drops:', error);
+        console.error('Error loading future drops:', error);
       } finally {
-        console.log('🏁 UpcomingDrops: Setting loading to false');
         setLoading(false);
       }
     };
 
     loadFutureDrops();
   }, []);
-
-  console.log(
-    '🔄 UpcomingDrops: Render state - loading:',
-    loading,
-    'drops count:',
-    drops.length,
-    'drops data:',
-    drops
-  );
 
   if (loading) {
     return (

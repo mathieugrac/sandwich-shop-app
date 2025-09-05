@@ -81,17 +81,11 @@ function ConfirmationContent() {
 
     const fetchOrderDetails = async (retryCount = 0) => {
       try {
-        console.log(
-          `Attempting to fetch order ${orderId} (attempt ${retryCount + 1})`
-        );
         const response = await fetch(`/api/orders/${orderId}`);
 
         if (!response.ok) {
           if (response.status === 404 && retryCount < 2) {
             // Order might not be committed yet, retry after a delay
-            console.log(
-              `Order not found, retrying in 1 second... (attempt ${retryCount + 1})`
-            );
             setTimeout(() => fetchOrderDetails(retryCount + 1), 1000);
             return;
           }
@@ -122,7 +116,7 @@ function ConfirmationContent() {
             totalAmount: apiOrder.total_amount || 0,
             specialInstructions: apiOrder.special_instructions || null,
             order_products: apiOrder.order_products || [],
-            status: 'active', // API orders are active by default
+            status: apiOrder.status || 'confirmed', // Use actual status from API
             createdAt: apiOrder.created_at || new Date().toISOString(),
             dropInfo: apiOrder.drop_info || undefined,
           };
@@ -261,7 +255,7 @@ function ConfirmationContent() {
                     },
                   }))
                 : [],
-            status: 'active', // Default status for new orders
+            status: 'confirmed', // Default status for new orders
             createdAt: new Date().toISOString(),
           };
         } catch (fallbackError) {
@@ -277,7 +271,7 @@ function ConfirmationContent() {
             totalAmount: 0,
             specialInstructions: '',
             order_products: [],
-            status: 'active',
+            status: 'confirmed',
             createdAt: new Date().toISOString(),
           };
         }
@@ -292,7 +286,7 @@ function ConfirmationContent() {
     };
 
     fetchOrderDetails();
-  }, [orderId, router]);
+  }, [orderId]);
 
   const handleBackToHome = () => {
     router.push('/');
@@ -311,7 +305,9 @@ function ConfirmationContent() {
 
   // Safety check to ensure orderData is properly initialized
   if (!orderData || !orderData.order || !orderData.order.orderNumber) {
-    console.error('Order data not properly initialized:', orderData);
+    console.error('❌ Order data not properly initialized:', orderData);
+    console.error('❌ Loading state:', loading);
+    console.error('❌ OrderId:', orderId);
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">

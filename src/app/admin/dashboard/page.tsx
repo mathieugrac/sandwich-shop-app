@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
           )
         `
         )
-        .eq('status', 'active')
+        .eq('status', 'confirmed')
         .gte('date', new Date().toISOString().split('T')[0]) // Use date instead of pickup_deadline
         .order('date', { ascending: true })
         .limit(1)

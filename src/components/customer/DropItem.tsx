@@ -44,12 +44,10 @@ export function DropItem({ drop }: DropItemProps) {
 
   const handleNotifyMe = () => {
     // TODO: Implement notification system
-    console.log('Notify me clicked for drop:', drop.id);
   };
 
   // Defensive check: Make sure location exists
   if (!drop.location) {
-    console.error('❌ Drop missing location:', drop);
     return null; // Skip rendering this drop
   }
 

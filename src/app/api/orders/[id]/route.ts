@@ -59,6 +59,7 @@ export async function GET(
     const transformedOrder = {
       id: order.id,
       order_number: order.order_number,
+      status: order.status, // Add the missing status field
       customer_name: order.clients?.name || 'Unknown',
       customer_email: order.clients?.email || 'Unknown',
       customer_phone: order.clients?.phone || '',

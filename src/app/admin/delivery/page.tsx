@@ -111,7 +111,7 @@ export default function DeliveryPage() {
           )
         `
         )
-        .eq('status', 'active')
+        .eq('status', 'confirmed')
         .order('date')
         .limit(1)
         .single();
@@ -165,7 +165,7 @@ export default function DeliveryPage() {
 
       // Separate active and delivered orders
       const active =
-        ordersData?.filter(order => order.status === 'active') || [];
+        ordersData?.filter(order => order.status === 'confirmed') || [];
       const delivered =
         ordersData?.filter(order => order.status === 'delivered') || [];
 
@@ -219,7 +219,7 @@ export default function DeliveryPage() {
           dropProduct.order_products?.reduce(
             (sum: number, orderProduct: any) => {
               // Only count orders that are still active
-              if (orderProduct.orders?.status === 'active') {
+              if (orderProduct.orders?.status === 'confirmed') {
                 return sum + orderProduct.order_quantity;
               }
               return sum;
@@ -266,7 +266,7 @@ export default function DeliveryPage() {
 
   const changeOrderStatus = async (
     orderId: string,
-    newStatus: 'active' | 'delivered'
+    newStatus: 'confirmed' | 'delivered'
   ) => {
     try {
       setUpdatingOrder(orderId);
@@ -637,11 +637,11 @@ export default function DeliveryPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
                                 onClick={() =>
-                                  changeOrderStatus(order.id, 'active')
+                                  changeOrderStatus(order.id, 'confirmed')
                                 }
                                 className="cursor-pointer"
                               >
-                                Change status to Active
+                                Change status to Confirmed
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
