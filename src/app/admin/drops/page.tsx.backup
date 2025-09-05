@@ -19,6 +19,7 @@ import {
   EditDropModal,
   InventoryModal,
 } from '@/components/admin';
+import { Plus } from 'lucide-react';
 import type { Database } from '@/types/database';
 
 // Use types from database instead of duplicate interfaces
@@ -27,21 +28,29 @@ type Location = Database['public']['Tables']['locations']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
 export default function DropManagementPage() {
-  // Consolidated state - single useState for all state management
-  const [state, setState] = useState({
-    // Data
-    drops: { upcoming: [] as AdminDrop[], past: [] as AdminDrop[] },
+  // Consolidate drops state
+  const [dropsState, setDropsState] = useState({
+    upcomingDrops: [] as AdminDrop[],
+    pastDrops: [] as AdminDrop[],
+  });
+
+  // Consolidate reference data state
+  const [referenceData, setReferenceData] = useState({
     locations: [] as Location[],
     products: [] as Product[],
+  });
 
-    // UI State
+  // Consolidate UI state
+  const [uiState, setUiState] = useState({
     loading: true,
     creating: false,
     showCreateForm: false,
     showInventoryModal: false,
     showEditModal: false,
+  });
 
-    // Forms
+  // Consolidate form state
+  const [formState, setFormState] = useState({
     newDrop: {
       date: '',
       location: '',
@@ -52,8 +61,10 @@ export default function DropManagementPage() {
       location: '',
       status: 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
     },
+  });
 
-    // Selected Items
+  // Consolidate selected items state
+  const [selectedItems, setSelectedItems] = useState({
     selectedDrop: null as
       | (AdminDrop & {
           drop_products_count?: number;
@@ -66,28 +77,39 @@ export default function DropManagementPage() {
           drop_products_total?: number;
         })
       | null,
-
-    // Other
-    message: null as { type: 'success' | 'error'; text: string } | null,
-    inventory: {} as { [key: string]: number },
   });
 
+  // Separate state for complex objects
+  const [message, setMessage] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const [inventory, setInventory] = useState<{ [key: string]: number }>({});
   const router = useRouter();
 
-  // Single update function for simple state updates
-  const updateState = (updates: Partial<typeof state>) => {
-    setState(prev => ({ ...prev, ...updates }));
+  // Update drops state helper
+  const updateDropsState = (updates: Partial<typeof dropsState>) => {
+    setDropsState(prev => ({ ...prev, ...updates }));
   };
 
-  // Nested updates helper for complex nested objects
-  const updateNestedState = (
-    path: keyof typeof state,
-    updates: Record<string, unknown>
-  ) => {
-    setState(prev => ({
-      ...prev,
-      [path]: { ...prev[path], ...updates },
-    }));
+  // Update reference data helper
+  const updateReferenceData = (updates: Partial<typeof referenceData>) => {
+    setReferenceData(prev => ({ ...prev, ...updates }));
+  };
+
+  // Update UI state helper
+  const updateUiState = (updates: Partial<typeof uiState>) => {
+    setUiState(prev => ({ ...prev, ...updates }));
+  };
+
+  // Update form state helper
+  const updateFormState = (updates: Partial<typeof formState>) => {
+    setFormState(prev => ({ ...prev, ...updates }));
+  };
+
+  // Update selected items helper
+  const updateSelectedItems = (updates: Partial<typeof selectedItems>) => {
+    setSelectedItems(prev => ({ ...prev, ...updates }));
   };
 
   useRequireAuth();
@@ -100,11 +122,11 @@ export default function DropManagementPage() {
     try {
       // Load upcoming drops using enhanced function
       const upcomingDropsData = await fetchAdminUpcomingDrops();
-      updateNestedState('drops', { upcoming: upcomingDropsData });
+      updateDropsState({ upcomingDrops: upcomingDropsData });
 
       // Load past drops using enhanced function
       const pastDropsData = await fetchAdminPastDrops();
-      updateNestedState('drops', { past: pastDropsData });
+      updateDropsState({ pastDrops: pastDropsData });
 
       // Load locations
       const { data: locationsData, error: locationsError } = await supabase
@@ -116,7 +138,7 @@ export default function DropManagementPage() {
       if (locationsError) {
         console.error('Error loading locations:', locationsError);
       } else {
-        updateState({ locations: locationsData || [] });
+        updateReferenceData({ locations: locationsData || [] });
       }
 
       // Load products
@@ -129,39 +151,36 @@ export default function DropManagementPage() {
       if (productsError) {
         console.error('Error loading products:', productsError);
       } else {
-        updateState({ products: productsData || [] });
+        updateReferenceData({ products: productsData || [] });
       }
     } catch (error) {
       console.error('Error in loadData:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to load drop data. Please refresh the page.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to load drop data. Please refresh the page.',
       });
     } finally {
-      updateState({ loading: false });
+      updateUiState({ loading: false });
     }
   };
 
   const createDrop = async () => {
-    if (!state.newDrop.date || !state.newDrop.location) {
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Please select both a drop date and location',
-        },
+    if (!formState.newDrop.date || !formState.newDrop.location) {
+      setMessage({
+        type: 'error',
+        text: 'Please select both a drop date and location',
       });
       return;
     }
 
-    updateState({ creating: true, message: null });
+    updateUiState({ creating: true });
+    setMessage(null);
 
     try {
       const { error } = await supabase.from('drops').insert({
-        date: state.newDrop.date,
-        location_id: state.newDrop.location,
-        status: state.newDrop.status,
+        date: formState.newDrop.date,
+        location_id: formState.newDrop.location,
+        status: formState.newDrop.status,
       });
 
       if (error) {
@@ -169,12 +188,12 @@ export default function DropManagementPage() {
         throw error;
       }
 
-      updateState({
-        message: {
-          type: 'success',
-          text: 'Drop created successfully! You can now manage its menu.',
-        },
-        showCreateForm: false,
+      setMessage({
+        type: 'success',
+        text: 'Drop created successfully! You can now manage its menu.',
+      });
+      updateUiState({ showCreateForm: false });
+      updateFormState({
         newDrop: { date: '', location: '', status: 'upcoming' },
       });
 
@@ -182,14 +201,12 @@ export default function DropManagementPage() {
       await loadData();
     } catch (error) {
       console.error('Error creating drop:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to create drop. Please try again.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to create drop. Please try again.',
       });
     } finally {
-      updateState({ creating: false });
+      updateUiState({ creating: false });
     }
   };
 
@@ -199,7 +216,7 @@ export default function DropManagementPage() {
       drop_products_total?: number;
     }
   ) => {
-    updateState({ selectedDrop: drop });
+    updateSelectedItems({ selectedDrop: drop });
 
     // Load current inventory for this drop from database
     const loadCurrentInventory = async () => {
@@ -220,14 +237,14 @@ export default function DropManagementPage() {
           currentInventory[dp.product_id] = dp.stock_quantity;
         });
 
-        updateState({ inventory: currentInventory });
+        setInventory(currentInventory);
       } catch (error) {
         console.error('Error loading inventory:', error);
       }
     };
 
     loadCurrentInventory();
-    updateState({ showInventoryModal: true });
+    updateUiState({ showInventoryModal: true });
   };
 
   const openEditModal = (
@@ -236,8 +253,8 @@ export default function DropManagementPage() {
       drop_products_total?: number;
     }
   ) => {
-    updateState({
-      editingDrop: drop,
+    updateSelectedItems({ editingDrop: drop });
+    updateFormState({
       editDrop: {
         date: drop.date,
         location: drop.location_id || '',
@@ -245,25 +262,25 @@ export default function DropManagementPage() {
           (drop.status as 'upcoming' | 'active' | 'completed' | 'cancelled') ||
           'upcoming',
       },
-      showEditModal: true,
     });
+    updateUiState({ showEditModal: true });
   };
 
   const saveDropMenu = async () => {
-    if (!state.selectedDrop) return;
+    if (!selectedItems.selectedDrop) return;
 
     try {
       // Get products with quantities > 0
-      const productsToInclude = Object.entries(state.inventory)
-        .filter(([_, quantity]) => quantity > 0)
+      const productsToInclude = Object.entries(inventory)
+        .filter(([productId, quantity]) => quantity > 0)
         .map(([productId, quantity]) => {
-          const product = state.products.find(p => p.id === productId);
+          const product = referenceData.products.find(p => p.id === productId);
           if (!product) {
             throw new Error(`Product ${productId} not found`);
           }
 
           return {
-            drop_id: state.selectedDrop!.id,
+            drop_id: selectedItems.selectedDrop!.id,
             product_id: productId,
             stock_quantity: quantity,
             selling_price: product.sell_price,
@@ -274,7 +291,7 @@ export default function DropManagementPage() {
       const { data: ordersCheck, error: ordersCheckError } = await supabase
         .from('orders')
         .select('id')
-        .eq('drop_id', state.selectedDrop!.id);
+        .eq('drop_id', selectedItems.selectedDrop!.id);
 
       if (ordersCheckError) {
         throw ordersCheckError;
@@ -337,7 +354,7 @@ export default function DropManagementPage() {
           const { error: deleteError } = await supabase
             .from('drop_products')
             .delete()
-            .eq('drop_id', state.selectedDrop!.id)
+            .eq('drop_id', selectedItems.selectedDrop!.id)
             .eq('product_id', productId);
 
           if (deleteError) {
@@ -351,19 +368,17 @@ export default function DropManagementPage() {
           const { error: deleteError } = await supabase
             .from('drop_products')
             .delete()
-            .eq('drop_id', state.selectedDrop!.id);
+            .eq('drop_id', selectedItems.selectedDrop!.id);
 
           if (deleteError) {
             throw deleteError;
           }
 
-          updateState({
-            message: {
-              type: 'success',
-              text: 'Drop menu cleared successfully!',
-            },
-            showInventoryModal: false,
+          setMessage({
+            type: 'success',
+            text: 'Drop menu cleared successfully!',
           });
+          updateUiState({ showInventoryModal: false });
           await loadData();
           return;
         }
@@ -372,7 +387,7 @@ export default function DropManagementPage() {
         const { error: deleteError } = await supabase
           .from('drop_products')
           .delete()
-          .eq('drop_id', state.selectedDrop!.id);
+          .eq('drop_id', selectedItems.selectedDrop!.id);
 
         if (deleteError) {
           throw deleteError;
@@ -387,54 +402,46 @@ export default function DropManagementPage() {
         }
       }
 
-      updateState({
-        message: {
-          type: 'success',
-          text: `Drop menu updated with ${productsToInclude.length} products!`,
-        },
-        showInventoryModal: false,
+      setMessage({
+        type: 'success',
+        text: `Drop menu updated with ${productsToInclude.length} products!`,
       });
+      updateUiState({ showInventoryModal: false });
       await loadData();
     } catch (error) {
       console.error('Error saving drop menu:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to save drop menu. Please try again.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to save drop menu. Please try again.',
       });
     }
   };
 
   const saveEditDrop = async () => {
-    if (!state.editingDrop) return;
+    if (!selectedItems.editingDrop) return;
 
     try {
       const { error } = await supabase
         .from('drops')
         .update({
-          date: state.editDrop.date,
-          location_id: state.editDrop.location,
-          status: state.editDrop.status,
+          date: formState.editDrop.date,
+          location_id: formState.editDrop.location,
+          status: formState.editDrop.status,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', state.editingDrop.id);
+        .eq('id', selectedItems.editingDrop.id);
 
       if (error) throw error;
 
-      updateState({
-        message: { type: 'success', text: 'Drop updated successfully!' },
-        showEditModal: false,
-        editingDrop: null,
-      });
+      setMessage({ type: 'success', text: 'Drop updated successfully!' });
+      updateUiState({ showEditModal: false });
+      updateSelectedItems({ editingDrop: null });
       await loadData();
     } catch (error) {
       console.error('Error updating drop:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to update drop. Please try again.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to update drop. Please try again.',
       });
     }
   };
@@ -454,17 +461,13 @@ export default function DropManagementPage() {
 
       if (error) throw error;
 
-      updateState({
-        message: { type: 'success', text: 'Drop deleted successfully!' },
-      });
+      setMessage({ type: 'success', text: 'Drop deleted successfully!' });
       await loadData();
     } catch (error) {
       console.error('Error deleting drop:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to delete drop. Please try again.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to delete drop. Please try again.',
       });
     }
   };
@@ -474,16 +477,14 @@ export default function DropManagementPage() {
     newStatus: Drop['status']
   ) => {
     try {
-      updateState({ message: null });
+      setMessage(null);
 
       const result = await changeDropStatus(dropId, newStatus);
 
       if (result.success) {
-        updateState({
-          message: {
-            type: 'success',
-            text: result.message,
-          },
+        setMessage({
+          type: 'success',
+          text: result.message,
         });
 
         // Reload data to reflect changes
@@ -491,11 +492,9 @@ export default function DropManagementPage() {
       }
     } catch (error) {
       console.error('Error changing drop status:', error);
-      updateState({
-        message: {
-          type: 'error',
-          text: 'Failed to change drop status. Please try again.',
-        },
+      setMessage({
+        type: 'error',
+        text: 'Failed to change drop status. Please try again.',
       });
     }
   };
@@ -505,10 +504,13 @@ export default function DropManagementPage() {
   };
 
   const handleInventoryChange = (productId: string, quantity: number) => {
-    updateNestedState('inventory', { [productId]: quantity });
+    setInventory(prev => ({
+      ...prev,
+      [productId]: quantity,
+    }));
   };
 
-  if (state.loading) {
+  if (uiState.loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
@@ -525,7 +527,7 @@ export default function DropManagementPage() {
       backUrl="/admin/dashboard"
       actionButton={
         <Button
-          onClick={() => updateState({ showCreateForm: true })}
+          onClick={() => updateUiState({ showCreateForm: true })}
           className="bg-black hover:bg-gray-800"
         >
           Create Drop
@@ -533,24 +535,24 @@ export default function DropManagementPage() {
       }
     >
       {/* Message */}
-      {state.message && (
+      {message && (
         <Alert
-          className={`mb-6 ${state.message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}
+          className={`mb-6 ${message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}
         >
           <AlertDescription
             className={
-              state.message.type === 'error' ? 'text-red-800' : 'text-green-800'
+              message.type === 'error' ? 'text-red-800' : 'text-green-800'
             }
           >
-            {state.message.text}
+            {message.text}
           </AlertDescription>
         </Alert>
       )}
 
       {/* Drop List */}
       <DropList
-        upcomingDrops={state.drops.upcoming}
-        pastDrops={state.drops.past}
+        upcomingDrops={dropsState.upcomingDrops}
+        pastDrops={dropsState.pastDrops}
         onOpenInventory={openInventoryModal}
         onOpenEdit={openEditModal}
         onDeleteDrop={deleteDrop}
@@ -560,48 +562,52 @@ export default function DropManagementPage() {
 
       {/* Create Drop Modal */}
       <CreateDropModal
-        open={state.showCreateForm}
-        onOpenChange={() => updateState({ showCreateForm: false })}
-        locations={state.locations}
+        open={uiState.showCreateForm}
+        onOpenChange={() => updateUiState({ showCreateForm: false })}
+        locations={referenceData.locations}
         onCreateDrop={createDrop}
-        newDropDate={state.newDrop.date}
-        newDropLocation={state.newDrop.location}
-        newDropStatus={state.newDrop.status}
-        onNewDropDateChange={date => updateNestedState('newDrop', { date })}
+        newDropDate={formState.newDrop.date}
+        newDropLocation={formState.newDrop.location}
+        newDropStatus={formState.newDrop.status}
+        onNewDropDateChange={date =>
+          updateFormState({ newDrop: { ...formState.newDrop, date } })
+        }
         onNewDropLocationChange={location =>
-          updateNestedState('newDrop', { location })
+          updateFormState({ newDrop: { ...formState.newDrop, location } })
         }
         onNewDropStatusChange={status =>
-          updateNestedState('newDrop', { status })
+          updateFormState({ newDrop: { ...formState.newDrop, status } })
         }
-        creating={state.creating}
+        creating={uiState.creating}
       />
 
       {/* Edit Drop Modal */}
       <EditDropModal
-        open={state.showEditModal}
-        onOpenChange={() => updateState({ showEditModal: false })}
-        locations={state.locations}
+        open={uiState.showEditModal}
+        onOpenChange={() => updateUiState({ showEditModal: false })}
+        locations={referenceData.locations}
         onSaveEdit={saveEditDrop}
-        editDropDate={state.editDrop.date}
-        editDropLocation={state.editDrop.location}
-        editDropStatus={state.editDrop.status}
-        onEditDropDateChange={date => updateNestedState('editDrop', { date })}
+        editDropDate={formState.editDrop.date}
+        editDropLocation={formState.editDrop.location}
+        editDropStatus={formState.editDrop.status}
+        onEditDropDateChange={date =>
+          updateFormState({ editDrop: { ...formState.editDrop, date } })
+        }
         onEditDropLocationChange={location =>
-          updateNestedState('editDrop', { location })
+          updateFormState({ editDrop: { ...formState.editDrop, location } })
         }
         onEditDropStatusChange={status =>
-          updateNestedState('editDrop', { status })
+          updateFormState({ editDrop: { ...formState.editDrop, status } })
         }
       />
 
       {/* Inventory Management Modal */}
       <InventoryModal
-        open={state.showInventoryModal}
-        onOpenChange={() => updateState({ showInventoryModal: false })}
-        selectedDrop={state.selectedDrop}
-        products={state.products}
-        inventory={state.inventory}
+        open={uiState.showInventoryModal}
+        onOpenChange={() => updateUiState({ showInventoryModal: false })}
+        selectedDrop={selectedItems.selectedDrop}
+        products={referenceData.products}
+        inventory={inventory}
         onInventoryChange={handleInventoryChange}
         onSaveDropMenu={saveDropMenu}
       />
