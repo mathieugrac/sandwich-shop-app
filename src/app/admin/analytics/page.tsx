@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase/client';
 import { AdminLayout, DropSidebar, DropAnalytics } from '@/components/admin';
 import { Calendar, MapPin, Euro, Package, Users } from 'lucide-react';
+import { useRequireAuth } from '@/lib/hooks';
 import type { Database } from '@/types/database';
 
 // Types
@@ -54,8 +55,9 @@ function AnalyticsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadDrops();
   }, []);
 
@@ -80,15 +82,6 @@ function AnalyticsContent() {
       loadAnalyticsData(selectedDropId);
     }
   }, [selectedDropId]);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadDrops = async () => {
     try {
@@ -247,9 +240,13 @@ function AnalyticsContent() {
 
 export default function AnalyticsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
-    </div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+        </div>
+      }
+    >
       <AnalyticsContent />
     </Suspense>
   );

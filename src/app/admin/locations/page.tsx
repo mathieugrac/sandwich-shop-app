@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
+import { useRequireAuth } from '@/lib/hooks';
 import {
   ArrowLeft,
   Plus,
@@ -54,19 +55,11 @@ export default function LocationsPage() {
   });
   const router = useRouter();
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadLocations();
   }, []);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadLocations = async () => {
     try {

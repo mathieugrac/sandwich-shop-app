@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/tooltip';
 import { supabase } from '@/lib/supabase/client';
 import { AdminLayout } from '@/components/admin';
+import { useRequireAuth } from '@/lib/hooks';
 import {
   Clock,
   Package,
@@ -86,19 +87,11 @@ export default function DeliveryPage() {
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const router = useRouter();
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadDeliveryData();
   }, []);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadDeliveryData = async () => {
     try {
@@ -223,13 +216,16 @@ export default function DeliveryPage() {
         // Calculate total active orders for this product
         const totalActiveOrders =
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          dropProduct.order_products?.reduce((sum: number, orderProduct: any) => {
-            // Only count orders that are still active
-            if (orderProduct.orders?.status === 'active') {
-              return sum + orderProduct.order_quantity;
-            }
-            return sum;
-          }, 0) || 0;
+          dropProduct.order_products?.reduce(
+            (sum: number, orderProduct: any) => {
+              // Only count orders that are still active
+              if (orderProduct.orders?.status === 'active') {
+                return sum + orderProduct.order_quantity;
+              }
+              return sum;
+            },
+            0
+          ) || 0;
 
         preparationMap.set(productName, {
           productName,

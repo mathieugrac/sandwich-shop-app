@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
+import { useRequireAuth } from '@/lib/hooks';
 import type { Database } from '@/types/database';
 import {
   Table,
@@ -65,19 +66,11 @@ export default function ProductsPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const router = useRouter();
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadProducts();
   }, []);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadProducts = async () => {
     try {

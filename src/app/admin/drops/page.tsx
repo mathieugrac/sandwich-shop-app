@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/lib/supabase/client';
+import { useRequireAuth } from '@/lib/hooks';
 import {
   fetchAdminUpcomingDrops,
   fetchAdminPastDrops,
@@ -111,19 +112,11 @@ export default function DropManagementPage() {
     setSelectedItems(prev => ({ ...prev, ...updates }));
   };
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadData();
   }, []);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadData = async () => {
     try {

@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Save, Settings, Clock, Loader2 } from 'lucide-react';
+import { useRequireAuth } from '@/lib/hooks';
 
 // Define the settings interface
 interface ShopSettings {
@@ -41,19 +41,11 @@ export default function SettingsPage() {
   } | null>(null);
   const router = useRouter();
 
+  useRequireAuth();
+
   useEffect(() => {
-    checkAuth();
     loadSettings();
   }, []);
-
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    }
-  };
 
   const loadSettings = async () => {
     // For now, we'll use default settings

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/client';
+import { useRequireAuth } from '@/lib/hooks';
 import {
   Package,
   MapPin,
@@ -39,21 +40,12 @@ export default function AdminDashboardPage() {
   const [loadingActiveDrop, setLoadingActiveDrop] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  useRequireAuth();
 
-  const checkAuth = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      router.push('/admin');
-    } else {
-      setLoading(false);
-      loadActiveDropData();
-    }
-  };
+  useEffect(() => {
+    setLoading(false);
+    loadActiveDropData();
+  }, []);
 
   const loadActiveDropData = async () => {
     try {
