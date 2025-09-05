@@ -287,7 +287,7 @@ export default function DropManagementPage() {
           await supabase
             .from('drop_products')
             .select('id, product_id, stock_quantity, selling_price')
-            .eq('drop_id', selectedItems.selectedDrop!.id);
+            .eq('drop_id', state.selectedDrop!.id);
 
         if (currentError) {
           throw currentError;
