@@ -86,7 +86,7 @@ export default function DropManagementPage() {
   ) => {
     setState(prev => ({
       ...prev,
-      [path]: { ...prev[path], ...updates },
+      [path]: { ...(prev[path] as Record<string, unknown>), ...updates },
     }));
   };
 
