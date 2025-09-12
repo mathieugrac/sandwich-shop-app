@@ -152,39 +152,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send confirmation email (non-blocking)
-    try {
-      const emailItems = items.map(
-        (item: { name: string; quantity: number; price: number }) => ({
-          productName: item.name,
-          quantity: item.quantity,
-          unitPrice: item.price,
-          totalPrice: item.price * item.quantity,
-        })
-      );
-
-      const pickupDateObj = new Date(pickupDate);
-      const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-      });
-
-      await sendOrderConfirmationEmail({
-        orderNumber: order.order_number,
-        customerName,
-        customerEmail,
-        pickupTime,
-        pickupDate: formattedPickupDate,
-        items: emailItems,
-        totalAmount,
-        specialInstructions,
-        locationName: activeDrop.locations?.[0]?.name || 'Pickup Location',
-        locationUrl: activeDrop.locations?.[0]?.location_url || '#',
-      });
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the order if email fails
-    }
+    // Note: Confirmation email will be sent via Stripe webhook after payment succeeds
+    // This prevents duplicate emails and ensures email is only sent for paid orders
 
     return NextResponse.json({
       success: true,
