@@ -113,10 +113,77 @@ export function StripePayment({
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    // Simple: always create a new payment intent
-    // This prevents double reservations by ensuring one intent per checkout session
+    // Check if we can reuse existing payment intent
+    const savedPaymentIntent = localStorage.getItem('currentPaymentIntent');
+
+    if (savedPaymentIntent) {
+      try {
+        const { paymentIntentId, cartHash, customerHash } =
+          JSON.parse(savedPaymentIntent);
+        const currentCartHash = generateCartHash(items);
+        const currentCustomerHash = generateCustomerHash(customerInfo);
+
+        // Reuse if cart and customer info haven't changed
+        if (
+          cartHash === currentCartHash &&
+          customerHash === currentCustomerHash
+        ) {
+          console.log('♻️ Reusing existing payment intent:', paymentIntentId);
+          validateAndReusePaymentIntent(paymentIntentId);
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing saved payment intent:', error);
+      }
+    }
+
+    // Create new payment intent if no valid existing one
     createPaymentIntent();
   }, []);
+
+  // Helper functions
+  const generateCartHash = (items: CartItem[]): string => {
+    return btoa(
+      JSON.stringify(
+        items.map(item => ({ id: item.id, quantity: item.quantity }))
+      )
+    );
+  };
+
+  const generateCustomerHash = (customerInfo: CustomerInfo): string => {
+    return btoa(
+      JSON.stringify({
+        name: customerInfo.name,
+        email: customerInfo.email,
+        phone: customerInfo.phone,
+        pickupTime: customerInfo.pickupTime,
+        pickupDate: customerInfo.pickupDate,
+      })
+    );
+  };
+
+  const validateAndReusePaymentIntent = async (paymentIntentId: string) => {
+    try {
+      // Validate payment intent is still valid
+      const response = await fetch(`/api/payment/validate-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId }),
+      });
+
+      if (response.ok) {
+        const { clientSecret } = await response.json();
+        setClientSecret(clientSecret);
+        console.log('✅ Payment intent reused successfully');
+      } else {
+        console.log('⚠️ Payment intent invalid, creating new one');
+        createPaymentIntent();
+      }
+    } catch (error) {
+      console.error('Error validating payment intent:', error);
+      createPaymentIntent();
+    }
+  };
 
   const createPaymentIntent = async () => {
     setIsCreatingIntent(true);
@@ -139,8 +206,22 @@ export function StripePayment({
         throw new Error(errorData.error || 'Failed to create payment intent');
       }
 
-      const { clientSecret } = await response.json();
+      const { clientSecret, paymentIntentId } = await response.json();
       setClientSecret(clientSecret);
+
+      // Save payment intent for reuse
+      const paymentIntentData = {
+        paymentIntentId,
+        cartHash: generateCartHash(items),
+        customerHash: generateCustomerHash(customerInfo),
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem(
+        'currentPaymentIntent',
+        JSON.stringify(paymentIntentData)
+      );
+
+      console.log('✅ New payment intent created and saved:', paymentIntentId);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to initialize payment';
