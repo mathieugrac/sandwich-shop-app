@@ -47,7 +47,7 @@ export async function GET(
         )
       `
       )
-      .eq('id', orderId)
+      .or(`id.eq.${orderId},payment_intent_id.eq.${orderId}`)
       .single();
 
     if (orderError) {

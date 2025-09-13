@@ -13,6 +13,7 @@ import {
   Users,
   BarChart3,
   LogOut,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ActiveDropData {
@@ -29,7 +30,12 @@ interface ActiveDropData {
     total: number;
     delivered: number;
   };
+  inventoryStats: {
+    totalAvailable: number;
+  };
   timeUntilDeadline: string | null;
+  multipleActiveDrops?: boolean;
+  totalActiveDrops?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -51,7 +57,26 @@ export default function AdminDashboardPage() {
     try {
       setLoadingActiveDrop(true);
 
-      // Get next active drop directly from Supabase
+      // First, check how many active drops exist
+      const { data: activeDropsCount, error: countError } = await supabase
+        .from('drops')
+        .select('id')
+        .eq('status', 'active');
+
+      if (countError) {
+        console.error('Error counting active drops:', countError);
+        setActiveDropData(null);
+        return;
+      }
+
+      const totalActiveDrops = activeDropsCount?.length || 0;
+
+      if (totalActiveDrops === 0) {
+        setActiveDropData(null);
+        return;
+      }
+
+      // Get the oldest active drop (current behavior)
       const { data: dropData, error: dropError } = await supabase
         .from('drops')
         .select(
@@ -70,8 +95,7 @@ export default function AdminDashboardPage() {
           )
         `
         )
-        .eq('status', 'confirmed')
-        .gte('date', new Date().toISOString().split('T')[0]) // Use date instead of pickup_deadline
+        .eq('status', 'active')
         .order('date', { ascending: true })
         .limit(1)
         .single();
@@ -102,6 +126,25 @@ export default function AdminDashboardPage() {
         total: ordersData?.length || 0,
         delivered:
           ordersData?.filter(order => order.status === 'delivered').length || 0,
+      };
+
+      // Get inventory statistics for this drop
+      const { data: inventoryData, error: inventoryError } = await supabase
+        .from('drop_products')
+        .select('available_quantity')
+        .eq('drop_id', dropData.id);
+
+      if (inventoryError) {
+        console.error('Error loading inventory stats:', inventoryError);
+        return;
+      }
+
+      const inventoryStats = {
+        totalAvailable:
+          inventoryData?.reduce(
+            (sum, item) => sum + (item.available_quantity || 0),
+            0
+          ) || 0,
       };
 
       // Calculate time until drop date (simplified since we don't have pickup_deadline)
@@ -140,7 +183,10 @@ export default function AdminDashboardPage() {
           },
         },
         orderStats,
+        inventoryStats,
         timeUntilDeadline,
+        multipleActiveDrops: totalActiveDrops > 1,
+        totalActiveDrops,
       });
     } catch (error) {
       console.error('Error loading active drop data:', error);
@@ -207,6 +253,23 @@ export default function AdminDashboardPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="text-center space-y-4">
+                  {/* Warning for multiple active drops */}
+                  {activeDropData.multipleActiveDrops && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-center space-x-2 text-amber-800">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Warning: {activeDropData.totalActiveDrops} active
+                          drops found
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Showing oldest drop. Check Drops page to manage all
+                        active drops.
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-xl font-semibold mb-1">
                       {new Date(activeDropData.drop.date).toLocaleDateString(
@@ -239,10 +302,9 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-black text-xl">
-                        {activeDropData.orderStats.total -
-                          activeDropData.orderStats.delivered}
+                        {activeDropData.inventoryStats.totalAvailable}
                       </p>
-                      <p className="text-gray-600">Remaining</p>
+                      <p className="text-gray-600">Available</p>
                     </div>
                   </div>
 
@@ -258,6 +320,23 @@ export default function AdminDashboardPage() {
               {/* Desktop Layout */}
               <div className="hidden md:block">
                 <CardContent className="p-6">
+                  {/* Warning for multiple active drops */}
+                  {activeDropData.multipleActiveDrops && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center space-x-2 text-amber-800">
+                        <AlertTriangle className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Warning: {activeDropData.totalActiveDrops} active
+                          drops found
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Showing oldest drop. Check Drops page to manage all
+                        active drops.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     {/* Left Side: Title + Date + Location */}
                     <div className="flex items-center space-x-4">
@@ -299,10 +378,9 @@ export default function AdminDashboardPage() {
                         </div>
                         <div className="text-center">
                           <p className="font-semibold text-black text-xl">
-                            {activeDropData.orderStats.total -
-                              activeDropData.orderStats.delivered}
+                            {activeDropData.inventoryStats.totalAvailable}
                           </p>
-                          <p className="text-gray-600">Remaining</p>
+                          <p className="text-gray-600">Available</p>
                         </div>
                       </div>
 

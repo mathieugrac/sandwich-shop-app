@@ -113,6 +113,8 @@ export function StripePayment({
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    // Simple: always create a new payment intent
+    // This prevents double reservations by ensuring one intent per checkout session
     createPaymentIntent();
   }, []);
 

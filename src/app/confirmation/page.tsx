@@ -84,9 +84,13 @@ function ConfirmationContent() {
         const response = await fetch(`/api/orders/${orderId}`);
 
         if (!response.ok) {
-          if (response.status === 404 && retryCount < 2) {
-            // Order might not be committed yet, retry after a delay
-            setTimeout(() => fetchOrderDetails(retryCount + 1), 1000);
+          if (response.status === 404 && retryCount < 5) {
+            // Order might not be committed yet by webhook, retry with longer delays
+            const delay = Math.min(1000 * Math.pow(1.5, retryCount), 5000); // Exponential backoff, max 5s
+            console.log(
+              `Order not found, retrying in ${delay}ms (attempt ${retryCount + 1}/6)`
+            );
+            setTimeout(() => fetchOrderDetails(retryCount + 1), delay);
             return;
           }
           throw new Error('Failed to fetch order details');
@@ -154,110 +158,70 @@ function ConfirmationContent() {
           let cartComment = '';
           let totalAmount = 0;
 
-          // Try to get cart data from activeOrder first
+          // Use activeOrder data directly (now contains complete info)
           if (activeOrder) {
             try {
-              const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
-              console.log('Parsed activeOrder:', parsedOrder);
+              const parsedOrder = JSON.parse(activeOrder);
+              console.log('Using activeOrder data:', parsedOrder);
 
-              // Handle the actual structure from activeOrder
-              if (parsedOrder.order_products) {
-                cartItems = parsedOrder.order_products.map(
-                  (item: OrderItem) => ({
-                    id: item.id || Math.random().toString(),
-                    name: item.products.name,
-                    price: item.unit_price,
-                    quantity: item.quantity,
-                    description: item.products.description,
-                  })
-                );
-              }
-
-              cartComment = parsedOrder.specialInstructions || '';
-              totalAmount = parsedOrder.totalAmount || 0;
-
-              console.log('Processed cartItems:', cartItems);
-              console.log('Processed totalAmount:', totalAmount);
+              fallbackOrder = {
+                orderNumber:
+                  parsedOrder.orderNumber ||
+                  `ORD-${Date.now().toString().slice(-8)}`,
+                customerName: parsedOrder.customerName || 'Unknown',
+                customerEmail: parsedOrder.customerEmail || 'Unknown',
+                customerPhone: parsedOrder.customerPhone || null,
+                pickupDate:
+                  parsedOrder.pickupDate ||
+                  new Date().toISOString().split('T')[0],
+                pickupTime: parsedOrder.pickupTime || '12:00',
+                totalAmount: parsedOrder.totalAmount || 0,
+                specialInstructions: parsedOrder.specialInstructions || '',
+                order_products: (parsedOrder.items || []).map((item: any) => ({
+                  id: item.id || Math.random().toString(),
+                  quantity: item.quantity || 1,
+                  unit_price: item.price || 0,
+                  products: {
+                    name: item.name || 'Unknown Item',
+                    description: item.description || '',
+                  },
+                })),
+                status: 'confirmed',
+                createdAt: new Date().toISOString(),
+              };
             } catch (e) {
-              console.log('Failed to parse activeOrder, trying other keys...');
+              console.error('Error parsing activeOrder:', e);
+              // Create minimal fallback
+              fallbackOrder = {
+                orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
+                customerName: 'Unknown',
+                customerEmail: 'Unknown',
+                customerPhone: null,
+                pickupDate: new Date().toISOString().split('T')[0],
+                pickupTime: '12:00',
+                totalAmount: 0,
+                specialInstructions: '',
+                order_products: [],
+                status: 'confirmed',
+                createdAt: new Date().toISOString(),
+              };
             }
+          } else {
+            // No activeOrder, create minimal fallback
+            fallbackOrder = {
+              orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
+              customerName: 'Unknown',
+              customerEmail: 'Unknown',
+              customerPhone: null,
+              pickupDate: new Date().toISOString().split('T')[0],
+              pickupTime: '12:00',
+              totalAmount: 0,
+              specialInstructions: '',
+              order_products: [],
+              status: 'confirmed',
+              createdAt: new Date().toISOString(),
+            };
           }
-
-          // Fallback to other possible keys
-          if (!cartItems) {
-            const storedCartItems = localStorage.getItem('cartItems');
-            if (storedCartItems) {
-              try {
-                cartItems = JSON.parse(storedCartItems);
-              } catch (e) {
-                cartItems = [];
-              }
-            }
-          }
-
-          if (!cartComment) {
-            cartComment = localStorage.getItem('cartComment') || '';
-          }
-
-          fallbackOrder = {
-            orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
-            customerName: customerInfo
-              ? JSON.parse(customerInfo).name
-              : 'Your Name',
-            customerEmail: customerInfo
-              ? JSON.parse(customerInfo).email
-              : 'your.email@example.com',
-            customerPhone: customerInfo ? JSON.parse(customerInfo).phone : null,
-            pickupDate: (() => {
-              if (activeOrder) {
-                try {
-                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
-                  return (
-                    parsedOrder.pickupDate ||
-                    new Date().toISOString().split('T')[0]
-                  );
-                } catch (e) {
-                  return new Date().toISOString().split('T')[0];
-                }
-              }
-              return new Date().toISOString().split('T')[0];
-            })(),
-            pickupTime: (() => {
-              if (activeOrder) {
-                try {
-                  const parsedOrder: ParsedOrder = JSON.parse(activeOrder);
-                  return parsedOrder.pickupTime || cartPickupTime || '12:00';
-                } catch (e) {
-                  return cartPickupTime || '12:00';
-                }
-              }
-              return cartPickupTime || '12:00';
-            })(),
-            totalAmount:
-              totalAmount ||
-              (cartItems && cartItems.length > 0
-                ? cartItems.reduce(
-                    (total: number, item: ConfirmationCartItem) =>
-                      total + item.price * item.quantity,
-                    0
-                  )
-                : 0),
-            specialInstructions: cartComment,
-            order_products:
-              cartItems && cartItems.length > 0
-                ? cartItems.map((item: ConfirmationCartItem) => ({
-                    id: item.id,
-                    quantity: item.quantity,
-                    unit_price: item.price,
-                    products: {
-                      name: item.name,
-                      description: item.description || '',
-                    },
-                  }))
-                : [],
-            status: 'confirmed', // Default status for new orders
-            createdAt: new Date().toISOString(),
-          };
         } catch (fallbackError) {
           console.error('Error creating fallback order:', fallbackError);
           // Create a minimal fallback order if parsing fails
@@ -297,14 +261,18 @@ function ConfirmationContent() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Loading order details...</p>
+          <p className="text-lg text-gray-600">Processing your order...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            This may take a few seconds
+          </p>
         </div>
       </div>
     );
   }
 
   // Safety check to ensure orderData is properly initialized
-  if (!orderData || !orderData.order || !orderData.order.orderNumber) {
+  // Only show "Order Not Found" if we have no order data at all
+  if (!orderData || !orderData.order) {
     console.error('❌ Order data not properly initialized:', orderData);
     console.error('❌ Loading state:', loading);
     console.error('❌ OrderId:', orderId);
@@ -352,7 +320,7 @@ function ConfirmationContent() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order Number:</span>
                     <span className="font-medium">
-                      {orderData.order.orderNumber}
+                      {orderData.order.orderNumber || 'Processing...'}
                     </span>
                   </div>
                   <div className="flex justify-between">

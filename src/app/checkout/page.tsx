@@ -233,6 +233,7 @@ export default function CheckoutPage() {
   };
 
   // Handle successful payment
+
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     console.log('✅ Payment successful:', paymentIntentId);
 
@@ -242,44 +243,12 @@ export default function CheckoutPage() {
       message: 'Payment successful! Creating your order...',
     }));
 
-    // For local development, create order directly since webhook won't be called
+    // Order will be created by Stripe webhook - just save customer info and redirect
     try {
       // Format phone number
       const formattedPhone = formState.customerInfo.phone.trim()
         ? formatPhoneNumber(formState.customerInfo.phone.trim())
         : '';
-
-      const orderData = {
-        customerName: formState.customerInfo.name.trim(),
-        customerEmail: formState.customerInfo.email.trim(),
-        customerPhone: formattedPhone,
-        pickupTime: formState.pickupTime,
-        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0],
-        items: (items || []).map(item => ({
-          id: item.dropProductId,
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-        specialInstructions: formState.specialInstructions,
-        totalAmount: totalPrice || 0,
-        paymentIntentId: paymentIntentId, // Add payment intent ID
-      };
-
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create order');
-      }
-
-      const result = await response.json();
 
       // Save customer info for future orders
       saveCustomerInfo({
@@ -287,16 +256,24 @@ export default function CheckoutPage() {
         phone: formattedPhone,
       });
 
-      // Save active order for banner display
+      // Save order info for banner display (order will be created by webhook)
       const activeOrder = {
-        orderNumber: result.order.order_number,
+        orderNumber: 'Processing...', // Will be updated when webhook processes
+        customerName: formState.customerInfo.name,
+        customerEmail: formState.customerInfo.email,
+        customerPhone: formattedPhone,
         pickupTime: formState.pickupTime,
         pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0],
+        specialInstructions: formState.customerInfo.specialInstructions || '',
         items: (items || []).map(item => ({
+          id: item.id,
           name: item.name,
           quantity: item.quantity,
+          price: item.price,
+          description: item.description || '',
         })),
         totalAmount: totalPrice || 0,
+        paymentIntentId: paymentIntentId, // Store payment intent ID
       };
 
       localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
@@ -309,18 +286,24 @@ export default function CheckoutPage() {
       localStorage.removeItem('specialInstructions');
       localStorage.removeItem('currentDrop');
 
-      // Redirect to confirmation page
-      const orderId = result.order.id;
+      setPaymentState(prev => ({
+        ...prev,
+        status: 'succeeded',
+        message: 'Payment successful! Redirecting to confirmation...',
+        orderNumber: 'Processing...',
+      }));
 
-      // Use window.location instead of router.push to force navigation
-      window.location.href = `/confirmation?orderId=${orderId}`;
+      // Redirect immediately to confirmation page
+      setTimeout(() => {
+        router.push(`/confirmation?orderId=${paymentIntentId}`);
+      }, 1000);
     } catch (error) {
-      console.error('❌ Order creation failed:', error);
+      console.error('❌ Error processing payment success:', error);
       setPaymentState(prev => ({
         ...prev,
         status: 'failed',
         message:
-          'Payment successful but order creation failed. Please contact support.',
+          'Payment successful but there was an error. Please contact support.',
       }));
     }
   };

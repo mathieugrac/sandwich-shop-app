@@ -136,10 +136,17 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // Reserve inventory and create order products
-    const orderProducts = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
-      drop_product_id: item.id,
-      order_quantity: item.quantity,
-    }));
+    const orderProducts = cartItems.map(
+      (item: {
+        id: string;
+        name: string;
+        quantity: number;
+        price: number;
+      }) => ({
+        drop_product_id: item.id,
+        order_quantity: item.quantity,
+      })
+    );
 
     // Reserve inventory for all items
     const { error: reservationError } = await supabase.rpc(
@@ -165,11 +172,18 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
           customerName: metadata.customerName,
           customerEmail: metadata.customerEmail,
           customerPhone: metadata.customerPhone || undefined,
-          cartItems: cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+          cartItems: cartItems.map(
+            (item: {
+              id: string;
+              name: string;
+              quantity: number;
+              price: number;
+            }) => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+            })
+          ),
           totalAmount: parseFloat(metadata.totalAmount),
           errorReason: `CRITICAL: Payment succeeded but inventory reservation failed: ${reservationError.message}`,
           paymentIntentId: paymentIntent.id,
@@ -186,11 +200,18 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // Create order products
-    const orderProductsForInsert = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
-      order_id: order.id,
-      drop_product_id: item.id,
-      order_quantity: item.quantity,
-    }));
+    const orderProductsForInsert = cartItems.map(
+      (item: {
+        id: string;
+        name: string;
+        quantity: number;
+        price: number;
+      }) => ({
+        order_id: order.id,
+        drop_product_id: item.id,
+        order_quantity: item.quantity,
+      })
+    );
 
     const { error: orderProductsError } = await supabase
       .from('order_products')
@@ -203,12 +224,19 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
 
     // Send confirmation email
     try {
-      const emailItems = cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
-        productName: item.name,
-        quantity: item.quantity,
-        unitPrice: item.price,
-        totalPrice: item.price * item.quantity,
-      }));
+      const emailItems = cartItems.map(
+        (item: {
+          id: string;
+          name: string;
+          quantity: number;
+          price: number;
+        }) => ({
+          productName: item.name,
+          quantity: item.quantity,
+          unitPrice: item.price,
+          totalPrice: item.price * item.quantity,
+        })
+      );
 
       const pickupDateObj = new Date(metadata.pickupDate);
       const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
@@ -285,11 +313,18 @@ async function handleFailedPayment(paymentIntent: Stripe.PaymentIntent) {
         customerName: metadata.customerName,
         customerEmail: metadata.customerEmail,
         customerPhone: metadata.customerPhone || undefined,
-        cartItems: cartItems.map((item: { id: string; name: string; quantity: number; price: number }) => ({
-          name: item.name,
-          quantity: item.quantity,
-          price: item.price,
-        })),
+        cartItems: cartItems.map(
+          (item: {
+            id: string;
+            name: string;
+            quantity: number;
+            price: number;
+          }) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+          })
+        ),
         totalAmount: parseFloat(metadata.totalAmount),
         errorReason: errorMessage,
         paymentIntentId: paymentIntent.id,
@@ -303,7 +338,38 @@ async function handleFailedPayment(paymentIntent: Stripe.PaymentIntent) {
       // Don't fail the webhook if email fails
     }
 
-    // Note: Inventory is not reserved until payment succeeds, so no need to release anything
+    // Release reserved inventory since payment failed
+    const cartItems = JSON.parse(metadata.cartItems);
+    const orderProducts = cartItems.map(
+      (item: {
+        id: string;
+        name: string;
+        quantity: number;
+        price: number;
+      }) => ({
+        drop_product_id: item.id,
+        order_quantity: item.quantity,
+      })
+    );
+
+    const { error: releaseError } = await supabase.rpc(
+      'release_multiple_drop_products',
+      { p_order_items: orderProducts }
+    );
+
+    if (releaseError) {
+      console.error('❌ Failed to release inventory after payment failure:', {
+        paymentIntentId: paymentIntent.id,
+        error: releaseError,
+        cartItems: cartItems,
+      });
+      // Continue anyway - admin will be notified
+    } else {
+      console.log(
+        '✅ Inventory released after payment failure:',
+        paymentIntent.id
+      );
+    }
   } catch (error) {
     console.error('❌ Error handling failed payment:', error);
   }

@@ -48,39 +48,28 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check inventory availability (but don't reserve yet - we'll do that in webhook)
+    // Reserve inventory immediately when creating payment intent
     const orderProducts = items.map(item => ({
       drop_product_id: item.id,
       order_quantity: item.quantity,
     }));
 
-    // Check inventory availability for all items
-    for (const item of orderProducts) {
-      const { data: dropProduct, error: checkError } = await supabase
-        .from('drop_products')
-        .select('available_quantity')
-        .eq('id', item.drop_product_id)
-        .single();
+    // Reserve inventory for all items at once
+    const { error: reservationError } = await supabase.rpc(
+      'reserve_multiple_drop_products',
+      { p_order_items: orderProducts }
+    );
 
-      if (checkError || !dropProduct) {
-        console.error('Product not found:', item.drop_product_id);
-        return NextResponse.json(
-          { error: 'Product not available' },
-          { status: 400 }
-        );
-      }
-
-      if (dropProduct.available_quantity < item.order_quantity) {
-        console.error('Insufficient inventory:', {
-          productId: item.drop_product_id,
-          requested: item.order_quantity,
-          available: dropProduct.available_quantity,
-        });
-        return NextResponse.json(
-          { error: 'Insufficient inventory available' },
-          { status: 400 }
-        );
-      }
+    if (reservationError) {
+      console.error('❌ Inventory reservation error during payment intent:', {
+        error: reservationError,
+        items: items,
+        orderProducts: orderProducts,
+      });
+      return NextResponse.json(
+        { error: 'Insufficient inventory available' },
+        { status: 400 }
+      );
     }
 
     // Create payment intent with order metadata
