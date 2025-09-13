@@ -53,6 +53,7 @@ export default function CheckoutPage() {
     isValidatingDrop: false,
   });
 
+
   // Separate state for drop info (complex object)
   const [dropInfo, setDropInfo] = useState<DropInfo | null>(null);
 
@@ -210,6 +211,109 @@ export default function CheckoutPage() {
   };
 
   // Handle input changes
+
+    setPaymentState(prev => ({
+      ...prev,
+      status: 'processing',
+      message: 'Payment successful! Creating your order...',
+    }));
+
+    // Order will be created by Stripe webhook - just save customer info and redirect
+    try {
+      // Format phone number
+      const formattedPhone = formState.customerInfo.phone.trim()
+        ? formatPhoneNumber(formState.customerInfo.phone.trim())
+        : '';
+
+      // Save customer info for future orders
+      saveCustomerInfo({
+        ...formState.customerInfo,
+        phone: formattedPhone,
+      });
+
+      // Save order info for banner display (order will be created by webhook)
+      const activeOrder = {
+        orderNumber: 'Processing...', // Will be updated when webhook processes
+        customerName: formState.customerInfo.name,
+        customerEmail: formState.customerInfo.email,
+        customerPhone: formattedPhone,
+        pickupTime: formState.pickupTime,
+        pickupDate: dropInfo?.date || new Date().toISOString().split('T')[0],
+        specialInstructions: formState.customerInfo.specialInstructions || '',
+        items: (items || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          description: item.description || '',
+        })),
+        totalAmount: totalPrice || 0,
+        paymentIntentId: paymentIntentId, // Store payment intent ID
+      };
+
+      localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
+
+      // Clear cart and localStorage
+      if (clearCart) {
+        clearCart();
+      }
+      localStorage.removeItem('pickupTime');
+      localStorage.removeItem('specialInstructions');
+      localStorage.removeItem('currentDrop');
+
+      setPaymentState(prev => ({
+        ...prev,
+        status: 'succeeded',
+        message: 'Payment successful! Redirecting to confirmation...',
+        orderNumber: 'Processing...',
+      }));
+
+      // Redirect immediately to confirmation page
+      setTimeout(() => {
+        router.push(`/confirmation?orderId=${paymentIntentId}`);
+      }, 1000);
+    } catch (error) {
+      console.error('❌ Error processing payment success:', error);
+      setPaymentState(prev => ({
+        ...prev,
+        status: 'failed',
+        message:
+          'Payment successful but there was an error. Please contact support.',
+      }));
+    }
+  };
+
+  // Handle payment error
+  const handlePaymentError = (error: string) => {
+    console.error('❌ Payment failed:', error);
+
+    setPaymentState(prev => ({
+      ...prev,
+      status: 'failed',
+      message: error,
+    }));
+  };
+
+  // Handle payment cancellation
+  const handlePaymentCancel = () => {
+    setPaymentState({
+      showPayment: false,
+      status: null,
+      message: '',
+      orderNumber: '',
+    });
+  };
+
+  // Retry payment
+  const handlePaymentRetry = () => {
+    setPaymentState(prev => ({
+      ...prev,
+      status: null,
+      message: '',
+    }));
+  };
+
+  // Handle input changes
   const handleInputChange = (field: keyof CustomerInfo, value: string) => {
     setFormState(prev => ({
       ...prev,
@@ -357,7 +461,8 @@ export default function CheckoutPage() {
                 type="submit"
                 disabled={
                   uiState.isLoading ||
-                  uiState.isValidatingDrop
+                  uiState.isValidatingDrop ||
+                  paymentState.showPayment
                 }
                 className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
@@ -370,11 +475,51 @@ export default function CheckoutPage() {
                   </div>
                 ) : uiState.isValidatingDrop ? (
                   'Validating...'
+                ) : paymentState.showPayment ? (
+                  'Payment in Progress...'
                 ) : (
                   'Place Order'
                 )}
               </Button>
+            </div>
           </Card>
+
+          {/* Payment Form */}
+          {paymentState.showPayment && !paymentState.status && (
+            <StripePayment
+              items={(items || []).map(item => ({
+                id: item.dropProductId,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              }))}
+              customerInfo={{
+                name: formState.customerInfo.name.trim(),
+                email: formState.customerInfo.email.trim(),
+                phone: formState.customerInfo.phone.trim()
+                  ? formatPhoneNumber(formState.customerInfo.phone.trim())
+                  : undefined,
+                pickupTime: formState.pickupTime,
+                pickupDate:
+                  dropInfo?.date || new Date().toISOString().split('T')[0],
+                specialInstructions: formState.specialInstructions || undefined,
+              }}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onCancel={handlePaymentCancel}
+            />
+          )}
+
+          {/* Payment Status */}
+          {paymentState.status && (
+            <PaymentStatus
+              status={paymentState.status}
+              message={paymentState.message}
+              orderNumber={paymentState.orderNumber}
+              onRetry={handlePaymentRetry}
+              onContinue={() => router.push('/confirmation')}
+            />
+          )}
         </div>
       </main>
     </PageLayout>
