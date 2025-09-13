@@ -407,22 +407,9 @@ export default function CartPage() {
         </div>
       </main>
 
-      {/* Sticky Footer with Total and Continue Button */}
+      {/* Sticky Footer with Continue Button */}
       {items.length > 0 && (
         <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-5">
-          {/* Total Order */}
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-xl font-semibold">Total Order</h2>
-            <span className="text-xl font-semibold">
-              €{totalPrice.toFixed(2)}
-            </span>
-          </div>
-
-          {/* Payment Info */}
-          <p className="text-sm text-gray-600 mb-5 text-left">
-            Payment in cash or mbway at {dropInfo?.location?.name} during pickup
-          </p>
-
           <Button
             onClick={handlePlaceOrder}
             disabled={
@@ -439,7 +426,7 @@ export default function CartPage() {
               ? 'Processing...'
               : uiState.isValidating
                 ? 'Validating...'
-                : 'Continue'}
+                : `Check Out (€${totalPrice.toFixed(2)})`}
           </Button>
         </div>
       )}

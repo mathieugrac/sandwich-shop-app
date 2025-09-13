@@ -339,7 +339,6 @@ async function handleFailedPayment(paymentIntent: Stripe.PaymentIntent) {
     }
 
     // Release reserved inventory since payment failed
-    const cartItems = JSON.parse(metadata.cartItems);
     const orderProducts = cartItems.map(
       (item: {
         id: string;
