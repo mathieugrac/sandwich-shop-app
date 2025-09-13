@@ -41,6 +41,25 @@ function StripePaymentForm({
     setIsProcessing(true);
 
     try {
+      // Final availability check before payment
+      const availabilityResponse = await fetch(
+        '/api/payment/check-availability',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientSecret }),
+        }
+      );
+
+      if (!availabilityResponse.ok) {
+        const errorData = await availabilityResponse.json();
+        onError(
+          errorData.error ||
+            'Some items are no longer available. Please refresh and try again.'
+        );
+        return;
+      }
+
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         redirect: 'if_required', // This prevents automatic redirect
@@ -51,6 +70,8 @@ function StripePaymentForm({
         onError(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('✅ Payment succeeded:', paymentIntent.id);
+        // Clear saved payment intent on success
+        localStorage.removeItem('currentPaymentIntent');
         onSuccess(paymentIntent.id);
       } else {
         onError('Payment was not completed. Please try again.');
@@ -232,6 +253,26 @@ export function StripePayment({
       setIsCreatingIntent(false);
     }
   };
+
+  // Cleanup payment intent on component unmount or navigation
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Don't clear if payment is processing
+      if (!isCreatingIntent) {
+        localStorage.removeItem('currentPaymentIntent');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Clear payment intent when component unmounts (unless processing)
+      if (!isCreatingIntent) {
+        localStorage.removeItem('currentPaymentIntent');
+      }
+    };
+  }, [isCreatingIntent]);
 
   const stripeOptions = {
     clientSecret,

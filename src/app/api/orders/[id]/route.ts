@@ -16,11 +16,15 @@ export async function GET(
   try {
     const { id: orderId } = await params;
 
+    // Determine if orderId is a UUID or payment intent ID
+    const isUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        orderId
+      );
+
     // Fetch order details with order products, client, drop, and location information
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select(
-        `
+    let query = supabase.from('orders').select(
+      `
         *,
         clients (
           name,
@@ -46,9 +50,16 @@ export async function GET(
           )
         )
       `
-      )
-      .or(`id.eq.${orderId},payment_intent_id.eq.${orderId}`)
-      .single();
+    );
+
+    // Apply the appropriate filter based on ID type
+    if (isUUID) {
+      query = query.eq('id', orderId);
+    } else {
+      query = query.eq('payment_intent_id', orderId);
+    }
+
+    const { data: order, error: orderError } = await query.single();
 
     if (orderError) {
       console.error('API: Error fetching order:', orderError);
