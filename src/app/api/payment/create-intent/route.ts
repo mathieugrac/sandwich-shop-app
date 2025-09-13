@@ -48,26 +48,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Reserve inventory immediately when creating payment intent
+    // Check availability without reserving
     const orderProducts = items.map(item => ({
       drop_product_id: item.id,
       order_quantity: item.quantity,
     }));
 
-    // Reserve inventory for all items at once
-    const { error: reservationError } = await supabase.rpc(
-      'reserve_multiple_drop_products',
-      { p_order_items: orderProducts }
-    );
+    // Check if all items are available (new function)
+    const { data: availabilityCheck, error: availabilityError } =
+      await supabase.rpc('check_multiple_drop_products_availability', {
+        p_order_items: orderProducts,
+      });
 
-    if (reservationError) {
-      console.error('❌ Inventory reservation error during payment intent:', {
-        error: reservationError,
+    if (availabilityError || !availabilityCheck) {
+      console.error('❌ Availability check failed during payment intent:', {
+        error: availabilityError,
         items: items,
         orderProducts: orderProducts,
       });
       return NextResponse.json(
-        { error: 'Insufficient inventory available' },
+        { error: 'Some items are no longer available' },
         { status: 400 }
       );
     }
