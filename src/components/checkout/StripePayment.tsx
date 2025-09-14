@@ -29,16 +29,18 @@ function StripePaymentForm({
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [formError, setFormError] = useState<string>('');
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
-      onError('Stripe has not loaded yet. Please try again.');
+      setFormError('Stripe has not loaded yet. Please try again.');
       return;
     }
 
     setIsProcessing(true);
+    setFormError(''); // Clear any previous errors
 
     try {
       // Final availability check before payment
@@ -53,7 +55,7 @@ function StripePaymentForm({
 
       if (!availabilityResponse.ok) {
         const errorData = await availabilityResponse.json();
-        onError(
+        setFormError(
           errorData.error ||
             'Some items are no longer available. Please refresh and try again.'
         );
@@ -71,18 +73,18 @@ function StripePaymentForm({
 
       if (error) {
         console.error('Payment confirmation error:', error);
-        onError(error.message || 'Payment failed. Please try again.');
+        setFormError(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         console.log('✅ Payment succeeded:', paymentIntent.id);
         // Clear saved payment intent on success
         localStorage.removeItem('currentPaymentIntent');
         onSuccess(paymentIntent.id);
       } else {
-        onError('Payment was not completed. Please try again.');
+        setFormError('Payment was not completed. Please try again.');
       }
     } catch (err) {
       console.error('Unexpected payment error:', err);
-      onError('An unexpected error occurred. Please try again.');
+      setFormError('An unexpected error occurred. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -90,6 +92,13 @@ function StripePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Error message display within form */}
+      {formError && (
+        <div className="p-3 border border-red-200 bg-red-50 rounded-lg">
+          <p className="text-red-700 text-sm">{formError}</p>
+        </div>
+      )}
+
       <div className="p-4 border rounded-lg bg-gray-50">
         <CardElement
           options={{
@@ -322,26 +331,6 @@ export function StripePayment({
     );
   }
 
-  if (error) {
-    return (
-      <Card className="p-6 shadow-none border-red-200 bg-red-50">
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-red-800">Payment Error</h3>
-          <p className="text-red-700">{error}</p>
-          <div>
-            <Button
-              onClick={createPaymentIntent}
-              variant="outline"
-              className="border-red-300 text-red-700 hover:bg-red-100"
-            >
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </Card>
-    );
-  }
-
   if (!clientSecret) {
     return (
       <Card className="p-8 shadow-none">
@@ -359,6 +348,24 @@ export function StripePayment({
         <div>
           <h2 className="text-xl font-semibold">Payment Details</h2>
         </div>
+
+        {/* Error message display */}
+        {error && (
+          <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+            <p className="text-red-700 text-sm">{error}</p>
+            <Button
+              onClick={() => {
+                setError('');
+                createPaymentIntent();
+              }}
+              variant="outline"
+              size="sm"
+              className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
 
         <Elements stripe={stripePromise} options={stripeOptions}>
           <StripePaymentForm

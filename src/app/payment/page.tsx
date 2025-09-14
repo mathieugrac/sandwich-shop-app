@@ -162,8 +162,8 @@ export default function PaymentPage() {
   // Handle payment error
   const handlePaymentError = (error: string) => {
     console.error('❌ Payment failed:', error);
-    setError(error);
     setPaymentProcessing(false);
+    // Don't set page-level error - let StripePayment component handle it internally
   };
 
   // Format time with AM/PM
@@ -203,37 +203,6 @@ export default function PaymentPage() {
           <Card className="p-6 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
             <p>Loading payment information...</p>
-          </Card>
-        </main>
-      </PageLayout>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <PageLayout>
-        <PageHeader
-          title="Payment Error"
-          subtitle="Unable to process payment"
-          onBackClick={handleBackToCheckout}
-        />
-        <main className="px-5 py-8">
-          <Card className="p-6 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <div className="space-y-2">
-              <Button
-                onClick={handleBackToCheckout}
-                variant="outline"
-                className="w-full"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Checkout
-              </Button>
-              <Button onClick={() => router.push('/cart')} className="w-full">
-                Back to Cart
-              </Button>
-            </div>
           </Card>
         </main>
       </PageLayout>
