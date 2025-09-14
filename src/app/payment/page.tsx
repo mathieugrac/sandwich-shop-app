@@ -146,18 +146,15 @@ export default function PaymentPage() {
 
       // Navigate to confirmation page after delay
       setTimeout(() => {
-        // Clear cart and navigate
-        clearCart();
-        localStorage.removeItem('pickupTime');
-        localStorage.removeItem('specialInstructions');
-        localStorage.removeItem('currentDrop');
-        localStorage.removeItem('customerInfo');
+        // Clear only payment intent, keep other data for confirmation page fallback
         localStorage.removeItem('currentPaymentIntent');
-        router.push('/confirmation');
+        router.push(`/confirmation?orderId=${paymentIntentId}`);
       }, 2000);
     } catch (error) {
       console.error('Error handling payment success:', error);
-      setError('Payment successful but failed to create order. Please contact support.');
+      setError(
+        'Payment successful but failed to create order. Please contact support.'
+      );
       setPaymentProcessing(false);
     }
   };
@@ -273,7 +270,9 @@ export default function PaymentPage() {
                 email: orderData.customerInfo?.email || '',
                 phone: orderData.customerInfo?.phone || undefined,
                 pickupTime: orderData.pickupTime,
-                pickupDate: orderData.dropInfo?.date || new Date().toISOString().split('T')[0],
+                pickupDate:
+                  orderData.dropInfo?.date ||
+                  new Date().toISOString().split('T')[0],
                 specialInstructions: orderData.specialInstructions || undefined,
               }}
               onSuccess={handlePaymentSuccess}
@@ -287,8 +286,12 @@ export default function PaymentPage() {
             <Card className="p-5">
               <div className="text-center">
                 <LoadingSpinner />
-                <h3 className="text-lg font-semibold mt-4 mb-2">Processing Payment...</h3>
-                <p className="text-gray-600">Please wait while we process your order.</p>
+                <h3 className="text-lg font-semibold mt-4 mb-2">
+                  Processing Payment...
+                </h3>
+                <p className="text-gray-600">
+                  Please wait while we process your order.
+                </p>
               </div>
             </Card>
           )}
@@ -296,7 +299,7 @@ export default function PaymentPage() {
           {/* Order Summary Section - Second, below payment form */}
           <Card className="p-5">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            
+
             {/* Order Items */}
             <div className="space-y-3 mb-4">
               {items.map(item => (
@@ -359,7 +362,6 @@ export default function PaymentPage() {
           </Card>
         </div>
       </main>
-
     </PageLayout>
   );
 }

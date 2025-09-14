@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { CheckCircle, Clock, MapPin, ArrowLeft } from 'lucide-react';
+import { useCart } from '@/lib/cart-context';
 
 // Simple type for confirmation page cart items
 interface ConfirmationCartItem {
@@ -55,6 +56,7 @@ function ConfirmationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const { clearCart } = useCart();
   const [orderData, setOrderData] = useState<OrderDetails>({
     order: {
       orderNumber: '',
@@ -131,6 +133,14 @@ function ConfirmationContent() {
             order: transformedOrder,
             order_products: transformedOrder.order_products,
           });
+
+          // Clean up localStorage and cart after successfully loading order data from API
+          clearCart();
+          localStorage.removeItem('pickupTime');
+          localStorage.removeItem('specialInstructions');
+          localStorage.removeItem('currentDrop');
+          localStorage.removeItem('customerInfo');
+          localStorage.removeItem('activeOrder');
         } else {
           throw new Error('Invalid API response format');
         }
@@ -244,6 +254,14 @@ function ConfirmationContent() {
           order: fallbackOrder,
           order_products: fallbackOrder.order_products,
         });
+
+        // Clean up localStorage and cart after successfully loading order data
+        clearCart();
+        localStorage.removeItem('pickupTime');
+        localStorage.removeItem('specialInstructions');
+        localStorage.removeItem('currentDrop');
+        localStorage.removeItem('customerInfo');
+        localStorage.removeItem('activeOrder');
       } finally {
         setLoading(false);
       }
