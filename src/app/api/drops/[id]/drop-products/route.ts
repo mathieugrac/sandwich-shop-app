@@ -72,7 +72,8 @@ export async function GET(
         )
       `
       )
-      .eq('drop_id', id);
+      .eq('drop_id', id)
+      .order('product(name)', { ascending: true });
 
     // If there's an error fetching drop products, log it but don't fail
     if (dropProductsError) {
