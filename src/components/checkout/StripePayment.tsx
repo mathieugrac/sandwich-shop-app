@@ -126,6 +126,13 @@ function StripePaymentForm({
           'Pay Now'
         )}
       </Button>
+
+      {/* Secure payment message - Below button, centered */}
+      <div className="text-center">
+        <span className="text-gray-600 text-sm">
+          Secure payment with Stripe
+        </span>
+      </div>
     </form>
   );
 }

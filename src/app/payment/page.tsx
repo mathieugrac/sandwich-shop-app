@@ -242,11 +242,7 @@ export default function PaymentPage() {
 
   return (
     <PageLayout>
-      <PageHeader
-        title="Payment"
-        subtitle="Secure payment with Stripe"
-        onBackClick={handleBackToCheckout}
-      />
+      <PageHeader onBackClick={handleBackToCheckout} />
 
       <main className="px-5 pb-0">
         <div className="space-y-5 pt-5">
@@ -254,56 +250,21 @@ export default function PaymentPage() {
           <Card className="p-5">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
 
-            {/* Order Items */}
-            <div className="space-y-3 mb-4">
+            {/* Order Items - Simple single line format */}
+            <div className="space-y-2">
               {items.map(item => (
                 <div
                   key={item.id}
                   className="flex justify-between items-center"
                 >
-                  <div className="flex-1">
-                    <h3 className="font-medium">{item.name}</h3>
-                    <p className="text-sm text-gray-600">
-                      Qty: {item.quantity}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      €{(item.price * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
+                  <span>
+                    {item.quantity}x {item.name}
+                  </span>
+                  <span className="font-medium">
+                    €{(item.price * item.quantity).toFixed(2)}
+                  </span>
                 </div>
               ))}
-            </div>
-
-            <Separator className="my-4" />
-
-            {/* Order Details */}
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Date:</span>
-                <span>
-                  {orderData.dropInfo
-                    ? formatDate(orderData.dropInfo.date)
-                    : 'N/A'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Location:</span>
-                <span>{orderData.dropInfo?.location.name || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Pickup Time:</span>
-                <span>
-                  {orderData.pickupTime
-                    ? formatTimeWithAMPM(orderData.pickupTime)
-                    : 'N/A'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Customer:</span>
-                <span>{orderData.customerInfo?.name || 'N/A'}</span>
-              </div>
             </div>
 
             <Separator className="my-4" />
