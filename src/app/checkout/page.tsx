@@ -343,37 +343,32 @@ export default function CheckoutPage() {
 
           {/* Customer Info and Submit */}
           <Card className="p-5 shadow-none">
-            {/* Payment Information */}
-            <div className="space-y-2 mb-5">
-              <div className="flex justify-between">
-                <span className="text-gray-600 text-sm">
-                  Secure online payment with Stripe
-                </span>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <Button
-                type="submit"
-                disabled={
-                  uiState.isLoading ||
-                  uiState.isValidatingDrop
-                }
-                className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
-                onClick={handleSubmit}
-                size="lg"
-              >
-                {uiState.isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <LoadingSpinner />
-                    <span>Processing...</span>
-                  </div>
-                ) : uiState.isValidatingDrop ? (
-                  'Validating...'
-                ) : (
-                  'Place Order'
-                )}
-              </Button>
+              type="submit"
+              disabled={uiState.isLoading || uiState.isValidatingDrop}
+              className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
+              onClick={handleSubmit}
+              size="lg"
+            >
+              {uiState.isLoading ? (
+                <div className="flex items-center space-x-2">
+                  <LoadingSpinner />
+                  <span>Processing...</span>
+                </div>
+              ) : uiState.isValidatingDrop ? (
+                'Validating...'
+              ) : (
+                'Continue to payment'
+              )}
+            </Button>
+
+            {/* Payment Information - Below button, centered */}
+            <div className="mt-4 text-center">
+              <span className="text-gray-600 text-sm">
+                Secure online payment with Stripe
+              </span>
+            </div>
           </Card>
         </div>
       </main>
