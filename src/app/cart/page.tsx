@@ -74,13 +74,19 @@ const formatPickupTimeRange = (startTime: string, endTime: string): string => {
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeFromCart, updateQuantity, clearCart, totalPrice } =
-    useCart();
+  const {
+    items,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    totalPrice,
+    comment,
+    setComment,
+  } = useCart();
 
   // Consolidate form state
   const [formState, setFormState] = useState({
     selectedTime: '',
-    comment: '',
   });
 
   // Consolidate UI state
@@ -124,7 +130,6 @@ export default function CartPage() {
   useEffect(() => {
     const savedDrop = localStorage.getItem('currentDrop');
     const savedPickupTime = localStorage.getItem('cartPickupTime');
-    const savedComment = localStorage.getItem('cartComment');
 
     if (savedDrop) {
       try {
@@ -158,9 +163,7 @@ export default function CartPage() {
     if (savedPickupTime) {
       setFormState(prev => ({ ...prev, selectedTime: savedPickupTime }));
     }
-    if (savedComment) {
-      setFormState(prev => ({ ...prev, comment: savedComment }));
-    }
+    // Comment is now managed by cart context, no need to load separately
   }, []);
 
   // Save form data to localStorage when it changes
@@ -168,10 +171,8 @@ export default function CartPage() {
     if (formState.selectedTime) {
       localStorage.setItem('cartPickupTime', formState.selectedTime);
     }
-    if (formState.comment) {
-      localStorage.setItem('cartComment', formState.comment);
-    }
-  }, [formState.selectedTime, formState.comment]);
+    // Comment is now managed by cart context, no need to save separately
+  }, [formState.selectedTime]);
 
   // Update form state helper
   const updateFormState = (updates: Partial<typeof formState>) => {
@@ -193,7 +194,7 @@ export default function CartPage() {
     clearCart();
     localStorage.removeItem('currentDrop');
     localStorage.removeItem('cartPickupTime');
-    localStorage.removeItem('cartComment');
+    // Comment is now cleared automatically by clearCart()
     router.push('/');
   }, [clearCart, router]);
 
@@ -212,7 +213,7 @@ export default function CartPage() {
     try {
       // Save pickup time and special instructions to localStorage for checkout
       localStorage.setItem('pickupTime', formState.selectedTime);
-      localStorage.setItem('specialInstructions', formState.comment);
+      localStorage.setItem('specialInstructions', comment);
       updateUiState({ error: null });
 
       // Navigate to checkout page
@@ -221,13 +222,7 @@ export default function CartPage() {
       updateUiState({ error: 'Failed to save order information' });
       console.error('Error saving order info:', error);
     }
-  }, [
-    formState.selectedTime,
-    formState.comment,
-    dropInfo,
-    router,
-    updateUiState,
-  ]);
+  }, [formState.selectedTime, comment, dropInfo, router, updateUiState]);
 
   // Show error state if there's an error
   if (uiState.error && !dropInfo) {
@@ -335,10 +330,8 @@ export default function CartPage() {
                   <div>
                     <Textarea
                       placeholder="Leave a comment..."
-                      value={formState.comment}
-                      onChange={e =>
-                        updateFormState({ comment: e.target.value })
-                      }
+                      value={comment}
+                      onChange={e => setComment(e.target.value)}
                       aria-label="Special instructions for your order"
                       className="shadow-none resize-none min-h-[60px] border-0 p-2"
                     />

@@ -516,7 +516,7 @@ export default function DeliveryPage() {
                         {updatingOrder === order.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                         ) : (
-                          'Mark as paid'
+                          'Mark as delivered'
                         )}
                       </Button>
                     </TableCell>

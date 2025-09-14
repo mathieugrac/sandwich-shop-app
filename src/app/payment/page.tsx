@@ -31,18 +31,16 @@ interface CustomerInfo {
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { items, totalPrice, isInitialized, clearCart } = useCart();
+  const { items, totalPrice, isInitialized, clearCart, comment } = useCart();
 
   // State for order data
   const [orderData, setOrderData] = useState<{
     customerInfo: CustomerInfo | null;
     pickupTime: string;
-    specialInstructions: string;
     dropInfo: DropInfo | null;
   }>({
     customerInfo: null,
     pickupTime: '',
-    specialInstructions: '',
     dropInfo: null,
   });
 
@@ -70,10 +68,9 @@ export default function PaymentPage() {
 
       // Load other order data
       const pickupTime = localStorage.getItem('pickupTime') || '';
-      const specialInstructions =
-        localStorage.getItem('specialInstructions') || '';
       const savedDrop = localStorage.getItem('currentDrop');
       const dropInfo = savedDrop ? JSON.parse(savedDrop) : null;
+      // Special instructions now come from cart context
 
       // Validate required data
       if (!customerInfo || !customerInfo.name || !customerInfo.email) {
@@ -99,7 +96,6 @@ export default function PaymentPage() {
       setOrderData({
         customerInfo,
         pickupTime,
-        specialInstructions,
         dropInfo,
       });
 
@@ -262,7 +258,7 @@ export default function PaymentPage() {
                 pickupDate:
                   orderData.dropInfo?.date ||
                   new Date().toISOString().split('T')[0],
-                specialInstructions: orderData.specialInstructions || undefined,
+                specialInstructions: comment || undefined,
               }}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}

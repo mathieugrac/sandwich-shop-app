@@ -137,7 +137,6 @@ function ConfirmationContent() {
           // Clean up localStorage and cart after successfully loading order data from API
           clearCart();
           localStorage.removeItem('pickupTime');
-          localStorage.removeItem('specialInstructions');
           localStorage.removeItem('currentDrop');
           localStorage.removeItem('customerInfo');
           localStorage.removeItem('activeOrder');
@@ -258,7 +257,6 @@ function ConfirmationContent() {
         // Clean up localStorage and cart after successfully loading order data
         clearCart();
         localStorage.removeItem('pickupTime');
-        localStorage.removeItem('specialInstructions');
         localStorage.removeItem('currentDrop');
         localStorage.removeItem('customerInfo');
         localStorage.removeItem('activeOrder');

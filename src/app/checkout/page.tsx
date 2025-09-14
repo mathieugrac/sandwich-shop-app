@@ -33,7 +33,7 @@ interface CustomerInfo {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalPrice, clearCart, isInitialized } = useCart();
+  const { items, totalPrice, clearCart, isInitialized, comment } = useCart();
 
   // Consolidate form state
   const [formState, setFormState] = useState({
@@ -43,7 +43,6 @@ export default function CheckoutPage() {
       phone: '',
     },
     pickupTime: '',
-    specialInstructions: '',
   });
 
   // Consolidate UI state
@@ -71,21 +70,13 @@ export default function CheckoutPage() {
       }
     }
 
-    // Load pickup time and special instructions
+    // Load pickup time
     const savedPickupTime = localStorage.getItem('pickupTime');
-    const savedSpecialInstructions = localStorage.getItem(
-      'specialInstructions'
-    );
 
     if (savedPickupTime) {
       setFormState(prev => ({ ...prev, pickupTime: savedPickupTime }));
     }
-    if (savedSpecialInstructions) {
-      setFormState(prev => ({
-        ...prev,
-        specialInstructions: savedSpecialInstructions,
-      }));
-    }
+    // Special instructions now come from cart context
 
     // Load drop information from localStorage
     const savedDrop = localStorage.getItem('currentDrop');
