@@ -104,8 +104,7 @@ export default function PaymentPage() {
       });
 
       setError(null);
-      // Payment form will be shown automatically since showPayment defaults to false
-      // but we'll show it after data loads
+      setShowPayment(true); // Show payment form immediately when data loads
     } catch (err) {
       console.error('Error loading order data:', err);
       setError('Failed to load order information. Please try again.');
@@ -260,10 +259,44 @@ export default function PaymentPage() {
 
       <main className="px-5 pb-0">
         <div className="space-y-5 pt-5">
-          {/* Order Summary Section - Will be moved here from checkout in Phase 3 */}
+          {/* Payment Section - First, visible immediately */}
+          {showPayment && !paymentProcessing && (
+            <StripePayment
+              items={items.map(item => ({
+                id: item.id,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+              }))}
+              customerInfo={{
+                name: orderData.customerInfo?.name || '',
+                email: orderData.customerInfo?.email || '',
+                phone: orderData.customerInfo?.phone || undefined,
+                pickupTime: orderData.pickupTime,
+                pickupDate: orderData.dropInfo?.date || new Date().toISOString().split('T')[0],
+                specialInstructions: orderData.specialInstructions || undefined,
+              }}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+              onCancel={handlePaymentCancel}
+            />
+          )}
+
+          {/* Payment Processing State */}
+          {paymentProcessing && (
+            <Card className="p-5">
+              <div className="text-center">
+                <LoadingSpinner />
+                <h3 className="text-lg font-semibold mt-4 mb-2">Processing Payment...</h3>
+                <p className="text-gray-600">Please wait while we process your order.</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Order Summary Section - Second, below payment form */}
           <Card className="p-5">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-
+            
             {/* Order Items */}
             <div className="space-y-3 mb-4">
               {items.map(item => (
@@ -324,55 +357,9 @@ export default function PaymentPage() {
               <span>€{totalPrice.toFixed(2)}</span>
             </div>
           </Card>
-
-          {/* Payment Section */}
-          {showPayment && !paymentProcessing && (
-            <StripePayment
-              items={items.map(item => ({
-                id: item.id,
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price,
-              }))}
-              customerInfo={{
-                name: orderData.customerInfo?.name || '',
-                email: orderData.customerInfo?.email || '',
-                phone: orderData.customerInfo?.phone || undefined,
-                pickupTime: orderData.pickupTime,
-                pickupDate: orderData.dropInfo?.date || new Date().toISOString().split('T')[0],
-                specialInstructions: orderData.specialInstructions || undefined,
-              }}
-              onSuccess={handlePaymentSuccess}
-              onError={handlePaymentError}
-              onCancel={handlePaymentCancel}
-            />
-          )}
-
-          {/* Payment Processing State */}
-          {paymentProcessing && (
-            <Card className="p-5">
-              <div className="text-center">
-                <LoadingSpinner />
-                <h3 className="text-lg font-semibold mt-4 mb-2">Processing Payment...</h3>
-                <p className="text-gray-600">Please wait while we process your order.</p>
-              </div>
-            </Card>
-          )}
         </div>
       </main>
 
-      {/* Sticky Footer - Hidden during payment processing */}
-      {!showPayment && !paymentProcessing && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-5">
-          <Button
-            onClick={() => setShowPayment(true)}
-            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full"
-            size="lg"
-          >
-            Place Order (€{totalPrice.toFixed(2)})
-          </Button>
-        </div>
-      )}
     </PageLayout>
   );
 }
