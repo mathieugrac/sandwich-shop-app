@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import {
   useStripe,
   useElements,
-  PaymentElement,
+  CardElement,
   Elements,
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe/client';
@@ -60,10 +60,14 @@ function StripePaymentForm({
         return;
       }
 
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        redirect: 'if_required', // This prevents automatic redirect
-      });
+      const { error, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: elements.getElement(CardElement)!,
+          },
+        }
+      );
 
       if (error) {
         console.error('Payment confirmation error:', error);
@@ -87,10 +91,22 @@ function StripePaymentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="p-4 border rounded-lg bg-gray-50">
-        <PaymentElement
+        <CardElement
           options={{
-            layout: 'tabs',
-            paymentMethodOrder: ['card', 'ideal', 'sepa_debit'],
+            hidePostalCode: true,
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                fontFamily: 'system-ui, sans-serif',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+              invalid: {
+                color: '#9e2146',
+              },
+            },
           }}
         />
       </div>
@@ -119,7 +135,6 @@ interface StripePaymentProps {
   customerInfo: CustomerInfo;
   onSuccess: (paymentIntentId: string) => void;
   onError: (error: string) => void;
-  onCancel: () => void;
 }
 
 export function StripePayment({
@@ -127,7 +142,6 @@ export function StripePayment({
   customerInfo,
   onSuccess,
   onError,
-  onCancel,
 }: StripePaymentProps) {
   const [clientSecret, setClientSecret] = useState<string>('');
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
@@ -307,16 +321,13 @@ export function StripePayment({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-red-800">Payment Error</h3>
           <p className="text-red-700">{error}</p>
-          <div className="flex space-x-3">
+          <div>
             <Button
               onClick={createPaymentIntent}
               variant="outline"
               className="border-red-300 text-red-700 hover:bg-red-100"
             >
               Try Again
-            </Button>
-            <Button onClick={onCancel} variant="outline">
-              Cancel
             </Button>
           </div>
         </div>
@@ -338,16 +349,8 @@ export function StripePayment({
   return (
     <Card className="p-6 shadow-none">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div>
           <h2 className="text-xl font-semibold">Payment Details</h2>
-          <Button
-            onClick={onCancel}
-            variant="ghost"
-            size="sm"
-            className="text-gray-500 hover:text-gray-700"
-          >
-            Cancel
-          </Button>
         </div>
 
         <Elements stripe={stripePromise} options={stripeOptions}>
