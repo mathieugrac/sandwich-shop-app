@@ -214,7 +214,7 @@ export default function CheckoutPage() {
 
   // Handle back navigation
   const handleBack = () => {
-    router.back();
+    router.push('/cart');
   };
 
   // If cart is empty, redirect to home
