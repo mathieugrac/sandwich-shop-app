@@ -86,13 +86,23 @@ export function DropItem({ drop }: DropItemProps) {
         {/* Action Buttons */}
         <div className="flex flex-col items-end space-y-2">
           {drop.status === 'active' ? (
-            <Button
-              onClick={handlePreOrder}
-              className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
-              size="lg"
-            >
-              Order now
-            </Button>
+            drop.total_available > 0 ? (
+              <Button
+                onClick={handlePreOrder}
+                className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
+                size="lg"
+              >
+                Order now
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePreOrder}
+                className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
+                size="lg"
+              >
+                Sold Out
+              </Button>
+            )
           ) : (
             <Button
               onClick={handleNotifyMe}
