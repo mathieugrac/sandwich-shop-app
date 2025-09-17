@@ -70,10 +70,9 @@ CREATE TABLE drop_products (
 );
 
 -- Clients table
--- People who order food through the app
+-- People who order food through the app (identified by email/phone only)
 CREATE TABLE clients (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(100) NOT NULL,
   email VARCHAR(255) NOT NULL,
   phone VARCHAR(20),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -88,11 +87,14 @@ CREATE TABLE orders (
   order_number VARCHAR(20) UNIQUE NOT NULL,
   drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+  customer_name VARCHAR(100) NOT NULL, -- Name for delivery bag (order-specific)
   pickup_time TIME NOT NULL, -- 15-min slot within location pickup hours
   order_date DATE NOT NULL,
-  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'delivered')),
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'confirmed', 'delivered')),
   total_amount DECIMAL(10,2) NOT NULL,
   special_instructions TEXT,
+  payment_intent_id TEXT, -- Stripe payment intent ID
+  payment_method TEXT, -- Payment method (stripe, cash, etc.)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -234,9 +236,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to get or create client
+-- Function to get or create client (by email/phone only)
 CREATE OR REPLACE FUNCTION get_or_create_client(
-  p_name VARCHAR(100), p_email VARCHAR(255), p_phone VARCHAR(20))
+  p_email VARCHAR(255), p_phone VARCHAR(20))
 RETURNS UUID AS $$
 DECLARE
   client_id UUID;
@@ -247,17 +249,16 @@ BEGIN
   WHERE email = p_email;
   
   IF client_id IS NOT NULL THEN
-    -- Update existing client info if name/phone changed
+    -- Update existing client phone if changed
     UPDATE clients 
-    SET name = COALESCE(p_name, name),
-        phone = COALESCE(p_phone, phone),
+    SET phone = COALESCE(p_phone, phone),
         updated_at = NOW()
     WHERE id = client_id;
     RETURN client_id;
   ELSE
     -- Create new client
-    INSERT INTO clients (name, email, phone)
-    VALUES (p_name, p_email, p_phone)
+    INSERT INTO clients (email, phone)
+    VALUES (p_email, p_phone)
     RETURNING id INTO client_id;
     RETURN client_id;
   END IF;

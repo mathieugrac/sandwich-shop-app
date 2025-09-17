@@ -131,7 +131,6 @@ export default function DeliveryPage() {
           `
           *,
           clients (
-            name,
             email,
             phone
           ),
@@ -444,6 +443,7 @@ export default function DeliveryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Order ID</TableHead>
                   <TableHead>Pickup Time</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Items</TableHead>
@@ -457,15 +457,20 @@ export default function DeliveryPage() {
                 {activeOrders.map(order => (
                   <TableRow key={order.id}>
                     <TableCell>
+                      <span className="text-sm font-medium text-blue-600">
+                        #{order.order_number}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <span className="text-sm font-medium">
                         {formatTime(order.pickup_time)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{order.clients?.name}</p>
+                        <p className="font-medium">{order.customer_name}</p>
                         <p className="text-sm text-gray-600">
-                          #{order.order_number}
+                          {order.clients?.email}
                         </p>
                       </div>
                     </TableCell>
@@ -561,6 +566,7 @@ export default function DeliveryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Order ID</TableHead>
                       <TableHead>Pickup Time</TableHead>
                       <TableHead>Customer</TableHead>
                       <TableHead>Items</TableHead>
@@ -574,15 +580,20 @@ export default function DeliveryPage() {
                     {deliveredOrders.map(order => (
                       <TableRow key={order.id} className="bg-gray-50">
                         <TableCell>
+                          <span className="text-sm font-medium text-blue-600">
+                            #{order.order_number}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           <span className="text-sm font-medium">
                             {formatTime(order.pickup_time)}
                           </span>
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{order.clients?.name}</p>
+                            <p className="font-medium">{order.customer_name}</p>
                             <p className="text-sm text-gray-600">
-                              #{order.order_number}
+                              {order.clients?.email}
                             </p>
                           </div>
                         </TableCell>

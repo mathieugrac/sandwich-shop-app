@@ -241,6 +241,7 @@ export default function DropAnalytics({ data, loading }: DropAnalyticsProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Order ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Items</TableHead>
@@ -252,12 +253,17 @@ export default function DropAnalytics({ data, loading }: DropAnalyticsProps) {
                 {data.orders.map(order => (
                   <TableRow key={order.id}>
                     <TableCell>
+                      <span className="text-sm font-medium text-blue-600">
+                        #{order.order_number}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <div className="min-w-0">
                         <p className="font-medium truncate">
-                          {order.clients?.name}
+                          {order.customer_name}
                         </p>
                         <p className="text-sm text-gray-600 truncate">
-                          #{order.order_number}
+                          {order.clients?.email}
                         </p>
                         {order.clients?.phone && (
                           <p className="text-sm text-gray-600 truncate">

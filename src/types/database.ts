@@ -43,7 +43,6 @@ export type Database = {
           created_at: string | null;
           email: string;
           id: string;
-          name: string;
           phone: string | null;
           updated_at: string | null;
         };
@@ -51,7 +50,6 @@ export type Database = {
           created_at?: string | null;
           email: string;
           id?: string;
-          name: string;
           phone?: string | null;
           updated_at?: string | null;
         };
@@ -59,7 +57,6 @@ export type Database = {
           created_at?: string | null;
           email?: string;
           id?: string;
-          name?: string;
           phone?: string | null;
           updated_at?: string | null;
         };
@@ -249,10 +246,13 @@ export type Database = {
         Row: {
           client_id: string | null;
           created_at: string | null;
+          customer_name: string;
           drop_id: string | null;
           id: string;
           order_date: string;
           order_number: string;
+          payment_intent_id: string | null;
+          payment_method: string | null;
           pickup_time: string;
           special_instructions: string | null;
           status: string | null;
@@ -262,10 +262,13 @@ export type Database = {
         Insert: {
           client_id?: string | null;
           created_at?: string | null;
+          customer_name: string;
           drop_id?: string | null;
           id?: string;
           order_date: string;
           order_number: string;
+          payment_intent_id?: string | null;
+          payment_method?: string | null;
           pickup_time: string;
           special_instructions?: string | null;
           status?: string | null;
@@ -275,10 +278,13 @@ export type Database = {
         Update: {
           client_id?: string | null;
           created_at?: string | null;
+          customer_name?: string;
           drop_id?: string | null;
           id?: string;
           order_date?: string;
           order_number?: string;
+          payment_intent_id?: string | null;
+          payment_method?: string | null;
           pickup_time?: string;
           special_instructions?: string | null;
           status?: string | null;

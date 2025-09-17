@@ -74,7 +74,6 @@ export default function ClientsPage() {
   );
   const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     phone: '',
   });
@@ -94,7 +93,7 @@ export default function ClientsPage() {
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('*')
-        .order('name', { ascending: true });
+        .order('email', { ascending: true });
 
       if (clientsError) {
         console.error('❌ Error loading clients:', clientsError);
@@ -149,7 +148,6 @@ export default function ClientsPage() {
 
   const resetForm = () => {
     setFormData({
-      name: '',
       email: '',
       phone: '',
     });
@@ -162,7 +160,6 @@ export default function ClientsPage() {
 
   const openEditModal = (client: Client) => {
     setFormData({
-      name: client.name,
       email: client.email,
       phone: client.phone || '',
     });
@@ -176,11 +173,10 @@ export default function ClientsPage() {
   };
 
   const saveClient = async () => {
-    if (!formData.name || !formData.email) return;
+    if (!formData.email) return;
 
     try {
       const clientData = {
-        name: formData.name,
         email: formData.email.toLowerCase(),
         phone: formData.phone || null,
       };
@@ -343,7 +339,6 @@ export default function ClientsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Total Orders</TableHead>
@@ -355,12 +350,8 @@ export default function ClientsPage() {
               <TableBody>
                 {clients.map(client => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium">{client.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {/* Removed Mail icon */}
-                        <span>{client.email}</span>
-                      </div>
+                    <TableCell className="font-medium">
+                      {client.email}
                     </TableCell>
                     <TableCell>
                       {client.phone ? (
@@ -437,18 +428,6 @@ export default function ClientsPage() {
             </DialogHeader>
 
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={e =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="Client name"
-                />
-              </div>
-
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input

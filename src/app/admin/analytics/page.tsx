@@ -130,7 +130,6 @@ function AnalyticsContent() {
           `
           *,
           clients (
-            name,
             email,
             phone
           ),

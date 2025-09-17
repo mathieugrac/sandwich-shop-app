@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       items,
       specialInstructions,
       totalAmount,
+      paymentIntentId,
     } = body;
 
     // Validate required fields
@@ -55,10 +56,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get or create client
+    // Get or create client (by email/phone only)
     const { data: clientId, error: clientError } = await supabase.rpc(
       'get_or_create_client',
-      { p_name: customerName, p_email: customerEmail, p_phone: customerPhone }
+      { p_email: customerEmail, p_phone: customerPhone }
     );
 
     if (clientError) {
@@ -89,10 +90,14 @@ export async function POST(request: Request) {
         order_number: orderNumber,
         drop_id: activeDrop.id,
         client_id: clientId,
+        customer_name: customerName, // Store name at order level for delivery bag
         pickup_time: pickupTime,
         order_date: pickupDate,
         total_amount: totalAmount,
         special_instructions: specialInstructions,
+        payment_intent_id: paymentIntentId, // Link to Stripe payment
+        payment_method: paymentIntentId ? 'stripe' : null,
+        status: paymentIntentId ? 'confirmed' : 'pending', // Paid orders are confirmed
       })
       .select('id, order_number, status')
       .single();
@@ -152,8 +157,50 @@ export async function POST(request: Request) {
       );
     }
 
-    // Note: Confirmation email will be sent via Stripe webhook after payment succeeds
-    // This prevents duplicate emails and ensures email is only sent for paid orders
+    // Send confirmation email for paid orders (when paymentIntentId is provided)
+    if (paymentIntentId) {
+      try {
+        const emailItems = items.map(
+          (item: { id: string; quantity: number }) => {
+            // We need to get product details for email
+            // For now, we'll use basic info - could be enhanced later
+            return {
+              productName: `Product ${item.id}`, // TODO: Get actual product name
+              quantity: item.quantity,
+              unitPrice: 0, // TODO: Get actual price
+              totalPrice: 0, // TODO: Calculate total
+            };
+          }
+        );
+
+        const pickupDateObj = new Date(pickupDate);
+        const formattedPickupDate = pickupDateObj.toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+        });
+
+        await sendOrderConfirmationEmail({
+          orderNumber: order.order_number,
+          customerName: customerName,
+          customerEmail: customerEmail,
+          pickupTime: pickupTime,
+          pickupDate: formattedPickupDate,
+          items: emailItems,
+          totalAmount: totalAmount,
+          specialInstructions: specialInstructions,
+          locationName: activeDrop.locations?.name || 'Pickup Location',
+          locationUrl: activeDrop.locations?.location_url || '#',
+        });
+
+        console.log(
+          '✅ Order confirmation email sent for order:',
+          order.order_number
+        );
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail the order if email fails
+      }
+    }
 
     return NextResponse.json({
       success: true,

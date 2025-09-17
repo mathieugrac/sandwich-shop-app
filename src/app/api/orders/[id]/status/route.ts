@@ -40,9 +40,16 @@ export async function PUT(
     // Send status update email only for delivered status (optional)
     if (status === 'delivered') {
       try {
+        // Get client email for status update email
+        const { data: orderWithClient } = await supabase
+          .from('orders')
+          .select('customer_name, clients(email)')
+          .eq('id', orderId)
+          .single();
+
         const emailResult = await sendOrderStatusUpdateEmail(
-          order.customer_email,
-          order.customer_name,
+          orderWithClient?.clients?.email || '',
+          orderWithClient?.customer_name || '',
           order.order_number,
           status
         );

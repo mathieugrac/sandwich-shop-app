@@ -74,24 +74,37 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
     // Check if order already exists for this payment intent (webhook retry handling)
     const { data: existingOrder } = await supabase
       .from('orders')
-      .select('id, order_number')
+      .select('id, order_number, status')
       .eq('payment_intent_id', paymentIntent.id)
       .single();
 
     if (existingOrder) {
-      console.log('✅ Order already exists for payment intent:', {
-        paymentIntentId: paymentIntent.id,
-        orderId: existingOrder.id,
-        orderNumber: existingOrder.order_number,
-      });
-      return; // Order already processed, skip
+      console.log(
+        '✅ Order already exists for payment intent (created by direct API):',
+        {
+          paymentIntentId: paymentIntent.id,
+          orderId: existingOrder.id,
+          orderNumber: existingOrder.order_number,
+          status: existingOrder.status,
+        }
+      );
+
+      // If order exists but status is still 'pending', update it to 'confirmed'
+      if (existingOrder.status === 'pending') {
+        await supabase
+          .from('orders')
+          .update({ status: 'confirmed' })
+          .eq('id', existingOrder.id);
+        console.log('✅ Updated existing order status to confirmed');
+      }
+
+      return; // Order already processed, skip creation
     }
 
-    // Get or create client
+    // Get or create client (by email/phone only)
     const { data: clientId, error: clientError } = await supabase.rpc(
       'get_or_create_client',
       {
-        p_name: metadata.customerName,
         p_email: metadata.customerEmail,
         p_phone: metadata.customerPhone || null,
       }
@@ -119,6 +132,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
         order_number: orderNumber,
         drop_id: metadata.dropId,
         client_id: clientId,
+        customer_name: metadata.customerName, // Store name at order level for delivery bag
         pickup_time: metadata.pickupTime,
         order_date: metadata.pickupDate,
         total_amount: parseFloat(metadata.totalAmount),

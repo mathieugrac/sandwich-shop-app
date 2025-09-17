@@ -177,10 +177,12 @@ function ConfirmationContent() {
                 orderNumber:
                   parsedOrder.orderNumber ||
                   `ORD-${Date.now().toString().slice(-8)}`,
-                customerName: parsedOrder.customerName || 'Unknown',
-                customerEmail: parsedOrder.customerEmail || 'Unknown',
+                customerName: parsedOrder.customerName || 'Unknown Customer',
+                customerEmail:
+                  parsedOrder.customerEmail || 'unknown@example.com',
                 customerPhone: parsedOrder.customerPhone || null,
                 pickupDate:
+                  parsedOrder.dropDate ||
                   parsedOrder.pickupDate ||
                   new Date().toISOString().split('T')[0],
                 pickupTime: parsedOrder.pickupTime || '12:00',
@@ -197,15 +199,32 @@ function ConfirmationContent() {
                 })),
                 status: 'confirmed',
                 createdAt: new Date().toISOString(),
+                dropInfo: parsedOrder.dropInfo || undefined,
               };
             } catch (e) {
               console.error('Error parsing activeOrder:', e);
-              // Create minimal fallback
+              // Try to get customer info from separate localStorage items as fallback
+              const customerInfo = localStorage.getItem('customerInfo');
+              let customerName = 'Unknown Customer';
+              let customerEmail = 'unknown@example.com';
+              let customerPhone = null;
+
+              if (customerInfo) {
+                try {
+                  const parsed = JSON.parse(customerInfo);
+                  customerName = parsed.name || customerName;
+                  customerEmail = parsed.email || customerEmail;
+                  customerPhone = parsed.phone || null;
+                } catch (parseError) {
+                  console.error('Error parsing customerInfo:', parseError);
+                }
+              }
+
               fallbackOrder = {
                 orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
-                customerName: 'Unknown',
-                customerEmail: 'Unknown',
-                customerPhone: null,
+                customerName,
+                customerEmail,
+                customerPhone,
                 pickupDate: new Date().toISOString().split('T')[0],
                 pickupTime: '12:00',
                 totalAmount: 0,
@@ -216,12 +235,28 @@ function ConfirmationContent() {
               };
             }
           } else {
-            // No activeOrder, create minimal fallback
+            // No activeOrder, try to get customer info from separate localStorage items
+            const customerInfo = localStorage.getItem('customerInfo');
+            let customerName = 'Unknown Customer';
+            let customerEmail = 'unknown@example.com';
+            let customerPhone = null;
+
+            if (customerInfo) {
+              try {
+                const parsed = JSON.parse(customerInfo);
+                customerName = parsed.name || customerName;
+                customerEmail = parsed.email || customerEmail;
+                customerPhone = parsed.phone || null;
+              } catch (parseError) {
+                console.error('Error parsing customerInfo:', parseError);
+              }
+            }
+
             fallbackOrder = {
               orderNumber: `ORD-${Date.now().toString().slice(-8)}`,
-              customerName: 'Unknown',
-              customerEmail: 'Unknown',
-              customerPhone: null,
+              customerName,
+              customerEmail,
+              customerPhone,
               pickupDate: new Date().toISOString().split('T')[0],
               pickupTime: '12:00',
               totalAmount: 0,
@@ -336,7 +371,7 @@ function ConfirmationContent() {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Order Number:</span>
                     <span className="font-medium">
-                      {orderData.order.orderNumber || 'Processing...'}
+                      {orderData.order.orderNumber}
                     </span>
                   </div>
                   <div className="flex justify-between">

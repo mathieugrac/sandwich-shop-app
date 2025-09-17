@@ -48,14 +48,15 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   // Load order data from localStorage
   useEffect(() => {
     if (!isInitialized) return;
 
     try {
-      // Check if we have cart items
-      if (items.length === 0) {
+      // Check if we have cart items (but skip if payment was completed)
+      if (items.length === 0 && !paymentCompleted) {
         router.push('/cart');
         return;
       }
@@ -107,7 +108,7 @@ export default function PaymentPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isInitialized, items.length, router]);
+  }, [isInitialized, items.length, router, paymentCompleted]);
 
   // Handle back navigation to checkout
   const handleBackToCheckout = () => {
@@ -124,30 +125,52 @@ export default function PaymentPage() {
     setPaymentProcessing(true);
 
     try {
-      // Save order info for banner display (order will be created by webhook)
-      const activeOrder = {
-        orderNumber: 'Processing...', // Will be updated when webhook processes
-        status: 'pending',
-        customerName: orderData.customerInfo?.name || '',
-        customerEmail: orderData.customerInfo?.email || '',
-        totalAmount: totalPrice || 0,
-        dropDate: orderData.dropInfo?.date || '',
-        pickupTime: orderData.pickupTime,
-        locationName: orderData.dropInfo?.location?.name || '',
-        paymentIntentId: paymentIntentId,
-        timestamp: new Date().toISOString(),
-      };
+      // Create order immediately after payment success
+      console.log('🔄 Creating order after payment success...');
 
-      localStorage.setItem('activeOrder', JSON.stringify(activeOrder));
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerName: orderData.customerInfo?.name || '',
+          customerEmail: orderData.customerInfo?.email || '',
+          customerPhone: orderData.customerInfo?.phone || '',
+          pickupTime: orderData.pickupTime,
+          pickupDate:
+            orderData.dropInfo?.date || new Date().toISOString().split('T')[0],
+          items: items.map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+          })),
+          specialInstructions: comment || '',
+          totalAmount: totalPrice || 0,
+          paymentIntentId: paymentIntentId, // Link to payment
+        }),
+      });
 
-      // Navigate to confirmation page after delay
-      setTimeout(() => {
-        // Clear only payment intent, keep other data for confirmation page fallback
-        localStorage.removeItem('currentPaymentIntent');
-        router.push(`/confirmation?orderId=${paymentIntentId}`);
-      }, 2000);
+      if (!orderResponse.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderResult = await orderResponse.json();
+      console.log('✅ Order created successfully:', orderResult);
+
+      // Mark payment as completed to prevent redirects
+      setPaymentCompleted(true);
+
+      // Navigate to confirmation and clear cart
+      localStorage.removeItem('currentPaymentIntent');
+      clearCart();
+
+      // Don't clear other data yet - let confirmation page handle cleanup
+      // This ensures confirmation page can still access drop info for display
+
+      // Navigate with the actual order ID
+      router.push(`/confirmation?orderId=${orderResult.order.id}`);
     } catch (error) {
-      console.error('Error handling payment success:', error);
+      console.error('❌ Error creating order after payment:', error);
       setError(
         'Payment successful but failed to create order. Please contact support.'
       );

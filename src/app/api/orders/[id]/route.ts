@@ -27,7 +27,6 @@ export async function GET(
       `
         *,
         clients (
-          name,
           email,
           phone
         ),
@@ -71,7 +70,7 @@ export async function GET(
       id: order.id,
       order_number: order.order_number,
       status: order.status, // Add the missing status field
-      customer_name: order.clients?.name || 'Unknown',
+      customer_name: order.customer_name || 'Unknown',
       customer_email: order.clients?.email || 'Unknown',
       customer_phone: order.clients?.phone || '',
       pickup_time: order.pickup_time,
