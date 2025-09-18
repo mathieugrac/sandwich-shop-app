@@ -112,11 +112,9 @@ Does this align with what you want? I'll be your complexity filter and always pu
 
 ### Order Status Flow
 
-- **Pending:** Needs admin confirmation (default state)
-- **Confirmed:** Manually accepted, inventory updated
-- **Prepared:** Sandwich wrapped and ready
-- **Completed:** Delivered and payment received
-- **Canceled**: (…)
+- **Active:** Temporary status for orders being processed (rare)
+- **Confirmed:** Payment received via Stripe, inventory reserved (default state)
+- **Delivered:** Order completed and handed to customer
 
 ---
 
@@ -137,6 +135,7 @@ Does this align with what you want? I'll be your complexity filter and always pu
 - **Authentication:** Supabase Auth (admin only)
 - **Real-time:** Supabase Realtime
 - **File Storage:** Supabase Storage
+- **Payments:** Stripe (with webhook integration)
 
 ### Hosting & Services
 
@@ -153,7 +152,8 @@ Does this align with what you want? I'll be your complexity filter and always pu
 1. **Home Page (`/`)** - View next active drop's menu with real-time stock status
 2. **Cart Page (`/cart`)** - Review items, select pickup time
 3. **Checkout Page (`/checkout`)** - Customer information form with validation
-4. **Confirmation Page (`/confirmation`)** - Order confirmation with order number
+4. **Payment Page** - Stripe payment processing with card input
+5. **Confirmation Page (`/confirmation`)** - Order confirmation with order number
 
 ### Admin Journey
 
@@ -208,24 +208,59 @@ src/
 
 ### API Routes
 
+**Customer-Facing:**
+
 - **GET /api/products:** Fetch active products
-- **GET /api/inventory/[date]:** Fetch inventory for specific date
-- **POST /api/orders:** Create new order with inventory reservation
 - **GET /api/drops/next-active:** Get next active drop and its products
-- **GET /api/drops:** Get all drops
+- **GET /api/drops/[id]/drop-products:** Get products for specific drop
+- **GET /api/drops/[id]/orderable:** Check if drop accepts orders
+- **POST /api/orders:** Create new order with inventory reservation
+
+**Payment Processing:**
+
+- **POST /api/payment/create-intent:** Create Stripe payment intent
+- **POST /api/webhooks/stripe:** Handle Stripe payment confirmations
+
+**Admin-Only:**
+
+- **GET /api/drops:** Get all drops with totals
 - **POST /api/drops:** Create new drop
-- **GET /api/drops/[id]/inventory:** Get inventory for specific drop
-- **PUT /api/drops/[id]/inventory:** Update inventory for specific drop
+- **PUT /api/drops/[id]:** Update drop details
+- **PUT /api/drops/[id]/change-status:** Change drop status
+- **GET /api/drops/admin/upcoming:** Get upcoming drops for admin
+- **GET /api/drops/admin/past:** Get past drops for admin
+- **GET /api/orders/[id]:** Get order details
+- **PUT /api/orders/[id]/status:** Update order status
+- **GET /api/locations:** Get all locations
+- **POST /api/locations:** Create new location
+- **PUT /api/locations/[id]:** Update location
 
 ---
 
 ## ⚙️ Environment Variables
 
 ```bash
-# SupabaseNEXT_PUBLIC_SUPABASE_URL=your_supabase_urlNEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-# Email ServiceRESEND_API_KEY=your_resend_key# App ConfigurationNEXT_PUBLIC_APP_URL=https://yourdomain.comNEXT_PUBLIC_SHOP_NAME="Your Sandwich Shop"NEXT_PUBLIC_SHOP_EMAIL=orders@yourdomain.com
-NEXT_PUBLIC_SHOP_PHONE="+1234567890"# AdminADMIN_EMAIL=admin@yourdomain.com
+
+# Stripe Payments
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Email Service
+RESEND_API_KEY=your_resend_key
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=https://yourdomain.com
+NEXT_PUBLIC_SHOP_NAME="Your Sandwich Shop"
+NEXT_PUBLIC_SHOP_EMAIL=orders@yourdomain.com
+NEXT_PUBLIC_SHOP_PHONE="+1234567890"
+
+# Admin
+ADMIN_EMAIL=admin@yourdomain.com
 ```
 
 ---

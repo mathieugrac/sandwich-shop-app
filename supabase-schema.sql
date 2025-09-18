@@ -52,7 +52,7 @@ CREATE TABLE drops (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_modified_by UUID REFERENCES admin_users(id),
-  status_changed_at TIMESTAMP WITH TIME ZONE
+  status_changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Drop products table (quantities of products available for a specific drop)
@@ -90,7 +90,7 @@ CREATE TABLE orders (
   customer_name VARCHAR(100) NOT NULL, -- Name for delivery bag (order-specific)
   pickup_time TIME NOT NULL, -- 15-min slot within location pickup hours
   order_date DATE NOT NULL,
-  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'confirmed', 'delivered')),
+  status VARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('active', 'confirmed', 'delivered')),
   total_amount DECIMAL(10,2) NOT NULL,
   special_instructions TEXT,
   payment_intent_id TEXT, -- Stripe payment intent ID
@@ -129,42 +129,63 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to get next active drop
-CREATE OR REPLACE FUNCTION get_next_active_drop()
-RETURNS TABLE (id UUID, date DATE, status VARCHAR(20), location_id UUID) AS $$
+-- Function to get admin past drops
+CREATE OR REPLACE FUNCTION get_admin_past_drops()
+RETURNS TABLE (
+  id UUID, 
+  date DATE, 
+  status VARCHAR(20), 
+  location_id UUID, 
+  location_name VARCHAR(100), 
+  status_changed_at TIMESTAMP WITH TIME ZONE,
+  total_available BIGINT
+) AS $$
 BEGIN
   RETURN QUERY
-  SELECT d.id, d.date, d.status, d.location_id
+  SELECT 
+    d.id, 
+    d.date, 
+    d.status, 
+    d.location_id, 
+    l.name as location_name, 
+    d.status_changed_at,
+    COALESCE(SUM(dp.available_quantity), 0) as total_available
   FROM drops d
   JOIN locations l ON d.location_id = l.id
-  WHERE d.status = 'active' 
-    AND d.date >= CURRENT_DATE
-    AND l.active = true
-  ORDER BY d.date ASC
-  LIMIT 1;
+  LEFT JOIN drop_products dp ON d.id = dp.drop_id
+  WHERE d.status IN ('completed', 'cancelled')
+  GROUP BY d.id, d.date, d.status, d.location_id, l.name, d.status_changed_at
+  ORDER BY d.date DESC, d.status ASC;
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to reserve drop product inventory
-CREATE OR REPLACE FUNCTION reserve_drop_product_inventory(
-  p_drop_product_id UUID, p_quantity INTEGER)
-RETURNS BOOLEAN AS $$
-DECLARE
-  available_qty INTEGER;
+-- Function to get admin upcoming drops
+CREATE OR REPLACE FUNCTION get_admin_upcoming_drops()
+RETURNS TABLE (
+  id UUID, 
+  date DATE, 
+  status VARCHAR(20), 
+  location_id UUID, 
+  location_name VARCHAR(100), 
+  status_changed_at TIMESTAMP WITH TIME ZONE,
+  total_available BIGINT
+) AS $$
 BEGIN
-  SELECT available_quantity INTO available_qty
-  FROM drop_products
-  WHERE id = p_drop_product_id;
-  
-  IF available_qty >= p_quantity THEN
-    UPDATE drop_products
-    SET reserved_quantity = reserved_quantity + p_quantity,
-        updated_at = NOW()
-    WHERE id = p_drop_product_id;
-    RETURN TRUE;
-  ELSE
-    RETURN FALSE;
-  END IF;
+  RETURN QUERY
+  SELECT 
+    d.id, 
+    d.date, 
+    d.status, 
+    d.location_id, 
+    l.name as location_name, 
+    d.status_changed_at,
+    COALESCE(SUM(dp.available_quantity), 0) as total_available
+  FROM drops d
+  JOIN locations l ON d.location_id = l.id
+  LEFT JOIN drop_products dp ON d.id = dp.drop_id
+  WHERE d.status IN ('upcoming', 'active')
+  GROUP BY d.id, d.date, d.status, d.location_id, l.name, d.status_changed_at
+  ORDER BY d.date ASC, d.status ASC;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -206,39 +227,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to auto-complete drops after pickup hours
-CREATE OR REPLACE FUNCTION auto_complete_expired_drops()
-RETURNS INTEGER AS $$
-DECLARE
-  completed_count INTEGER := 0;
-  drop_record RECORD;
-BEGIN
-  -- Find drops that should be auto-completed (30 minutes after pickup hours end)
-  FOR drop_record IN
-    SELECT d.id, d.date, l.pickup_hour_end
-    FROM drops d
-    JOIN locations l ON d.location_id = l.id
-    WHERE d.status = 'active'
-      AND d.date <= CURRENT_DATE
-      AND l.pickup_hour_end IS NOT NULL
-  LOOP
-    -- For now, complete drops from previous days
-    -- In production, parse pickup_hour_end and check actual time
-    IF drop_record.date < CURRENT_DATE THEN
-      UPDATE drops 
-      SET status = 'completed', updated_at = NOW()
-      WHERE id = drop_record.id;
-      completed_count := completed_count + 1;
-    END IF;
-  END LOOP;
-  
-  RETURN completed_count;
-END;
-$$ LANGUAGE plpgsql;
-
 -- Function to get or create client (by email/phone only)
 CREATE OR REPLACE FUNCTION get_or_create_client(
-  p_email VARCHAR(255), p_phone VARCHAR(20))
+  p_email text, p_phone text)
 RETURNS UUID AS $$
 DECLARE
   client_id UUID;
@@ -262,6 +253,26 @@ BEGIN
     RETURNING id INTO client_id;
     RETURN client_id;
   END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to release multiple drop products inventory
+CREATE OR REPLACE FUNCTION release_multiple_drop_products(
+  p_order_items JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  item RECORD;
+BEGIN
+  -- Release reserved quantities for all items
+  FOR item IN SELECT * FROM jsonb_array_elements(p_order_items)
+  LOOP
+    UPDATE drop_products
+    SET reserved_quantity = GREATEST(0, reserved_quantity - (item->>'order_quantity')::INTEGER),
+        updated_at = NOW()
+    WHERE id = (item->>'drop_product_id')::UUID;
+  END LOOP;
+  
+  RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql;
 
