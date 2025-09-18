@@ -302,6 +302,33 @@ npm run db:reset-full
 
 The script automatically creates the admin user in Supabase Auth so you can immediately access the admin panel after a database reset.
 
+### 🖼️ Product Image Management
+
+**The Problem:** When you run `supabase db reset`, your product images stored in Supabase Storage get removed and you lose all the image links.
+
+**The Solution:** Automated image seeding!
+
+```bash
+# Seed images only (if you forgot after a reset)
+npm run seed:images
+
+# Full reset with admin user AND images (recommended)
+npm run db:reset-full
+```
+
+**Setting Up Your Images:**
+
+1. **Add your product images** to `public/sample-images/`:
+   - `nutty-beet.jpg` (or .png, .svg)
+   - `umami-mush.jpg`
+   - `burgundy-beef.jpg`
+
+2. **Update the mapping** in `scripts/seed-images.js` if needed
+
+3. **Run the seeding**: Images are automatically uploaded to Supabase Storage and linked in the database
+
+**For Testing:** We've created placeholder SVG images that you can replace with real photos anytime.
+
 ---
 
 ## 🚨 Troubleshooting

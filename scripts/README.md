@@ -48,3 +48,56 @@ If the script fails:
 3. Verify the admin user doesn't already exist in Supabase Studio
 
 The script will skip creation if the user already exists.
+
+## Product Image Management
+
+### `seed-images.js`
+
+Automatically uploads product images to Supabase Storage and creates database records.
+
+**Usage:**
+
+```bash
+# Seed images only
+npm run seed:images
+
+# Or run directly
+node scripts/seed-images.js
+```
+
+**Setup:**
+
+1. Add your product images to `public/sample-images/`
+2. Update the `PRODUCT_IMAGES` mapping in the script if needed
+3. Run the seeding script
+
+### `create-placeholder-images.js`
+
+Creates simple SVG placeholder images for testing.
+
+**Usage:**
+
+```bash
+# Create placeholder images
+npm run setup:placeholders
+
+# Or run directly
+node scripts/create-placeholder-images.js
+```
+
+## Complete Database Reset
+
+### Full Reset with Everything
+
+```bash
+# Reset DB + create admin user + seed images (recommended)
+npm run db:reset-full
+```
+
+This single command:
+
+1. Resets the database schema and data
+2. Creates the admin auth user
+3. Uploads and links product images
+
+**Perfect for daily development!** 🚀

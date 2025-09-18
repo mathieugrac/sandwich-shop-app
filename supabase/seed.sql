@@ -23,9 +23,7 @@ INSERT INTO locations (name, district, address, location_url, pickup_hour_start,
 INSERT INTO products (name, description, category, sell_price, production_cost, sort_order) VALUES
 ('Nutty Beet', 'honey-roasted beetroot, creamy labneh, zaatar, crunchy hazelnuts, pickled oignons and fresh mint', 'sandwich', 9.00, 6.50, 1),
 ('Umami Mush', 'Marinated oyster mushrooms, crispy buckwheat, pickled apple, fresh coriander and miso butter', 'sandwich', 10.00, 7.00, 2),
-('Burgundy Beef', 'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter', 'sandwich', 11.00, 8.50, 3),
-('Fresh Lemonade', 'Homemade lemonade with mint', 'beverage', 3.50, 1.50, 4),
-('Chocolate Brownie', 'Rich chocolate brownie with walnuts', 'dessert', 4.50, 2.00, 5);
+('Burgundy Beef', 'wine-glazed beef cheek, caramelized onions, pickled carrots, arugula and garlic butter', 'sandwich', 11.00, 8.50, 3);
 
 -- Sample drops data (active and upcoming test drops)
 -- Create an active drop for today so orders can be placed
@@ -62,12 +60,10 @@ SELECT
   d.id,
   p.id,
   CASE 
-    WHEN p.name = 'Nutty Beet' THEN 20
-    WHEN p.name = 'Umami Mush' THEN 25
-    WHEN p.name = 'Burgundy Beef' THEN 15
-    WHEN p.name = 'Fresh Lemonade' THEN 30
-    WHEN p.name = 'Chocolate Brownie' THEN 20
-    ELSE 20
+    WHEN p.name = 'Nutty Beet' THEN 8
+    WHEN p.name = 'Umami Mush' THEN 8
+    WHEN p.name = 'Burgundy Beef' THEN 8
+    ELSE 8
   END,
   p.sell_price
 FROM drops d
