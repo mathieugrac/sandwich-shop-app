@@ -1,13 +1,10 @@
 -- Create storage bucket for product images
 
 -- Create the product-images bucket
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+INSERT INTO storage.buckets (id, name)
 VALUES (
   'product-images',
-  'product-images', 
-  true,
-  5242880, -- 5MB limit
-  ARRAY['image/jpeg', 'image/png', 'image/webp']
+  'product-images'
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Create storage policy to allow public access for reading

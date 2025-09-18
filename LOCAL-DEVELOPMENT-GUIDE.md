@@ -274,8 +274,33 @@ LIMIT 1;
 Then reset the database to load the new data:
 
 ```bash
-npx supabase db reset
+# Reset database AND create admin user (recommended)
+npm run db:reset-full
+
+# Or just reset database (you'll need to create admin user manually)
+npm run db:reset
 ```
+
+### 👤 Admin User Management
+
+**The Problem:** When you run `supabase db reset`, your admin user gets removed from Supabase Auth and you have to recreate it manually every time.
+
+**The Solution:** Use our automated script!
+
+```bash
+# Create admin user only (if you forgot after a reset)
+npm run admin:create
+
+# Full reset with admin user creation (recommended)
+npm run db:reset-full
+```
+
+**Admin Credentials:**
+
+- Email: `admin@fome.local`
+- Password: `admin123`
+
+The script automatically creates the admin user in Supabase Auth so you can immediately access the admin panel after a database reset.
 
 ---
 

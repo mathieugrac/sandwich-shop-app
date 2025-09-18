@@ -12,7 +12,10 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:reset": "npx supabase db reset",
+    "db:reset-full": "npx supabase db reset && node scripts/create-admin-user.js",
+    "admin:create": "node scripts/create-admin-user.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -25,7 +28,6 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@stripe/react-stripe-js": "^4.0.0",
     "@stripe/stripe-js": "^7.9.0",
-    "@supabase/supabase-js": "^2.53.0",
     "@tanstack/react-query": "^5.84.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -44,6 +46,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@supabase/supabase-js": "^2.57.4",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
