@@ -47,7 +47,7 @@ export default function PaymentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [orderProcessing, setOrderProcessing] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   // Load order data from localStorage
@@ -112,7 +112,7 @@ export default function PaymentPage() {
 
   // Handle back navigation to checkout
   const handleBackToCheckout = () => {
-    if (paymentProcessing) {
+    if (orderProcessing) {
       // Prevent navigation during payment processing
       return;
     }
@@ -122,7 +122,7 @@ export default function PaymentPage() {
   // Handle successful payment
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     console.log('✅ Payment successful:', paymentIntentId);
-    setPaymentProcessing(true);
+    setOrderProcessing(true);
 
     try {
       // Create order immediately after payment success
@@ -162,7 +162,7 @@ export default function PaymentPage() {
 
       // Navigate to confirmation and clear cart
       localStorage.removeItem('currentPaymentIntent');
-      clearCart();
+      // clearCart();
 
       // Don't clear other data yet - let confirmation page handle cleanup
       // This ensures confirmation page can still access drop info for display
@@ -174,14 +174,14 @@ export default function PaymentPage() {
       setError(
         'Payment successful but failed to create order. Please contact support.'
       );
-      setPaymentProcessing(false);
+      setOrderProcessing(false);
     }
   };
 
   // Handle payment error
   const handlePaymentError = (error: string) => {
     console.error('❌ Payment failed:', error);
-    setPaymentProcessing(false);
+    setOrderProcessing(false);
     // Don't set page-level error - let StripePayment component handle it internally
   };
 
@@ -265,7 +265,7 @@ export default function PaymentPage() {
           </Card>
 
           {/* Payment Section - Second, below order summary */}
-          {showPayment && !paymentProcessing && (
+          {showPayment && !orderProcessing && (
             <StripePayment
               items={items.map(item => ({
                 id: item.id,
@@ -289,12 +289,12 @@ export default function PaymentPage() {
           )}
 
           {/* Payment Processing State */}
-          {paymentProcessing && (
+          {orderProcessing && (
             <Card className="p-5">
               <div className="text-center">
                 <LoadingSpinner />
                 <h3 className="text-lg font-semibold mt-4 mb-2">
-                  Processing Payment...
+                  Processing Order...
                 </h3>
                 <p className="text-gray-600">
                   Please wait while we process your order.

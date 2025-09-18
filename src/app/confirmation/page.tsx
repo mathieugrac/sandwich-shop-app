@@ -300,7 +300,7 @@ function ConfirmationContent() {
       }
     };
 
-    fetchOrderDetails();
+    void fetchOrderDetails();
   }, [orderId]);
 
   const handleBackToHome = () => {
@@ -310,12 +310,11 @@ function ConfirmationContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">Processing your order...</p>
-          <p className="text-sm text-gray-500 mt-2">
-            This may take a few seconds
-          </p>
+        <div className="max-w-[480px] w-full mx-auto bg-white min-h-screen flex flex-col justify-center items-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p className="text-lg text-gray-600">Loading your order...</p>
+          </div>
         </div>
       </div>
     );
