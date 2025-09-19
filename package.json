@@ -17,7 +17,8 @@
     "db:reset-full": "npx supabase db reset && node scripts/create-admin-user.js && node scripts/seed-images.js",
     "admin:create": "node scripts/create-admin-user.js",
     "seed:images": "node scripts/seed-images.js",
-    "setup:placeholders": "node scripts/create-placeholder-images.js"
+    "setup:placeholders": "node scripts/create-placeholder-images.js",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

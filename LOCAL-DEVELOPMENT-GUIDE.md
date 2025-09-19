@@ -22,6 +22,7 @@ Before you start coding each day, make sure:
 - [ ] **Docker Desktop is running** (check the whale icon in your menu bar)
 - [ ] **Supabase services are started** (`npx supabase start`)
 - [ ] **Your Next.js app is running** (`npm run dev`)
+- [ ] **Stripe webhooks are forwarded** (`npm run stripe:listen`) - for payment testing
 - [ ] **You can access Supabase Studio** (http://127.0.0.1:54323)
 
 ---
@@ -39,12 +40,16 @@ npx supabase start
 
 # 3. Start your Next.js application
 npm run dev
+
+# 4. Start Stripe webhook forwarding (for payment testing)
+npm run stripe:listen
 ```
 
 **What happens when you run these commands:**
 
 - `npx supabase start`: Starts all Supabase services in Docker containers
 - `npm run dev`: Starts your Next.js app on http://localhost:3000
+- `npm run stripe:listen`: Forwards Stripe webhooks to your local app for payment testing
 
 ### 🎯 During Development
 
@@ -111,6 +116,7 @@ NEXT_PUBLIC_SHOP_NAME="Fomé Sandwich Shop"
 # Add your Stripe test keys here
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_from_stripe_cli
 ```
 
 ---
@@ -168,6 +174,19 @@ npm run lint
 npm run format
 ```
 
+### 💳 Stripe Development
+
+```bash
+# Start Stripe webhook forwarding (for payment testing)
+npm run stripe:listen
+
+# Test Stripe CLI installation
+stripe --version
+
+# Login to Stripe (one-time setup)
+stripe login
+```
+
 ---
 
 ## 🔍 Testing & Debugging
@@ -176,8 +195,10 @@ npm run format
 
 1. **Visit your app**: http://localhost:3000
 2. **Test order flow**: Add items to cart, go through checkout
-3. **Check database**: Use Supabase Studio to see if data is saved correctly
-4. **Test emails**: Check http://127.0.0.1:54324 for email previews
+3. **Test payments**: Use Stripe test cards (4242 4242 4242 4242) to test payment flow
+4. **Check database**: Use Supabase Studio to see if data is saved correctly
+5. **Test emails**: Check http://127.0.0.1:54324 for email previews
+6. **Monitor webhooks**: Watch terminal output from `npm run stripe:listen` for webhook events
 
 ### 🛠️ Using Supabase Studio
 
@@ -375,6 +396,26 @@ npx supabase start
 npx supabase db reset
 ```
 
+**Problem**: Stripe webhooks not working
+
+```bash
+# Check if Stripe CLI is running
+# Look for "Ready! Your webhook signing secret is whsec_..." message
+
+# If not running, start webhook forwarding
+npm run stripe:listen
+
+# Make sure to copy the webhook secret to your .env.local file
+```
+
+**Problem**: Payment succeeds but order not created
+
+```bash
+# Check webhook terminal output for errors
+# Verify STRIPE_WEBHOOK_SECRET is set in .env.local
+# Check Supabase logs: npx supabase logs
+```
+
 ### 🔍 Debugging Steps
 
 1. **Check Supabase Status**:
@@ -435,11 +476,13 @@ npx supabase db reset
 ## 🎯 Quick Reference Commands
 
 ```bash
-# Daily startup
+# Daily startup (3 terminals)
 npx supabase start && npm run dev
+npm run stripe:listen  # In separate terminal
 
 # Check everything is running
 npx supabase status
+stripe --version
 
 # Reset database (fresh start)
 npx supabase db reset
@@ -452,6 +495,7 @@ npx supabase gen types typescript --local > src/types/database.ts
 
 # Stop everything
 npx supabase stop
+# Ctrl+C in stripe:listen terminal
 ```
 
 ---
