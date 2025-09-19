@@ -10,6 +10,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ArrowLeft } from 'lucide-react';
 import { PageHeader, PageLayout } from '@/components/shared';
 import { StripePayment } from '@/components/checkout/StripePayment';
+import { waitForWebhookOrderCreation } from '@/lib/order-polling';
 
 // Interface for drop information
 interface DropInfo {
@@ -49,6 +50,7 @@ export default function PaymentPage() {
   const [showPayment, setShowPayment] = useState(false);
   const [orderProcessing, setOrderProcessing] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Load order data from localStorage
   useEffect(() => {
@@ -125,56 +127,30 @@ export default function PaymentPage() {
     setOrderProcessing(true);
 
     try {
-      // Create order immediately after payment success
-      console.log('🔄 Creating order after payment success...');
-
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerName: orderData.customerInfo?.name || '',
-          customerEmail: orderData.customerInfo?.email || '',
-          customerPhone: orderData.customerInfo?.phone || '',
-          pickupTime: orderData.pickupTime,
-          pickupDate:
-            orderData.dropInfo?.date || new Date().toISOString().split('T')[0],
-          items: items.map(item => ({
-            id: item.id,
-            quantity: item.quantity,
-          })),
-          specialInstructions: comment || '',
-          totalAmount: totalPrice || 0,
-          paymentIntentId: paymentIntentId, // Link to payment
-        }),
-      });
-
-      if (!orderResponse.ok) {
-        throw new Error('Failed to create order');
-      }
-
-      const orderResult = await orderResponse.json();
-      console.log('✅ Order created successfully:', orderResult);
+      // Wait for webhook to create the order
+      console.log('🔄 Waiting for order creation via webhook...');
+      const orderId = await waitForWebhookOrderCreation(paymentIntentId);
 
       // Mark payment as completed to prevent redirects
       setPaymentCompleted(true);
 
-      // Navigate to confirmation and clear cart
+      // Clean up payment intent
       localStorage.removeItem('currentPaymentIntent');
-      // clearCart();
 
-      // Don't clear other data yet - let confirmation page handle cleanup
-      // This ensures confirmation page can still access drop info for display
-
-      // Navigate with the actual order ID
-      router.push(`/confirmation?orderId=${orderResult.order.id}`);
+      // Navigate to confirmation with the webhook-created order ID
+      console.log(`🎉 Redirecting to confirmation page with order: ${orderId}`);
+      router.push(`/confirmation?orderId=${orderId}`);
     } catch (error) {
-      console.error('❌ Error creating order after payment:', error);
-      setError(
-        'Payment successful but failed to create order. Please contact support.'
-      );
+      console.error('❌ Order creation failed:', error);
       setOrderProcessing(false);
+
+      // Show user-friendly error message
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Order processing failed. Please contact support.';
+
+      setPaymentError(errorMessage);
     }
   };
 
@@ -294,11 +270,33 @@ export default function PaymentPage() {
               <div className="text-center">
                 <LoadingSpinner />
                 <h3 className="text-lg font-semibold mt-4 mb-2">
-                  Processing Order...
+                  Payment successful! Creating your order...
                 </h3>
                 <p className="text-gray-600">
-                  Please wait while we process your order.
+                  This usually takes just a few seconds.
                 </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Payment Error State */}
+          {paymentError && (
+            <Card className="p-5 border-red-200 bg-red-50">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-red-700 mb-2">
+                  Order Processing Failed
+                </h3>
+                <p className="text-red-600 mb-4">{paymentError}</p>
+                <Button
+                  onClick={() => {
+                    setPaymentError(null);
+                    setShowPayment(true);
+                  }}
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Try Again
+                </Button>
               </div>
             </Card>
           )}
