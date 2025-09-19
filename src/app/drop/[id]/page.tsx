@@ -138,10 +138,12 @@ export default function DropPage() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const options: Intl.DateTimeFormatOptions = {
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     };
-    return date.toLocaleDateString('en-US', options);
+    const formattedDate = date.toLocaleDateString('en-US', options);
+    // Add period after the abbreviated month (e.g., "Aug 14" becomes "Aug. 14")
+    return `Pickup on ${formattedDate.replace(/^(\w{3})\s/, '$1. ')}`;
   };
 
   const formatPickupTime = (timeString: string) => {
@@ -160,15 +162,15 @@ export default function DropPage() {
   };
 
   const handleBack = () => {
-    router.back();
+    router.push('/');
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <div className="max-w-[480px] mx-auto bg-white min-h-screen">
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+        <div className="max-w-[480px] mx-auto bg-white min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
             <p className="text-gray-600">Loading drop...</p>
           </div>
         </div>
@@ -238,33 +240,9 @@ export default function DropPage() {
   return (
     <PageLayout>
       <PageHeader
-        title={
-          isDropCompleted
-            ? `${formatDate(dropData.date)}`
-            : `${formatDate(dropData.date)} (${formatPickupTime(dropData.location.pickup_hour_start)}${
-                parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
-                  12 !==
-                parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-                  ? parseInt(
-                      dropData.location.pickup_hour_start.split(':')[0]
-                    ) < 12
-                    ? 'am'
-                    : 'pm'
-                  : ''
-              } - ${formatPickupTime(dropData.location.pickup_hour_end)}${
-                parseInt(dropData.location.pickup_hour_start.split(':')[0]) <
-                  12 ===
-                parseInt(dropData.location.pickup_hour_end.split(':')[0]) < 12
-                  ? parseInt(dropData.location.pickup_hour_end.split(':')[0]) <
-                    12
-                    ? 'am'
-                    : 'pm'
-                  : 'pm'
-              })`
-        }
-        subtitle={`${dropData.location.name}, ${dropData.location.district}`}
-        showMapPin={true}
-        locationUrl={dropData.location.location_url || undefined}
+        title={formatDate(dropData.date)}
+        subtitle={`${dropData.location.name} – ${dropData.location.district}`}
+        showMapPin={false}
         onBackClick={handleBack}
       />
 

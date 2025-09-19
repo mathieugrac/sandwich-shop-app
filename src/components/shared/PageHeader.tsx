@@ -38,8 +38,12 @@ export function PageHeader({
   };
 
   return (
-    <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3 flex justify-between items-center">
-      <Button onClick={handleBack} variant="ghost" size="sm" className="p-2">
+    <div className="sticky top-0 z-40 bg-white border-b border-gray-200 p-3 flex justify-between items-center">
+      <Button
+        onClick={handleBack}
+        variant="ghost"
+        className="w-10 h-10 p-0 flex items-center justify-center"
+      >
         <ArrowLeft className="w-5 h-5" />
       </Button>
 
