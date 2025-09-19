@@ -14,6 +14,7 @@ import { waitForWebhookOrderCreation } from '@/lib/order-polling';
 
 // Interface for drop information
 interface DropInfo {
+  id?: string;
   date: string;
   location: {
     name: string;
@@ -190,9 +191,15 @@ export default function PaymentPage() {
     return (
       <PageLayout>
         <PageHeader
-          title="Payment"
-          subtitle="Processing..."
-          onBackClick={handleBackToCheckout}
+          dropData={{
+            id: '',
+            date: new Date().toISOString(),
+            location: {
+              name: 'Payment',
+              district: 'Processing...',
+            },
+          }}
+          backTarget="/checkout"
         />
         <main className="px-5 py-8">
           <Card className="p-6 text-center">
@@ -206,7 +213,17 @@ export default function PaymentPage() {
 
   return (
     <PageLayout>
-      <PageHeader onBackClick={handleBackToCheckout} />
+      <PageHeader
+        dropData={{
+          id: orderData.dropInfo?.id || '',
+          date: orderData.dropInfo?.date || new Date().toISOString(),
+          location: {
+            name: orderData.dropInfo?.location?.name || 'Payment',
+            district: orderData.dropInfo?.location?.district || '',
+          },
+        }}
+        backTarget="/checkout"
+      />
 
       <main className="px-5 pb-0">
         <div className="space-y-5 pt-5">

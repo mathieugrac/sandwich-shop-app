@@ -242,21 +242,28 @@ export default function CheckoutPage() {
 
   return (
     <PageLayout>
-      <PageHeader
-        title={
-          dropInfo
-            ? `${formatDate(dropInfo.date)} (${formState.pickupTime || 'Select pickup time'})`
-            : 'Customer Information'
-        }
-        subtitle={
-          dropInfo
-            ? `${dropInfo.location.name}, ${dropInfo.location.district}`
-            : undefined
-        }
-        showMapPin={!!dropInfo?.location?.location_url}
-        locationUrl={dropInfo?.location?.location_url}
-        onBackClick={handleBack}
-      />
+      {dropInfo ? (
+        <PageHeader
+          dropData={{
+            id: dropInfo.id || '',
+            date: dropInfo.date,
+            location: dropInfo.location,
+          }}
+          backTarget="/cart"
+        />
+      ) : (
+        <PageHeader
+          dropData={{
+            id: '',
+            date: new Date().toISOString(),
+            location: {
+              name: 'Customer Information',
+              district: '',
+            },
+          }}
+          backTarget="/cart"
+        />
+      )}
 
       <main className="px-5">
         <div className="space-y-5 py-5">
