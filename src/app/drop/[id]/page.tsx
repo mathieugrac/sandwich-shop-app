@@ -135,17 +135,6 @@ export default function DropPage() {
     return dropProductItem?.available_quantity || 0;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'short',
-      day: 'numeric',
-    };
-    const formattedDate = date.toLocaleDateString('en-US', options);
-    // Add period after the abbreviated month (e.g., "Aug 14" becomes "Aug. 14")
-    return `Pickup on ${formattedDate.replace(/^(\w{3})\s/, '$1. ')}`;
-  };
-
   const formatPickupTime = (timeString: string) => {
     // Convert time string (e.g., "14:00") to 12-hour format with am/pm
     const [hours, minutes] = timeString.split(':');
@@ -240,10 +229,12 @@ export default function DropPage() {
   return (
     <PageLayout>
       <PageHeader
-        title={formatDate(dropData.date)}
-        subtitle={`${dropData.location.name} – ${dropData.location.district}`}
-        showMapPin={false}
-        onBackClick={handleBack}
+        dropData={{
+          id: dropData.id,
+          date: dropData.date,
+          location: dropData.location,
+        }}
+        backTarget="/"
       />
 
       <main className="px-5">

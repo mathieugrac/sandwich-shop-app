@@ -45,7 +45,7 @@ export function UpcomingDrops() {
     : [];
 
   return (
-    <Card className="p-2">
+    <Card className="p-2 pb-3">
       <h2 className="text-2xl font-bold text-black mb-2 p-3">Upcoming Drops</h2>
       {validDrops.length === 0 ? (
         <div className="p-3">

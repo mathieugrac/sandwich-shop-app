@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Clock, Squirrel, AlertCircle } from 'lucide-react';
+import { MapPin, Clock, AlertCircle } from 'lucide-react';
 import { PageHeader, PageLayout } from '@/components/shared';
 import { CartItem } from '@/components/customer';
 
@@ -65,13 +65,6 @@ const formatTimeWithAMPM = (timeString: string): string => {
   }
 };
 
-// Function to format pickup time range
-const formatPickupTimeRange = (startTime: string, endTime: string): string => {
-  const startFormatted = formatTimeWithAMPM(startTime);
-  const endFormatted = formatTimeWithAMPM(endTime);
-  return `${startFormatted} - ${endFormatted}`;
-};
-
 export default function CartPage() {
   const router = useRouter();
   const {
@@ -115,16 +108,6 @@ export default function CartPage() {
     dropInfo?.location?.pickup_hour_start,
     dropInfo?.location?.pickup_hour_end,
   ]);
-
-  // Memoized formatting functions
-  const formatDate = useCallback((dateString: string) => {
-    const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = {
-      month: 'long',
-      day: 'numeric',
-    };
-    return date.toLocaleDateString('en-US', options);
-  }, []);
 
   // Load drop information and saved form data from localStorage
   useEffect(() => {
@@ -174,6 +157,16 @@ export default function CartPage() {
     // Comment is now managed by cart context, no need to save separately
   }, [formState.selectedTime]);
 
+  // Redirect to drop page when cart becomes empty
+  useEffect(() => {
+    if (items.length === 0 && dropInfo?.id) {
+      router.push(`/drop/${dropInfo.id}`);
+    } else if (items.length === 0) {
+      // Fallback to home if no drop info
+      router.push('/');
+    }
+  }, [items.length, dropInfo?.id, router]);
+
   // Update form state helper
   const updateFormState = (updates: Partial<typeof formState>) => {
     setFormState(prev => ({ ...prev, ...updates }));
@@ -186,8 +179,14 @@ export default function CartPage() {
 
   // Handle back navigation
   const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
+    // Navigate back to the drop page if we have drop info
+    if (dropInfo?.id) {
+      router.push(`/drop/${dropInfo.id}`);
+    } else {
+      // Fallback to home if no drop info
+      router.push('/');
+    }
+  }, [router, dropInfo?.id]);
 
   // Handle clear cart
   const handleClearCart = useCallback(() => {
@@ -229,9 +228,15 @@ export default function CartPage() {
     return (
       <PageLayout>
         <PageHeader
-          title="Error Loading Order"
-          subtitle="Unable to load drop information"
-          onBackClick={handleBack}
+          dropData={{
+            id: '',
+            date: new Date().toISOString(),
+            location: {
+              name: 'Error Loading Order',
+              district: 'Unable to load drop information',
+            },
+          }}
+          backTarget="/"
         />
         <main className="px-5 py-8">
           <Card className="p-6 text-center">
@@ -247,21 +252,28 @@ export default function CartPage() {
 
   return (
     <PageLayout>
-      <PageHeader
-        title={
-          dropInfo
-            ? `${formatDate(dropInfo.date)} (${formatPickupTimeRange(dropInfo.location.pickup_hour_start, dropInfo.location.pickup_hour_end)})`
-            : 'Your Order'
-        }
-        subtitle={
-          dropInfo
-            ? `${dropInfo.location.name}, ${dropInfo.location.district}`
-            : 'Cart'
-        }
-        showMapPin={!!dropInfo?.location?.location_url}
-        locationUrl={dropInfo?.location?.location_url}
-        onBackClick={handleBack}
-      />
+      {dropInfo ? (
+        <PageHeader
+          dropData={{
+            id: dropInfo.id || '',
+            date: dropInfo.date,
+            location: dropInfo.location,
+          }}
+          backTarget={dropInfo.id ? `/drop/${dropInfo.id}` : '/'}
+        />
+      ) : (
+        <PageHeader
+          dropData={{
+            id: '',
+            date: new Date().toISOString(),
+            location: {
+              name: 'Cart',
+              district: '',
+            },
+          }}
+          backTarget="/"
+        />
+      )}
 
       <main className="px-5 pb-0">
         <div className="space-y-5 pt-5">
@@ -337,29 +349,7 @@ export default function CartPage() {
                     />
                   </div>
                 </>
-              ) : (
-                <div className="text-center py-12">
-                  <Squirrel className="mx-auto h-12 w-12 text-gray-500 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Your cart is empty
-                  </h3>
-                  <p className="text-gray-500 mb-6">
-                    Add some delicious sandwiches to get started!
-                  </p>
-                  <Button
-                    onClick={() => {
-                      if (dropInfo?.id) {
-                        router.push(`/drop/${dropInfo.id}`);
-                      } else {
-                        router.push('/');
-                      }
-                    }}
-                    className="bg-black text-white hover:bg-gray-800"
-                  >
-                    Add Products
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </Card>
           </section>
 
@@ -367,10 +357,9 @@ export default function CartPage() {
             <>
               {/* Pickup Time */}
               <Card className="p-5">
-                <h2 className="text-xl font-semibold mb-1">Pickup Time</h2>
-                <p className="mb-4">
-                  Select a an aproximate time for your order
-                </p>
+                <h2 className="text-xl font-semibold mb-4">
+                  Select a pickup time
+                </h2>
                 <Select
                   value={formState.selectedTime}
                   onValueChange={value =>
@@ -394,35 +383,36 @@ export default function CartPage() {
                     )}
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-gray-500 mt-4">
+                  More explanation here about the pickup: where, how.
+                </p>
               </Card>
+
+              {/* Continue Button */}
+              <div className="pt-5">
+                <Button
+                  onClick={handlePlaceOrder}
+                  disabled={
+                    uiState.isLoading ||
+                    !formState.selectedTime ||
+                    !dropInfo ||
+                    uiState.isValidating
+                  }
+                  className="bg-black hover:bg-black text-white rounded-full px-8 text-lg font-medium shadow-lg hover:cursor-pointer hover:text-opacity-70 h-12 w-full disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:text-opacity-100"
+                  aria-label="Continue to checkout"
+                  size="lg"
+                >
+                  {uiState.isLoading
+                    ? 'Processing...'
+                    : uiState.isValidating
+                      ? 'Validating...'
+                      : `Check Out • €${totalPrice.toFixed(2)}`}
+                </Button>
+              </div>
             </>
           )}
         </div>
       </main>
-
-      {/* Sticky Footer with Continue Button */}
-      {items.length > 0 && (
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 mt-5">
-          <Button
-            onClick={handlePlaceOrder}
-            disabled={
-              uiState.isLoading ||
-              !formState.selectedTime ||
-              !dropInfo ||
-              uiState.isValidating
-            }
-            className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
-            aria-label="Continue to checkout"
-            size="lg"
-          >
-            {uiState.isLoading
-              ? 'Processing...'
-              : uiState.isValidating
-                ? 'Validating...'
-                : `Check Out (€${totalPrice.toFixed(2)})`}
-          </Button>
-        </div>
-      )}
     </PageLayout>
   );
 }

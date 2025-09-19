@@ -8,7 +8,7 @@ export default function Home() {
     <MainLayout>
       <div className="space-y-8 py-4">
         <UpcomingDrops />
-        <p className=" text-md text-gray-500 text-center">
+        <p className=" text-sm text-gray-500 text-center">
           Limited batches. Pre-order only.
         </p>
       </div>

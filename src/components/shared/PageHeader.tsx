@@ -2,40 +2,43 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, MapPin } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
-interface PageHeaderProps {
-  title: string;
-  subtitle?: string;
-  showBackButton?: boolean;
-  showMapPin?: boolean;
-  locationUrl?: string;
-  onBackClick?: () => void;
+interface DropData {
+  id: string;
+  date: string;
+  location: {
+    name: string;
+    district: string;
+  };
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  showBackButton = true,
-  showMapPin = false,
-  locationUrl,
-  onBackClick,
-}: PageHeaderProps) {
+interface PageHeaderProps {
+  dropData: DropData;
+  backTarget: string;
+}
+
+export function PageHeader({ dropData, backTarget }: PageHeaderProps) {
   const router = useRouter();
 
-  const handleBack = () => {
-    if (onBackClick) {
-      onBackClick();
-    } else {
-      router.back();
-    }
+  // Format date exactly like Drop page
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+    };
+    const formattedDate = date.toLocaleDateString('en-US', options);
+    // Add period after the abbreviated month (e.g., "Aug 14" becomes "Aug. 14")
+    return `Pickup on ${formattedDate.replace(/^(\w{3})\s/, '$1. ')}`;
   };
 
-  const handleMapPinClick = () => {
-    if (locationUrl) {
-      window.open(locationUrl, '_blank');
-    }
+  const handleBack = () => {
+    router.push(backTarget);
   };
+
+  const title = formatDate(dropData.date);
+  const subtitle = `${dropData.location.name} – ${dropData.location.district}`;
 
   return (
     <div className="sticky top-0 z-40 bg-white border-b border-gray-200 p-3 flex justify-between items-center">
@@ -52,18 +55,7 @@ export function PageHeader({
         {subtitle && <div className="text-sm text-gray-600">{subtitle}</div>}
       </div>
 
-      {showMapPin && locationUrl ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleMapPinClick}
-          className="p-2"
-        >
-          <MapPin className="w-5 h-5" />
-        </Button>
-      ) : (
-        <div className="w-10" />
-      )}
+      <div className="w-10" />
     </div>
   );
 }
