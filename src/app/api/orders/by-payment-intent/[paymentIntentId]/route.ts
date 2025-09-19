@@ -3,10 +3,10 @@ import { supabase } from '@/lib/supabase/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { paymentIntentId: string } }
+  { params }: { params: Promise<{ paymentIntentId: string }> }
 ) {
   try {
-    const { paymentIntentId } = params;
+    const { paymentIntentId } = await params;
 
     const { data: order, error } = await supabase
       .from('orders')
