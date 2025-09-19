@@ -54,14 +54,17 @@ export function DropItem({ drop }: DropItemProps) {
   return (
     <div
       key={drop.id}
-      className="hover:bg-gray-100/90 transition-colors duration-200 rounded-md p-3"
+      className={`hover:bg-gray-100/90 transition-colors duration-200 rounded-md p-3 ${
+        drop.status === 'active' ? 'cursor-pointer' : ''
+      }`}
+      onClick={drop.status === 'active' ? handlePreOrder : undefined}
     >
       <div className="flex items-center justify-between">
         {/* Date and Location */}
         <div className="flex-1">
           <div className="flex items-center space-x-4">
             {/* Date Display */}
-            <div className="bg-gray-300/50 rounded-md p-3 text-center min-w-[56px]">
+            <div className="bg-gray-300/50 rounded-sm p-3 text-center min-w-[56px]">
               <div className="text-2xl text-gray-800">{day}</div>
               <div className="text-xs text-gray-500 font-medium">{month}</div>
             </div>
@@ -69,30 +72,32 @@ export function DropItem({ drop }: DropItemProps) {
             {/* Location Info */}
             <div className="flex-1">
               <p className="text-md font-semibold text-black">
-                {drop.location.name}, {drop.location.district}
+                {drop.location.name} – {drop.location.district}
               </p>
               {/* Status and Time Remaining */}
               <div className="flex items-center space-x-2 mt-1">
-                <span className={`text-md font-normal ${statusColor}`}>
+                <span
+                  className={`text-md text-gray-600 font-normal ${statusColor}`}
+                >
                   {drop.status === 'active'
-                    ? `${drop.total_available || 0} left 🥪`
-                    : 'Coming Soon'}
+                    ? `🥪 ${drop.total_available || 0} left`
+                    : 'Opening orders soon..'}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col items-end space-y-2">
-          {drop.status === 'active' ? (
-            drop.total_available > 0 ? (
+        {/* Action Buttons - Only show for active drops */}
+        {drop.status === 'active' && (
+          <div className="flex flex-col items-end space-y-2">
+            {drop.total_available > 0 ? (
               <Button
                 onClick={handlePreOrder}
                 className="bg-black hover:bg-gray-800 text-white px-4 py-2 text-md"
                 size="lg"
               >
-                Order now
+                Order
               </Button>
             ) : (
               <Button
@@ -102,18 +107,9 @@ export function DropItem({ drop }: DropItemProps) {
               >
                 Sold Out
               </Button>
-            )
-          ) : (
-            <Button
-              onClick={handleNotifyMe}
-              variant="outline"
-              className="px-4 py-2 text-md"
-              size="lg"
-            >
-              Notify Me
-            </Button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

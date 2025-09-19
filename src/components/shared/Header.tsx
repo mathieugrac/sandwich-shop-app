@@ -6,10 +6,13 @@ export function Header() {
       <img
         src="/logo-fome.svg"
         alt="Fomé"
-        className="mx-auto mb-5 h-16 w-auto"
+        className="mx-auto mb-5 h-18 w-auto"
       />
-      <p className=" text-lg mb-1">Gourmet sandwiches for your Lunch</p>
-      <p className="text-gray-600 text-md">Limited batches, pre-order only</p>
+      <p className="text-lg leading-normal tracking-normal text-gray-700">
+        Gourmet sandwiches,
+        <br />
+        crafted for your lunch.
+      </p>
     </header>
   );
 }

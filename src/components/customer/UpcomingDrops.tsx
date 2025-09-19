@@ -30,7 +30,7 @@ export function UpcomingDrops() {
     return (
       <div className="text-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading upcoming drops...</p>
+        <p className="text-gray-500">Loading calendar...</p>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export function UpcomingDrops() {
     : [];
 
   return (
-    <Card className="p-3">
+    <Card className="p-2">
       <h2 className="text-2xl font-bold text-black mb-2 p-3">Upcoming Drops</h2>
       {validDrops.length === 0 ? (
         <div className="p-3">
@@ -54,7 +54,7 @@ export function UpcomingDrops() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="">
           {validDrops.map(drop => (
             <DropItem key={drop.id} drop={drop} />
           ))}
