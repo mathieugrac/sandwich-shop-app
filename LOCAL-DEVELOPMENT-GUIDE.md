@@ -187,6 +187,44 @@ stripe --version
 stripe login
 ```
 
+## 🔔 Stripe Webhook Setup (Required for Payment Testing)
+
+For payment testing to work properly, you MUST run the Stripe CLI webhook forwarder:
+
+```bash
+# Start webhook forwarding (keep this running during development)
+npm run stripe:listen
+```
+
+**What this does:**
+
+- Forwards Stripe webhooks from their servers to your local app
+- Enables proper order creation flow (same as production)
+- Required for payment testing - orders won't be created without it
+
+**If you forget to run this:**
+
+- Payments will succeed but orders won't be created
+- Users will see "Order creation timeout" error
+- Check console for helpful error messages
+
+**Successful webhook setup looks like this:**
+
+```
+> Ready! Your webhook signing secret is whsec_1234567890abcdef...
+> Listening for events on your account...
+> Forwarding events to http://localhost:3000/api/webhooks/stripe
+```
+
+**Testing webhook connectivity:**
+
+```bash
+# Check if webhook endpoint is accessible
+curl http://localhost:3000/api/webhooks/health
+
+# Should return: {"status":"healthy","timestamp":"...","message":"Webhook endpoint is accessible"}
+```
+
 ---
 
 ## 🔍 Testing & Debugging
