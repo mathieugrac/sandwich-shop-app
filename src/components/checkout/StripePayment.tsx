@@ -123,7 +123,7 @@ function StripePaymentForm({
       <Button
         type="submit"
         disabled={!stripe || isProcessing || isLoading}
-        className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
+        className="mb-4 bg-black hover:bg-black text-white rounded-full px-8 text-lg font-medium shadow-lg hover:cursor-pointer hover:text-opacity-70 h-12 w-full disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:text-opacity-100"
         size="lg"
       >
         {isProcessing ? (
@@ -343,7 +343,7 @@ export function StripePayment({
   }
 
   return (
-    <Card className="p-6 shadow-none">
+    <Card className="p-6">
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold">Payment Details</h2>

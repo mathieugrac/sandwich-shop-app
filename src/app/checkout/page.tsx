@@ -263,7 +263,7 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Order Information */}
-          <Card className="p-5 shadow-none">
+          <Card className="p-5">
             <h2 className="text-xl font-semibold mb-4">
               Where should we send your confirmation?
             </h2>
