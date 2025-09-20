@@ -70,9 +70,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate order number using database function
+    // Generate order number using database function with drop_id
     const { data: orderNumber, error: orderNumberError } = await supabase.rpc(
-      'generate_order_number'
+      'generate_order_number',
+      { p_drop_id: activeDrop.id }
     );
 
     if (orderNumberError) {

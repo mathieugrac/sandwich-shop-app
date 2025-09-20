@@ -377,6 +377,39 @@ ADMIN_EMAIL=admin@yourdomain.com
 
 ---
 
+## 🗄️ Database Deployment Setup
+
+### **✅ SUPABASE CLI CONFIGURATION:**
+
+**Current Setup Status:**
+
+- **Supabase CLI:** Installed and configured
+- **Linked Project:** `fome-sandwich-shop` (tutzpfqwiqhlpletexjg)
+- **Migration Status:** Local and remote databases are synced
+- **Deployment Method:** `npx supabase db push` (NOT manual schema copying)
+
+**Key Commands:**
+
+```bash
+# Check project status
+npx supabase projects list
+# Should show: ● fome-sandwich-shop (linked)
+
+# Check migration sync status
+npx supabase migration list
+# Should show matching timestamps for local/remote
+
+# Deploy schema changes to production
+npx supabase db push
+
+# Check for schema differences
+npx supabase db diff --linked
+```
+
+**⚠️ IMPORTANT:** This project uses Supabase CLI for database management. Always use migration files and `supabase db push` for deployment, never manual SQL copying to production.
+
+---
+
 ### **🚨 CRITICAL SECURITY TASK - ROTATE API KEYS:**
 
 **URGENT:** API keys were exposed in Git history and need to be rotated:
