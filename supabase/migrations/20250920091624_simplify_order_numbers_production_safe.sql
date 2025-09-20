@@ -1,17 +1,13 @@
--- Migration: Simplify Order Numbers to YYMMDD-NNN format
--- This migration changes order numbers from ORD-YYYYMMDD-XXXX to YYMMDD-NNN
+-- Migration: Simplify Order Numbers to YYMMDD-NNN format (Production Safe)
+-- This migration adds the new functionality without breaking existing data
 
 -- Step 1: Create table to track sequential numbers per drop date
-CREATE TABLE order_sequences (
+CREATE TABLE IF NOT EXISTS order_sequences (
   drop_date DATE PRIMARY KEY,
   next_sequence INTEGER DEFAULT 1
 );
 
--- Step 2: Update the order_number column size (optional optimization)
--- From VARCHAR(20) to VARCHAR(10) since YYMMDD-NNN = 10 characters max
-ALTER TABLE orders ALTER COLUMN order_number TYPE VARCHAR(10);
-
--- Step 3: Replace the generate_order_number function
+-- Step 2: Replace the generate_order_number function
 -- New function takes drop_id parameter and uses drop date + sequential numbering
 CREATE OR REPLACE FUNCTION generate_order_number(p_drop_id UUID)
 RETURNS TEXT AS $$
@@ -42,6 +38,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Step 4: Add comment for documentation
+-- Step 3: Add comments for documentation
 COMMENT ON FUNCTION generate_order_number(UUID) IS 'Generates sequential order numbers in YYMMDD-NNN format based on drop date';
 COMMENT ON TABLE order_sequences IS 'Tracks sequential order numbering per drop date';
+
+-- Note: Keeping order_number as VARCHAR(20) to support existing orders
+-- New orders will use the shorter format, existing orders remain unchanged
