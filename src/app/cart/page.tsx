@@ -389,7 +389,7 @@ export default function CartPage() {
               </Card>
 
               {/* Continue Button */}
-              <div className="pt-5">
+              <div className="pt-2">
                 <Button
                   onClick={handlePlaceOrder}
                   disabled={

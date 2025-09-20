@@ -12,7 +12,6 @@ export interface CartItem {
 export interface CustomerInfo {
   name: string;
   email: string;
-  phone?: string;
   pickupTime: string;
   pickupDate: string;
   specialInstructions?: string;

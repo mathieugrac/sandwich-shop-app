@@ -28,7 +28,6 @@ interface DropInfo {
 interface CustomerInfo {
   name: string;
   email: string;
-  phone: string;
 }
 
 export default function CheckoutPage() {
@@ -40,7 +39,6 @@ export default function CheckoutPage() {
     customerInfo: {
       name: '',
       email: '',
-      phone: '',
     },
     pickupTime: '',
   });
@@ -148,34 +146,8 @@ export default function CheckoutPage() {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Phone validation (optional but if provided, must be valid)
-    if (formState.customerInfo.phone.trim()) {
-      // More permissive regex for international numbers
-      const phoneRegex = /^[\+]?[1-9][\d\s\-\(\)\.]{7,20}$/;
-      if (!phoneRegex.test(formState.customerInfo.phone.trim())) {
-        newErrors.phone = 'Please enter a valid phone number';
-      }
-    }
-
     updateUiState({ errors: newErrors });
     return Object.keys(newErrors).length === 0;
-  };
-
-  // Format phone number on submit
-  const formatPhoneNumber = (phone: string): string => {
-    // Remove all non-digits except +
-    const cleaned = phone.replace(/[^\d+]/g, '');
-
-    // Basic international formatting
-    if (cleaned.startsWith('+')) {
-      return cleaned;
-    } else if (cleaned.startsWith('00')) {
-      return '+' + cleaned.substring(2);
-    } else if (cleaned.startsWith('1') && cleaned.length === 11) {
-      return '+1' + cleaned.substring(1);
-    } else {
-      return cleaned; // Return as-is for other formats
-    }
   };
 
   // Handle form submission - now redirects to payment page
@@ -186,15 +158,8 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Format phone number and save customer info
-    const formattedPhone = formState.customerInfo.phone.trim()
-      ? formatPhoneNumber(formState.customerInfo.phone.trim())
-      : '';
-
-    saveCustomerInfo({
-      ...formState.customerInfo,
-      phone: formattedPhone,
-    });
+    // Save customer info
+    saveCustomerInfo(formState.customerInfo);
 
     // Redirect to payment page
     router.push('/payment');
@@ -245,7 +210,7 @@ export default function CheckoutPage() {
       {dropInfo ? (
         <PageHeader
           dropData={{
-            id: dropInfo.id || '',
+            id: '',
             date: dropInfo.date,
             location: dropInfo.location,
           }}
@@ -280,7 +245,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Name for Order */}
-          <Card className="p-5 shadow-none">
+          <Card className="p-5">
             <h2 className="text-xl font-semibold mb-4">
               Which name on your order?
             </h2>
@@ -317,35 +282,15 @@ export default function CheckoutPage() {
                   <p className="text-sm text-red-600">{uiState.errors.email}</p>
                 )}
               </div>
-
-              {/* Phone */}
-              <div className="space-y-2">
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formState.customerInfo.phone}
-                  onChange={e => handleInputChange('phone', e.target.value)}
-                  placeholder="+351 912 345 678 (optional)"
-                  className={uiState.errors.phone ? 'border-red-500' : ''}
-                />
-                {uiState.errors.phone && (
-                  <p className="text-sm text-red-600">{uiState.errors.phone}</p>
-                )}
-                {/* Description */}
-                <p className="text-sm text-gray-600">
-                  Just in case we need to reach you for the order
-                </p>
-              </div>
             </form>
           </Card>
 
-          {/* Customer Info and Submit */}
-          <Card className="p-5 shadow-none">
-            {/* Submit Button */}
+          {/* Submit Button */}
+          <div className="pt-2">
             <Button
               type="submit"
               disabled={uiState.isLoading || uiState.isValidatingDrop}
-              className="w-full bg-black text-white py-4 text-lg font-medium rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="bg-black hover:bg-black text-white rounded-full px-8 text-lg font-medium shadow-lg hover:cursor-pointer hover:text-opacity-70 h-12 w-full disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:text-opacity-100"
               onClick={handleSubmit}
               size="lg"
             >
@@ -360,14 +305,7 @@ export default function CheckoutPage() {
                 'Continue to payment'
               )}
             </Button>
-
-            {/* Payment Information - Below button, centered */}
-            <div className="mt-4 text-center">
-              <span className="text-gray-600 text-sm">
-                Secure online payment with Stripe
-              </span>
-            </div>
-          </Card>
+          </div>
         </div>
       </main>
     </PageLayout>

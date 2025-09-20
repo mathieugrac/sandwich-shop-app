@@ -28,7 +28,6 @@ interface DropInfo {
 interface CustomerInfo {
   name: string;
   email: string;
-  phone: string;
 }
 
 export default function PaymentPage() {
@@ -269,7 +268,6 @@ export default function PaymentPage() {
               customerInfo={{
                 name: orderData.customerInfo?.name || '',
                 email: orderData.customerInfo?.email || '',
-                phone: orderData.customerInfo?.phone || undefined,
                 pickupTime: orderData.pickupTime,
                 pickupDate:
                   orderData.dropInfo?.date ||
