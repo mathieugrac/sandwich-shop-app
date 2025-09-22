@@ -164,6 +164,7 @@ scripts/                       # Utility scripts
   - Component interfaces required for all props
 - **Code Review Criteria**: Trust AI judgment for technical quality standards. Maintain TypeScript strict mode, existing component interface patterns, and established codebase conventions. Prioritize project goals over perfect code structure.
 - **Documentation Level**: High-level function/component documentation. Update comprehensive guides for significant changes, maintaining human-readable friendly format.
+- **Agent Document Maintenance**: **CRITICAL** - The agent must regularly update this Agent.md document whenever making changes to the codebase to ensure it accurately reflects the current state of the project. This includes updating technology versions, architectural patterns, component organization, business logic changes, and any new development practices or constraints discovered during work.
 - **Testing Requirements**: Continue current manual testing approach with custom scripts for critical flows (e.g., payment testing). No formal automated testing framework needed at this time.
 
 ### Development Workflow
@@ -295,3 +296,9 @@ scripts/                       # Utility scripts
 ### 🎯 Agent Ready for Collaboration
 
 This configuration provides AI assistants with comprehensive context for effective collaboration on the Fomé sandwich shop application, with clear boundaries and collaborative processes established.
+
+---
+
+**Configuration Status**: Generated/Reviewed/Active  
+**Last Updated**: September 22, 2025  
+**Project Phase**: Pre-Production (MVP Development Complete, Testing & Refinement Phase)
