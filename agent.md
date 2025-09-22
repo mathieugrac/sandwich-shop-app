@@ -164,7 +164,7 @@ scripts/                       # Utility scripts
   - Component interfaces required for all props
 - **Code Review Criteria**: Trust AI judgment for technical quality standards. Maintain TypeScript strict mode, existing component interface patterns, and established codebase conventions. Prioritize project goals over perfect code structure.
 - **Documentation Level**: High-level function/component documentation. Update comprehensive guides for significant changes, maintaining human-readable friendly format.
-- **Agent Document Maintenance**: **CRITICAL** - The agent must regularly update this Agent.md document whenever making changes to the codebase to ensure it accurately reflects the current state of the project. This includes updating technology versions, architectural patterns, component organization, business logic changes, and any new development practices or constraints discovered during work.
+- **Agent Document Maintenance**: The agent must regularly update this Agent.md document whenever making changes to the codebase to ensure it accurately reflects the current state of the project. This includes updating technology versions, architectural patterns, component organization, business logic changes, and any new development practices or constraints discovered during work.
 - **Testing Requirements**: Continue current manual testing approach with custom scripts for critical flows (e.g., payment testing). No formal automated testing framework needed at this time.
 
 ### Development Workflow
@@ -216,6 +216,26 @@ scripts/                       # Utility scripts
   - Implemented Stripe for payment processing with webhook validation
   - Selected Shadcn/UI for consistent, accessible component library
 - **Pattern Recognition**: Identify user preferences for simplicity, detect over-engineering tendencies, recognize business priorities over technical perfection.
+
+### Decision Log & Context
+
+- **Purpose**: Maintain institutional knowledge by recording significant technical and strategic decisions with their reasoning and context
+- **Scope**: Architecture changes, technology choices, business logic decisions, UX patterns, and development workflow modifications
+- **Format**: Structured entries with date, decision, reasoning, impact, and alternatives considered (see GUIDE-DECISION-LOG-FORMAT.md for detailed format examples)
+
+#### Technical Decisions
+
+_AI agents should document significant technical decisions here following the established format_
+
+#### Strategic Decisions
+
+_AI agents should document business and strategic decisions here following the established format_
+
+#### Agent Guidelines
+
+- **Recording Criteria**: Document decisions that affect system architecture, technology stack, business logic, user experience patterns, or development processes
+- **Context Depth**: Provide sufficient reasoning that future AI agents can understand decisions without additional explanation
+- **Maintenance**: Add entries immediately after decisions, update status when circumstances change, review relevance during related code modifications
 
 ## Boundaries & Constraints
 
