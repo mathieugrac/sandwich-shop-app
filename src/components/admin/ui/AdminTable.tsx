@@ -33,7 +33,7 @@ const AdminTableHeader = forwardRef<
 >(({ className, ...props }, ref) => (
   <TableHeader
     ref={ref}
-    className={cn('bg-gray-50 border-b-2 border-gray-200', className)}
+    className={cn('bg-gray-50 border border-gray-200 px-3', className)}
     {...props}
   />
 ));
@@ -47,9 +47,9 @@ const AdminTableHead = forwardRef<
   <TableHead
     ref={ref}
     className={cn(
-      'font-semibold text-gray-900 text-sm',
-      'px-6 py-4',
-      'first:pl-6 last:pr-6',
+      'font-semibold text-[#555] text-xs',
+      'px-3 py-3',
+      'first:pl-4 last:pr-4',
       className
     )}
     {...props}
@@ -99,7 +99,11 @@ const AdminTableCell = forwardRef<
 >(({ className, ...props }, ref) => (
   <TableCell
     ref={ref}
-    className={cn('px-6 py-4 text-sm', 'first:pl-6 last:pr-6', className)}
+    className={cn(
+      'px-3 py-3 text-[14px] text-[#111] align-middle',
+      'first:pl-4 last:pr-4',
+      className
+    )}
     {...props}
   />
 ));

@@ -17,8 +17,9 @@ const AdminCard = forwardRef<
   <Card
     ref={ref}
     className={cn(
-      'border border-gray-200 shadow-sm bg-white',
+      'border border-gray-200 shadow-xs bg-white',
       'rounded-lg overflow-hidden',
+      'py-0', // Override default py-6 from base Card
       className
     )}
     {...props}
@@ -70,7 +71,7 @@ const AdminCardContent = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <CardContent ref={ref} className={cn('px-6 py-4', className)} {...props} />
+  <CardContent ref={ref} className={cn('px-6', className)} {...props} />
 ));
 AdminCardContent.displayName = 'AdminCardContent';
 

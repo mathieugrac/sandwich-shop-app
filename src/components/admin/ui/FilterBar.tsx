@@ -45,12 +45,15 @@ const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
             <AdminButton
               variant="outline"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 flex-shrink-0"
+              className={cn(
+                'flex items-center gap-2 flex-shrink-0 h-10 px-4 border-gray-300',
+                showFilters && 'bg-gray-50 border-gray-400'
+              )}
             >
               <Filter className="w-4 h-4" />
-              Filters
+              <span className="text-sm">Filters</span>
               {filters.some(f => f.active) && (
-                <span className="bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                <span className="bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
                   {filters.filter(f => f.active).length}
                 </span>
               )}
@@ -59,18 +62,22 @@ const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
 
           {/* Search input - takes all available space */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             <AdminInput
               type="text"
               placeholder={searchPlaceholder}
               value={searchValue}
               onChange={e => onSearchChange?.(e.target.value)}
-              className="pl-10"
+              className={cn(
+                'pl-10 h-10 border-gray-300 focus:border-gray-400 focus:ring-1 focus:ring-gray-400',
+                searchValue && 'pr-10'
+              )}
             />
             {searchValue && (
               <button
                 onClick={() => onSearchChange?.('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150 p-0.5 rounded-sm hover:bg-gray-100"
+                type="button"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -83,33 +90,35 @@ const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
 
         {/* Filter options */}
         {showFilters && filters.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border">
-            <span className="text-sm font-medium text-gray-700 mr-2">
+          <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <span className="text-sm font-medium text-gray-700 mr-2 flex-shrink-0">
               Filter by:
             </span>
-            {filters.map(filter => (
-              <AdminButton
-                key={filter.value}
-                variant={filter.active ? 'admin-primary' : 'outline'}
-                size="sm"
-                onClick={() => onFilterChange?.(filter.value)}
-                className="text-xs"
-              >
-                {filter.label}
-              </AdminButton>
-            ))}
-            {filters.some(f => f.active) && (
-              <AdminButton
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  filters.forEach(f => f.active && onFilterChange?.(f.value))
-                }
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Clear all
-              </AdminButton>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {filters.map(filter => (
+                <AdminButton
+                  key={filter.value}
+                  variant={filter.active ? 'admin-primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onFilterChange?.(filter.value)}
+                  className="text-xs h-8 px-3"
+                >
+                  {filter.label}
+                </AdminButton>
+              ))}
+              {filters.some(f => f.active) && (
+                <AdminButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    filters.forEach(f => f.active && onFilterChange?.(f.value))
+                  }
+                  className="text-xs text-gray-500 hover:text-gray-700 h-8 px-3"
+                >
+                  Clear all
+                </AdminButton>
+              )}
+            </div>
           </div>
         )}
       </div>

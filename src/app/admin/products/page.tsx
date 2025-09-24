@@ -402,8 +402,8 @@ export default function ProductsPage() {
               {filteredProducts.map(product => (
                 <AdminTableRow key={product.id}>
                   <AdminTableCell>
-                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                      <ImageIcon className="w-4 h-4 text-gray-400" />
                     </div>
                   </AdminTableCell>
                   <AdminTableCell className="font-medium">
