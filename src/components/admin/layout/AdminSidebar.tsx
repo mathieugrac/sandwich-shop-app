@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { forwardRef } from 'react';
+import Image from 'next/image';
 
 interface AdminSidebarProps {
   className?: string;
@@ -43,6 +44,11 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         label: 'Dashboard',
       },
       {
+        href: '/admin/delivery',
+        icon: Truck,
+        label: 'Delivery',
+      },
+      {
         href: '/admin/drops',
         icon: Calendar,
         label: 'Drops',
@@ -51,11 +57,6 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         href: '/admin/products',
         icon: Package,
         label: 'Products',
-      },
-      {
-        href: '/admin/delivery',
-        icon: Truck,
-        label: 'Delivery',
       },
       {
         href: '/admin/clients',
@@ -79,23 +80,38 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
       },
     ];
 
+    const bottomMenuItems = [
+      {
+        href: '#logout',
+        icon: LogOut,
+        label: 'Logout',
+        onClick: handleLogout,
+      },
+    ];
+
     return (
       <div
         ref={ref}
         className={cn(
-          'flex flex-col h-full bg-white border-r border-gray-200',
+          'flex flex-col h-full bg-gray-100 border-r border-gray-200',
           'w-64 fixed left-0 top-0 z-40',
           'lg:relative lg:z-0',
           className
         )}
       >
         {/* Logo/Brand */}
-        <div className="flex items-center justify-center h-16 px-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Fomé Admin</h1>
+        <div className="flex items-center pt-6 pr-7 pb-3 pl-7">
+          <Image
+            src="/logo-kusack.svg"
+            alt="Kusack Logo"
+            width={120}
+            height={47}
+            className="h-10 w-auto"
+          />
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           {menuItems.map(item => (
             <MenuItem
               key={item.href}
@@ -107,7 +123,7 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         </nav>
 
         {/* Bottom actions */}
-        <div className="p-4 border-t border-gray-200 space-y-2">
+        <div className="px-4 pb-4 space-y-1">
           <AdminButton
             variant="outline"
             className="w-full justify-start"
@@ -117,14 +133,19 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
             View Store
           </AdminButton>
 
-          <AdminButton
-            variant="ghost"
-            className="w-full justify-start text-gray-600 hover:text-gray-900"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </AdminButton>
+          {bottomMenuItems.map(item => (
+            <MenuItem
+              key={item.href}
+              href={item.href}
+              icon={item.icon}
+              label={item.label}
+              className="cursor-pointer"
+              onClick={e => {
+                e.preventDefault();
+                item.onClick?.();
+              }}
+            />
+          ))}
         </div>
       </div>
     );

@@ -2,29 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
 import type { Database } from '@/types/database';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  AdminPageTemplate,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableHead,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+  AdminCard,
+  AdminCardContent,
+  AdminButton,
+  AdminBadge,
+  AdminInput,
+  AdminLabel,
+  FilterBar,
+  FilterOption,
+} from '@/components/admin';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +30,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  ArrowLeft,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Plus,
   Edit,
   Trash2,
@@ -49,9 +52,12 @@ type Product = Database['public']['Tables']['products']['Row'];
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [searchValue, setSearchValue] = useState('');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -71,6 +77,29 @@ export default function ProductsPage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Filter products based on search and filters
+  useEffect(() => {
+    let filtered = products;
+
+    // Apply search filter
+    if (searchValue) {
+      filtered = filtered.filter(
+        product =>
+          product.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+          product.description?.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    }
+
+    // Apply category filters
+    if (activeFilters.length > 0) {
+      filtered = filtered.filter(product =>
+        activeFilters.includes(product.category || 'sandwich')
+      );
+    }
+
+    setFilteredProducts(filtered);
+  }, [products, searchValue, activeFilters]);
 
   const loadProducts = async () => {
     try {
@@ -293,6 +322,38 @@ export default function ProductsPage() {
     }
   };
 
+  // Filter options for the filter bar
+  const filterOptions: FilterOption[] = [
+    {
+      label: 'Sandwich',
+      value: 'sandwich',
+      active: activeFilters.includes('sandwich'),
+    },
+    {
+      label: 'Side',
+      value: 'side',
+      active: activeFilters.includes('side'),
+    },
+    {
+      label: 'Dessert',
+      value: 'dessert',
+      active: activeFilters.includes('dessert'),
+    },
+    {
+      label: 'Beverage',
+      value: 'beverage',
+      active: activeFilters.includes('beverage'),
+    },
+  ];
+
+  const handleFilterChange = (filterValue: string) => {
+    setActiveFilters(prev =>
+      prev.includes(filterValue)
+        ? prev.filter(f => f !== filterValue)
+        : [...prev, filterValue]
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -305,310 +366,299 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => router.push('/admin/dashboard')}
-              variant="ghost"
-              size="sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Products</h1>
-              <p className="text-gray-600">Manage your sandwich menu</p>
+    <AdminPageTemplate
+      title="Products"
+      subtitle="Manage your sandwich menu"
+      primaryAction={{
+        label: 'Add Product',
+        onClick: openCreateModal,
+        icon: Plus,
+      }}
+      showFilterBar={true}
+      searchValue={searchValue}
+      onSearchChange={setSearchValue}
+      searchPlaceholder="Search products..."
+      filters={filterOptions}
+      onFilterChange={handleFilterChange}
+    >
+      {/* Products Table */}
+      <AdminCard>
+        <AdminCardContent className="p-0">
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead>Image</AdminTableHead>
+                <AdminTableHead>Name</AdminTableHead>
+                <AdminTableHead>Description</AdminTableHead>
+                <AdminTableHead>Selling Price</AdminTableHead>
+                <AdminTableHead>Production Cost</AdminTableHead>
+                <AdminTableHead>Category</AdminTableHead>
+                <AdminTableHead>Status</AdminTableHead>
+                <AdminTableHead>Sort Order</AdminTableHead>
+                <AdminTableHead className="text-right">Actions</AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {filteredProducts.map(product => (
+                <AdminTableRow key={product.id}>
+                  <AdminTableCell>
+                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <ImageIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell className="font-medium">
+                    {product.name}
+                  </AdminTableCell>
+                  <AdminTableCell className="max-w-xs truncate">
+                    {product.description || '-'}
+                  </AdminTableCell>
+                  <AdminTableCell>€{product.sell_price}</AdminTableCell>
+                  <AdminTableCell>€{product.production_cost}</AdminTableCell>
+                  <AdminTableCell>
+                    <AdminBadge variant="outline">
+                      {product.category}
+                    </AdminBadge>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <AdminBadge
+                      variant={product.active ? 'success' : 'secondary'}
+                    >
+                      {product.active ? 'Active' : 'Inactive'}
+                    </AdminBadge>
+                  </AdminTableCell>
+                  <AdminTableCell>{product.sort_order}</AdminTableCell>
+                  <AdminTableCell className="text-right">
+                    <div className="flex justify-end space-x-2">
+                      <AdminButton
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(product)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </AdminButton>
+                      <AdminButton
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => deleteProduct(product.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </AdminButton>
+                    </div>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminCardContent>
+      </AdminCard>
+
+      {/* Create/Edit Modal */}
+      <Dialog
+        open={showCreateModal || !!editingProduct}
+        onOpenChange={closeModal}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingProduct ? 'Edit Product' : 'Create Product'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingProduct
+                ? 'Update product information'
+                : 'Add a new product to your menu'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Image Upload */}
+            <div className="space-y-3">
+              <AdminLabel htmlFor="image">Product Image</AdminLabel>
+              <div className="mt-2">
+                {imagePreview ? (
+                  <div className="relative">
+                    <Image
+                      src={imagePreview}
+                      alt="Preview"
+                      width={200}
+                      height={200}
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <AdminButton
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        setSelectedImage(null);
+                        setImagePreview(null);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </AdminButton>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600 mb-2">
+                      Click to upload an image
+                    </p>
+                    <AdminInput
+                      id="image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <AdminButton
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('image')?.click()}
+                    >
+                      Choose Image
+                    </AdminButton>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <Button
-            onClick={openCreateModal}
-            className="bg-black hover:bg-gray-800"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Product
-          </Button>
-        </div>
 
-        {/* Products Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Products</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Image</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Selling Price</TableHead>
-                  <TableHead>Production Cost</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sort Order</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map(product => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                        <ImageIcon className="w-6 h-6 text-gray-400" />
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {product.name}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {product.description || '-'}
-                    </TableCell>
-                    <TableCell>€{product.sell_price}</TableCell>
-                    <TableCell>€{product.production_cost}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{product.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={product.active ? 'default' : 'secondary'}>
-                        {product.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{product.sort_order}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEditModal(product)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteProduct(product.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+            <div className="space-y-3">
+              <AdminLabel htmlFor="name">Name</AdminLabel>
+              <AdminInput
+                id="name"
+                value={formData.name}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="Product name"
+              />
+            </div>
 
-        {/* Create/Edit Modal */}
-        <Dialog
-          open={showCreateModal || !!editingProduct}
-          onOpenChange={closeModal}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingProduct ? 'Edit Product' : 'Create Product'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingProduct
-                  ? 'Update product information'
-                  : 'Add a new product to your menu'}
-              </DialogDescription>
-            </DialogHeader>
+            <div className="space-y-3">
+              <AdminLabel htmlFor="description">Description</AdminLabel>
+              <AdminInput
+                id="description"
+                value={formData.description}
+                onChange={e =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Product description"
+              />
+            </div>
 
-            <div className="space-y-4">
-              {/* Image Upload */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
-                <Label htmlFor="image">Product Image</Label>
-                <div className="mt-2">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <Image
-                        src={imagePreview}
-                        alt="Preview"
-                        width={200}
-                        height={200}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setSelectedImage(null);
-                          setImagePreview(null);
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-600 mb-2">
-                        Click to upload an image
-                      </p>
-                      <Input
-                        id="image"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageSelect}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          document.getElementById('image')?.click()
-                        }
-                      >
-                        Choose Image
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
+                <AdminLabel htmlFor="sell_price">Selling Price (€)</AdminLabel>
+                <AdminInput
+                  id="sell_price"
+                  type="number"
+                  step="0.01"
+                  value={formData.sell_price}
                   onChange={e =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({ ...formData, sell_price: e.target.value })
                   }
-                  placeholder="Product name"
+                  placeholder="0.00"
                 />
               </div>
 
               <div className="space-y-3">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
+                <AdminLabel htmlFor="production_cost">
+                  Production Cost (€)
+                </AdminLabel>
+                <AdminInput
+                  id="production_cost"
+                  type="number"
+                  step="0.01"
+                  value={formData.production_cost}
                   onChange={e =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  placeholder="Product description"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label htmlFor="sell_price">Selling Price (€)</Label>
-                  <Input
-                    id="sell_price"
-                    type="number"
-                    step="0.01"
-                    value={formData.sell_price}
-                    onChange={e =>
-                      setFormData({ ...formData, sell_price: e.target.value })
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label htmlFor="production_cost">Production Cost (€)</Label>
-                  <Input
-                    id="production_cost"
-                    type="number"
-                    step="0.01"
-                    value={formData.production_cost}
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        production_cost: e.target.value,
-                      })
-                    }
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={value =>
                     setFormData({
                       ...formData,
-                      category: value as
-                        | 'sandwich'
-                        | 'side'
-                        | 'dessert'
-                        | 'beverage',
+                      production_cost: e.target.value,
                     })
                   }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sandwich">Sandwich</SelectItem>
-                    <SelectItem value="side">Side</SelectItem>
-                    <SelectItem value="dessert">Dessert</SelectItem>
-                    <SelectItem value="beverage">Beverage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <Label htmlFor="sort_order">Sort Order</Label>
-                  <Input
-                    id="sort_order"
-                    type="number"
-                    value={formData.sort_order}
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        sort_order: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center space-x-2 pt-6">
-                  <input
-                    id="active"
-                    type="checkbox"
-                    checked={formData.active}
-                    onChange={e =>
-                      setFormData({ ...formData, active: e.target.checked })
-                    }
-                    className="rounded"
-                  />
-                  <Label htmlFor="active">Active</Label>
-                </div>
+                  placeholder="0.00"
+                />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button onClick={closeModal} variant="outline">
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={saveProduct}
-                className="bg-black hover:bg-gray-800"
-                disabled={uploadingImage}
+            <div className="space-y-3">
+              <AdminLabel htmlFor="category">Category</AdminLabel>
+              <Select
+                value={formData.category}
+                onValueChange={value =>
+                  setFormData({
+                    ...formData,
+                    category: value as
+                      | 'sandwich'
+                      | 'side'
+                      | 'dessert'
+                      | 'beverage',
+                  })
+                }
               >
-                <Save className="w-4 h-4 mr-2" />
-                {uploadingImage
-                  ? 'Uploading...'
-                  : editingProduct
-                    ? 'Update'
-                    : 'Create'}
-              </Button>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sandwich">Sandwich</SelectItem>
+                  <SelectItem value="side">Side</SelectItem>
+                  <SelectItem value="dessert">Dessert</SelectItem>
+                  <SelectItem value="beverage">Beverage</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <AdminLabel htmlFor="sort_order">Sort Order</AdminLabel>
+                <AdminInput
+                  id="sort_order"
+                  type="number"
+                  value={formData.sort_order}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      sort_order: parseInt(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 pt-6">
+                <input
+                  id="active"
+                  type="checkbox"
+                  checked={formData.active}
+                  onChange={e =>
+                    setFormData({ ...formData, active: e.target.checked })
+                  }
+                  className="rounded"
+                />
+                <AdminLabel htmlFor="active">Active</AdminLabel>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <AdminButton onClick={closeModal} variant="outline">
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </AdminButton>
+            <AdminButton
+              onClick={saveProduct}
+              variant="admin-primary"
+              disabled={uploadingImage}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {uploadingImage
+                ? 'Uploading...'
+                : editingProduct
+                  ? 'Update'
+                  : 'Create'}
+            </AdminButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AdminPageTemplate>
   );
 }
