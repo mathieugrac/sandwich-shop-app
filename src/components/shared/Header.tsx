@@ -4,7 +4,7 @@ export function Header() {
   return (
     <header className="text-center py-16 px-5">
       <img
-        src="/logo-fome.svg"
+        src="/logo-kusack.svg"
         alt="Fomé"
         className="mx-auto mb-5 h-18 w-auto"
       />
