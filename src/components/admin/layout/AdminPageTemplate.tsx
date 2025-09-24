@@ -57,54 +57,48 @@ const AdminPageTemplate = forwardRef<HTMLDivElement, AdminPageTemplateProps>(
     return (
       <div
         ref={ref}
-        className={cn('flex h-screen bg-gray-50', className)}
+        className={cn('flex h-screen bg-white', className)}
         {...props}
       >
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+            className="fixed inset-0 bg-black/40 z-30 lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
-        <div
-          className={cn(
-            'transform transition-transform duration-300 ease-in-out lg:translate-x-0',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-            'lg:block'
-          )}
-        >
+        {/* Desktop Sidebar - hidden on mobile */}
+        <div className="hidden lg:block">
           <AdminSidebar />
         </div>
 
+        {/* Mobile Sidebar - overlay when open */}
+        {sidebarOpen && (
+          <div className="fixed inset-y-0 left-0 z-50 lg:hidden">
+            <AdminSidebar onClose={() => setSidebarOpen(false)} />
+          </div>
+        )}
+
         {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Page header */}
-          <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <header className="bg-white px-6 py-7 lg:px-12 lg:py-7">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                {/* Mobile menu button */}
+                {/* Mobile menu button - only visible on mobile */}
                 <AdminButton
                   variant="ghost"
                   size="sm"
                   className="lg:hidden"
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  onClick={() => setSidebarOpen(true)}
                 >
-                  {sidebarOpen ? (
-                    <X className="w-5 h-5" />
-                  ) : (
-                    <Menu className="w-5 h-5" />
-                  )}
+                  <Menu className="w-5 h-5" />
                 </AdminButton>
 
                 {/* Page title */}
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-                  {subtitle && (
-                    <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
-                  )}
                 </div>
               </div>
 
@@ -129,7 +123,7 @@ const AdminPageTemplate = forwardRef<HTMLDivElement, AdminPageTemplateProps>(
 
           {/* Filter bar */}
           {showFilterBar && (
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="bg-white px-6 lg:px-12">
               <FilterBar
                 searchValue={searchValue}
                 onSearchChange={onSearchChange}
@@ -143,7 +137,9 @@ const AdminPageTemplate = forwardRef<HTMLDivElement, AdminPageTemplateProps>(
           )}
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+          <main className="flex-1 overflow-y-auto bg-white px-6 pb-6 pt-8 lg:px-12 lg:pb-12 lg:pt-8">
+            {children}
+          </main>
         </div>
       </div>
     );

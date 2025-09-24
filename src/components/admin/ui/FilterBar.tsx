@@ -40,8 +40,25 @@ const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
       <div ref={ref} className={cn('space-y-4', className)} {...props}>
         {/* Main filter bar */}
         <div className="flex items-center gap-4">
-          {/* Search input */}
-          <div className="relative flex-1 max-w-md">
+          {/* Filter toggle button */}
+          {filters.length > 0 && (
+            <AdminButton
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 flex-shrink-0"
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {filters.some(f => f.active) && (
+                <span className="bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {filters.filter(f => f.active).length}
+                </span>
+              )}
+            </AdminButton>
+          )}
+
+          {/* Search input - takes all available space */}
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <AdminInput
               type="text"
@@ -59,23 +76,6 @@ const FilterBar = forwardRef<HTMLDivElement, FilterBarProps>(
               </button>
             )}
           </div>
-
-          {/* Filter toggle button */}
-          {filters.length > 0 && (
-            <AdminButton
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Filters
-              {filters.some(f => f.active) && (
-                <span className="bg-black text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {filters.filter(f => f.active).length}
-                </span>
-              )}
-            </AdminButton>
-          )}
 
           {/* Additional actions */}
           {children}

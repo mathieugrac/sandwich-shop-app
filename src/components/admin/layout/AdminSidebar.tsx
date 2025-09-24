@@ -11,6 +11,7 @@ import {
   Settings,
   ExternalLink,
   LogOut,
+  X,
 } from 'lucide-react';
 import { MenuItem } from '../ui/MenuItem';
 import { AdminButton } from '../ui/AdminButton';
@@ -22,10 +23,11 @@ import Image from 'next/image';
 
 interface AdminSidebarProps {
   className?: string;
+  onClose?: () => void;
 }
 
 const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
-  ({ className }, ref) => {
+  ({ className, onClose }, ref) => {
     const router = useRouter();
 
     const handleLogout = async () => {
@@ -94,13 +96,12 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         ref={ref}
         className={cn(
           'flex flex-col h-full bg-gray-100 border-r border-gray-200',
-          'w-64 fixed left-0 top-0 z-40',
-          'lg:relative lg:z-0',
+          'w-64',
           className
         )}
       >
         {/* Logo/Brand */}
-        <div className="flex items-center pt-6 pr-7 pb-3 pl-7">
+        <div className="flex items-center justify-between pt-6 pr-7 pb-3 pl-7">
           <Image
             src="/logo-kusack.svg"
             alt="Kusack Logo"
@@ -108,6 +109,17 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
             height={47}
             className="h-10 w-auto"
           />
+          {/* Close button - only visible on mobile */}
+          {onClose && (
+            <AdminButton
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="lg:hidden"
+            >
+              <X className="w-4 h-4" />
+            </AdminButton>
+          )}
         </div>
 
         {/* Navigation */}
