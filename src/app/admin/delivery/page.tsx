@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/tooltip';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
-import { Clock, Package, MessageCircle } from 'lucide-react';
+import { Clock, Package } from 'lucide-react';
 import type { Database } from '@/types/database';
 
 // Types
@@ -240,7 +240,7 @@ export default function DeliveryPage() {
   const getStripePaymentUrl = (paymentIntentId: string) => {
     const accountId = process.env.NEXT_PUBLIC_STRIPE_ACCOUNT_ID;
     const environment = process.env.NEXT_PUBLIC_STRIPE_ENVIRONMENT || 'test';
-    
+
     if (!accountId) {
       console.warn('NEXT_PUBLIC_STRIPE_ACCOUNT_ID not configured');
       return '#';
@@ -306,13 +306,13 @@ export default function DeliveryPage() {
             <AdminTable>
               <AdminTableHeader>
                 <AdminTableRow>
-                  <AdminTableHead>Order #</AdminTableHead>
-                  <AdminTableHead>Time</AdminTableHead>
+                  <AdminTableHead>Order</AdminTableHead>
+                  <AdminTableHead>Pickup</AdminTableHead>
                   <AdminTableHead>Customer</AdminTableHead>
-                  <AdminTableHead>Items</AdminTableHead>
+                  <AdminTableHead>Products</AdminTableHead>
                   <AdminTableHead>Instructions</AdminTableHead>
-                  <AdminTableHead>Stripe ID</AdminTableHead>
-                  <AdminTableHead className="text-right">Action</AdminTableHead>
+                  <AdminTableHead>Stripe</AdminTableHead>
+                  <AdminTableHead className="text-right sr-only">Action</AdminTableHead>
                 </AdminTableRow>
               </AdminTableHeader>
               <AdminTableBody>
@@ -329,7 +329,12 @@ export default function DeliveryPage() {
                       </span>
                     </AdminTableCell>
                     <AdminTableCell>
-                      <span className="font-medium">{order.customer_name}</span>
+                      <div>
+                        <p className="font-medium">{order.customer_name}</p>
+                        <p className="text-sm" style={{ color: '#555' }}>
+                          {order.clients?.email}
+                        </p>
+                      </div>
                     </AdminTableCell>
                     <AdminTableCell>
                       <div className="max-w-xs">
@@ -341,22 +346,15 @@ export default function DeliveryPage() {
                       </div>
                     </AdminTableCell>
                     <AdminTableCell>
-                      {order.special_instructions ? (
-                        <Tooltip delayDuration={0}>
-                          <TooltipTrigger asChild>
-                            <div className="flex items-center justify-center w-8 h-8 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
-                              <MessageCircle className="w-4 h-4 text-black" />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">
-                              {order.special_instructions}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
+                      <div className="max-w-xs">
+                        {order.special_instructions ? (
+                          <p className="text-sm text-gray-700">
+                            {order.special_instructions}
+                          </p>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </div>
                     </AdminTableCell>
                     <AdminTableCell>
                       {order.payment_intent_id ? (
@@ -373,7 +371,7 @@ export default function DeliveryPage() {
                         <span className="text-sm text-gray-400">-</span>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className="text-right">
+                    <AdminTableCell className="text-right sr-only">
                       <AdminButton
                         size="sm"
                         onClick={() => markAsDelivered(order.id)}
