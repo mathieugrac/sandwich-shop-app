@@ -2,8 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AdminPageTemplate } from '@/components/admin/layout/AdminPageTemplate';
+import {
+  AdminButton,
+  AdminCard,
+  AdminCardContent,
+  AdminCardHeader,
+  AdminCardTitle,
+} from '@/components/admin/ui';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
 import {
@@ -217,300 +223,292 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Fomé</h1>
-          </div>
-          <Button onClick={handleLogout} variant="outline">
-            <LogOut className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Next Drop Card */}
-        <div className="mb-4">
-          {loadingActiveDrop ? (
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader className="text-center">
-                <CardTitle>Next Drop</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <div className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ) : activeDropData ? (
-            <Card className="hover:shadow-lg transition-shadow p-6">
-              {/* Mobile Layout */}
-              <div className="block md:hidden">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-md font-semibold mb-6">
-                    Next Drop
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  {/* Warning for multiple active drops */}
-                  {activeDropData.multipleActiveDrops && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                      <div className="flex items-center justify-center space-x-2 text-amber-800">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          Warning: {activeDropData.totalActiveDrops} active
-                          drops found
-                        </span>
-                      </div>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Showing oldest drop. Check Drops page to manage all
-                        active drops.
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="text-xl font-semibold mb-1">
-                      {new Date(activeDropData.drop.date).toLocaleDateString(
-                        'en-US',
-                        {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        }
-                      )}
-                    </p>
-                    <p className="text-gray-600">
-                      <span>At</span> {activeDropData.drop.location.name}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center space-x-6 text-sm">
-                    <div className="text-center">
-                      <p className="font-semibold text-black text-xl">
-                        {activeDropData.orderStats.total}
-                      </p>
-                      <p className="text-gray-600">Orders</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-black text-xl">
-                        {activeDropData.orderStats.delivered}
-                      </p>
-                      <p className="text-gray-600">Delivered</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold text-black text-xl">
-                        {activeDropData.inventoryStats.totalAvailable}
-                      </p>
-                      <p className="text-gray-600">Available</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={() => navigateTo('/admin/delivery')}
-                    className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
-                  >
-                    Manage Orders
-                  </Button>
-                </CardContent>
+    <AdminPageTemplate
+      title="Dashboard"
+      secondaryActions={
+        <AdminButton onClick={handleLogout} variant="outline">
+          <LogOut className="w-4 h-4" />
+        </AdminButton>
+      }
+    >
+      {/* Next Drop Card */}
+      <div className="mb-4">
+        {loadingActiveDrop ? (
+          <AdminCard className="hover:shadow-lg transition-shadow">
+            <AdminCardHeader className="text-center">
+              <AdminCardTitle>Next Drop</AdminCardTitle>
+            </AdminCardHeader>
+            <AdminCardContent className="text-center">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto"></div>
               </div>
-
-              {/* Desktop Layout */}
-              <div className="hidden md:block">
-                <CardContent className="p-6">
-                  {/* Warning for multiple active drops */}
-                  {activeDropData.multipleActiveDrops && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                      <div className="flex items-center space-x-2 text-amber-800">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                          Warning: {activeDropData.totalActiveDrops} active
-                          drops found
-                        </span>
-                      </div>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Showing oldest drop. Check Drops page to manage all
-                        active drops.
-                      </p>
+            </AdminCardContent>
+          </AdminCard>
+        ) : activeDropData ? (
+          <AdminCard className="hover:shadow-lg transition-shadow p-6">
+            {/* Mobile Layout */}
+            <div className="block md:hidden">
+              <AdminCardHeader className="text-center">
+                <AdminCardTitle className="text-md font-semibold mb-6">
+                  Next Drop
+                </AdminCardTitle>
+              </AdminCardHeader>
+              <AdminCardContent className="text-center space-y-4">
+                {/* Warning for multiple active drops */}
+                {activeDropData.multipleActiveDrops && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-center space-x-2 text-amber-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        Warning: {activeDropData.totalActiveDrops} active drops
+                        found
+                      </span>
                     </div>
-                  )}
+                    <p className="text-xs text-amber-700 mt-1">
+                      Showing oldest drop. Check Drops page to manage all active
+                      drops.
+                    </p>
+                  </div>
+                )}
 
-                  <div className="flex items-center justify-between">
-                    {/* Left Side: Title + Date + Location */}
-                    <div className="flex items-center space-x-4">
-                      <div className="text-left">
-                        <h3 className="text-md font-semibold mb-6">
-                          Next Drop
-                        </h3>
-                        <p className="text-xl font-semibold mb-1">
-                          {new Date(
-                            activeDropData.drop.date
-                          ).toLocaleDateString('en-US', {
+                <div>
+                  <p className="text-xl font-semibold mb-1">
+                    {new Date(activeDropData.drop.date).toLocaleDateString(
+                      'en-US',
+                      {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      }
+                    )}
+                  </p>
+                  <p className="text-gray-600">
+                    <span>At</span> {activeDropData.drop.location.name}
+                  </p>
+                </div>
+
+                <div className="flex justify-center space-x-6 text-sm">
+                  <div className="text-center">
+                    <p className="font-semibold text-black text-xl">
+                      {activeDropData.orderStats.total}
+                    </p>
+                    <p className="text-gray-600">Orders</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-black text-xl">
+                      {activeDropData.orderStats.delivered}
+                    </p>
+                    <p className="text-gray-600">Delivered</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="font-semibold text-black text-xl">
+                      {activeDropData.inventoryStats.totalAvailable}
+                    </p>
+                    <p className="text-gray-600">Available</p>
+                  </div>
+                </div>
+
+                <AdminButton
+                  onClick={() => navigateTo('/admin/delivery')}
+                  className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
+                >
+                  Manage Orders
+                </AdminButton>
+              </AdminCardContent>
+            </div>
+
+            {/* Desktop Layout */}
+            <div className="hidden md:block">
+              <AdminCardContent className="p-6">
+                {/* Warning for multiple active drops */}
+                {activeDropData.multipleActiveDrops && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center space-x-2 text-amber-800">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-sm font-medium">
+                        Warning: {activeDropData.totalActiveDrops} active drops
+                        found
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Showing oldest drop. Check Drops page to manage all active
+                      drops.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  {/* Left Side: Title + Date + Location */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-left">
+                      <h3 className="text-md font-semibold mb-6">Next Drop</h3>
+                      <p className="text-xl font-semibold mb-1">
+                        {new Date(activeDropData.drop.date).toLocaleDateString(
+                          'en-US',
+                          {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
-                          })}
+                          }
+                        )}
+                      </p>
+                      <p className="text-gray-600">
+                        <span>At</span> {activeDropData.drop.location.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Order Stats + CTA */}
+                  <div className="flex items-center space-x-6">
+                    {/* Order Statistics */}
+                    <div className="flex space-x-6 text-sm">
+                      <div className="text-center">
+                        <p className="font-semibold text-black text-xl">
+                          {activeDropData.orderStats.total}
                         </p>
-                        <p className="text-gray-600">
-                          <span>At</span> {activeDropData.drop.location.name}
+                        <p className="text-gray-600">Orders</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-black text-xl">
+                          {activeDropData.orderStats.delivered}
                         </p>
+                        <p className="text-gray-600">Delivered</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-black text-xl">
+                          {activeDropData.inventoryStats.totalAvailable}
+                        </p>
+                        <p className="text-gray-600">Available</p>
                       </div>
                     </div>
 
-                    {/* Right Side: Order Stats + CTA */}
-                    <div className="flex items-center space-x-6">
-                      {/* Order Statistics */}
-                      <div className="flex space-x-6 text-sm">
-                        <div className="text-center">
-                          <p className="font-semibold text-black text-xl">
-                            {activeDropData.orderStats.total}
-                          </p>
-                          <p className="text-gray-600">Orders</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-semibold text-black text-xl">
-                            {activeDropData.orderStats.delivered}
-                          </p>
-                          <p className="text-gray-600">Delivered</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-semibold text-black text-xl">
-                            {activeDropData.inventoryStats.totalAvailable}
-                          </p>
-                          <p className="text-gray-600">Available</p>
-                        </div>
-                      </div>
+                    {/* CTA Button */}
+                    <AdminButton
+                      onClick={() => navigateTo('/admin/delivery')}
+                      className="bg-black hover:bg-gray-800 text-white px-6 py-2 ml-4 cursor-pointer"
+                    >
+                      Manage Orders
+                    </AdminButton>
+                  </div>
+                </div>
+              </AdminCardContent>
+            </div>
+          </AdminCard>
+        ) : (
+          <AdminCard className="hover:shadow-lg transition-shadow p-6">
+            {/* Mobile Layout - Empty State */}
+            <div className="block md:hidden">
+              <AdminCardHeader className="text-center">
+                <AdminCardTitle className="text-md font-semibold mb-6">
+                  Next Drop
+                </AdminCardTitle>
+              </AdminCardHeader>
+              <AdminCardContent className="text-center space-y-4">
+                <div>
+                  <p className="text-lg font-semibold mb-1">
+                    No active drops scheduled
+                  </p>
+                </div>
 
-                      {/* CTA Button */}
-                      <Button
-                        onClick={() => navigateTo('/admin/delivery')}
-                        className="bg-black hover:bg-gray-800 text-white px-6 py-2 ml-4 cursor-pointer"
-                      >
-                        Manage Orders
-                      </Button>
+                <AdminButton
+                  onClick={() => navigateTo('/admin/drops')}
+                  className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
+                >
+                  Manage Drops
+                </AdminButton>
+              </AdminCardContent>
+            </div>
+
+            {/* Desktop Layout - Empty State */}
+            <div className="hidden md:block">
+              <AdminCardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  {/* Left Side: Title + Date + Location */}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-left">
+                      <h3 className="text-md font-semibold mb-6">Next Drop</h3>
+                      <p className="text-lg font-semibold mb-1">
+                        No active drops scheduled
+                      </p>
                     </div>
                   </div>
-                </CardContent>
-              </div>
-            </Card>
-          ) : (
-            <Card className="hover:shadow-lg transition-shadow p-6">
-              {/* Mobile Layout - Empty State */}
-              <div className="block md:hidden">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-md font-semibold mb-6">
-                    Next Drop
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <div>
-                    <p className="text-lg font-semibold mb-1">
-                      No active drops scheduled
-                    </p>
+
+                  {/* Right Side: CTA */}
+                  <div className="flex items-center">
+                    <AdminButton
+                      onClick={() => navigateTo('/admin/drops')}
+                      className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
+                    >
+                      Manage Drops
+                    </AdminButton>
                   </div>
-
-                  <Button
-                    onClick={() => navigateTo('/admin/drops')}
-                    className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
-                  >
-                    Manage Drops
-                  </Button>
-                </CardContent>
-              </div>
-
-              {/* Desktop Layout - Empty State */}
-              <div className="hidden md:block">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    {/* Left Side: Title + Date + Location */}
-                    <div className="flex items-center space-x-4">
-                      <div className="text-left">
-                        <h3 className="text-md font-semibold mb-6">
-                          Next Drop
-                        </h3>
-                        <p className="text-lg font-semibold mb-1">
-                          No active drops scheduled
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Right Side: CTA */}
-                    <div className="flex items-center">
-                      <Button
-                        onClick={() => navigateTo('/admin/drops')}
-                        className="bg-black hover:bg-gray-800 text-white px-6 py-2 cursor-pointer"
-                      >
-                        Manage Drops
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* Navigation Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-          {/* Drops */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/drops')}
-          >
-            <CardHeader className="text-center py-8">
-              <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-              <CardTitle>Drops</CardTitle>
-            </CardHeader>
-          </Card>
-
-          {/* Analytics */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/analytics')}
-          >
-            <CardHeader className="text-center py-8">
-              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-red-600" />
-              <CardTitle>Analytics</CardTitle>
-            </CardHeader>
-          </Card>
-
-          {/* Products */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/products')}
-          >
-            <CardHeader className="text-center py-8">
-              <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-              <CardTitle>Products</CardTitle>
-            </CardHeader>
-          </Card>
-
-          {/* Clients */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/clients')}
-          >
-            <CardHeader className="text-center py-8">
-              <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
-              <CardTitle>Clients</CardTitle>
-            </CardHeader>
-          </Card>
-
-          {/* Locations */}
-          <Card
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => navigateTo('/admin/locations')}
-          >
-            <CardHeader className="text-center py-8">
-              <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
-              <CardTitle>Locations</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
+                </div>
+              </AdminCardContent>
+            </div>
+          </AdminCard>
+        )}
       </div>
-    </div>
+
+      {/* Navigation Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        {/* Drops */}
+        <AdminCard
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigateTo('/admin/drops')}
+        >
+          <AdminCardHeader className="text-center py-8">
+            <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
+            <AdminCardTitle>Drops</AdminCardTitle>
+          </AdminCardHeader>
+        </AdminCard>
+
+        {/* Analytics */}
+        <AdminCard
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigateTo('/admin/analytics')}
+        >
+          <AdminCardHeader className="text-center py-8">
+            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-red-600" />
+            <AdminCardTitle>Analytics</AdminCardTitle>
+          </AdminCardHeader>
+        </AdminCard>
+
+        {/* Products */}
+        <AdminCard
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigateTo('/admin/products')}
+        >
+          <AdminCardHeader className="text-center py-8">
+            <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+            <AdminCardTitle>Products</AdminCardTitle>
+          </AdminCardHeader>
+        </AdminCard>
+
+        {/* Clients */}
+        <AdminCard
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigateTo('/admin/clients')}
+        >
+          <AdminCardHeader className="text-center py-8">
+            <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
+            <AdminCardTitle>Clients</AdminCardTitle>
+          </AdminCardHeader>
+        </AdminCard>
+
+        {/* Locations */}
+        <AdminCard
+          className="hover:shadow-lg transition-shadow cursor-pointer"
+          onClick={() => navigateTo('/admin/locations')}
+        >
+          <AdminCardHeader className="text-center py-8">
+            <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
+            <AdminCardTitle>Locations</AdminCardTitle>
+          </AdminCardHeader>
+        </AdminCard>
+      </div>
+    </AdminPageTemplate>
   );
 }
