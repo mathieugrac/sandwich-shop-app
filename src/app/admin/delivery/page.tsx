@@ -273,7 +273,7 @@ export default function DeliveryPage() {
 
   return (
     <TooltipProvider>
-      <AdminPageTemplate title="Delivery Mode">
+      <AdminPageTemplate title="Delivery">
         {/* Drop Filter Buttons */}
         <div className="flex gap-2 mb-6">
           {activeDrops.map(drop => (
@@ -372,7 +372,7 @@ export default function DeliveryPage() {
                       colSpan={7}
                       className="text-center py-8 text-gray-500"
                     >
-                      No orders for this drop
+                      No orders to deliver
                     </AdminTableCell>
                   </AdminTableRow>
                 )}
