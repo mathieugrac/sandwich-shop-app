@@ -17,6 +17,7 @@ import {
   CreateDropModal,
   EditDropModal,
   InventoryModal,
+  DeleteDropModal,
 } from '@/components/admin';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -72,6 +73,9 @@ export default function DropManagementPage() {
     showCreateForm: false,
     showInventoryModal: false,
     showEditModal: false,
+    showDeleteModal: false,
+    deleting: false,
+    archiving: false,
 
     // Forms
     newDrop: {
@@ -98,6 +102,13 @@ export default function DropManagementPage() {
           drop_products_total?: number;
         })
       | null,
+    deletingDrop: null as AdminDrop | null,
+    dropOrders: [] as Array<{
+      id: string;
+      order_number: string;
+      customer_email: string;
+      total_amount: number;
+    }>,
 
     // Other
     message: null as { type: 'success' | 'error'; text: string } | null,
@@ -477,23 +488,210 @@ export default function DropManagementPage() {
     }
   };
 
-  const deleteDrop = async (dropId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this drop? This action cannot be undone.'
-      )
-    ) {
-      return;
+  const openDeleteModal = async (drop: AdminDrop) => {
+    try {
+      console.log('Checking orders for drop:', drop.id);
+
+      // Check if there are any orders for this drop
+      // Join with clients table to get email
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select(
+          `
+          id, 
+          order_number, 
+          customer_name, 
+          total_amount,
+          clients (
+            email
+          )
+        `
+        )
+        .eq('drop_id', drop.id);
+
+      if (ordersError) {
+        console.error('Supabase error details:', {
+          message: ordersError.message,
+          details: ordersError.details,
+          hint: ordersError.hint,
+          code: ordersError.code,
+        });
+        updateState({
+          message: {
+            type: 'error',
+            text: `Failed to check for existing orders: ${ordersError.message}`,
+          },
+        });
+        return;
+      }
+
+      console.log('Orders found:', orders);
+
+      // Transform orders to extract email from clients relationship
+      const transformedOrders = (orders || []).map(order => ({
+        id: order.id,
+        order_number: order.order_number,
+        customer_email:
+          (order.clients as any)?.email || order.customer_name || 'No email',
+        total_amount: order.total_amount,
+      }));
+
+      // Set the drop and orders, then show modal
+      updateState({
+        deletingDrop: drop,
+        dropOrders: transformedOrders,
+        showDeleteModal: true,
+      });
+    } catch (error) {
+      console.error('Error loading orders for deletion:', error);
+      updateState({
+        message: {
+          type: 'error',
+          text: 'Failed to load order information. Please try again.',
+        },
+      });
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!state.deletingDrop) return;
+
+    console.log('Starting deletion process for drop:', {
+      dropId: state.deletingDrop.id,
+      dropDate: state.deletingDrop.date,
+      orderCount: state.dropOrders.length,
+      orders: state.dropOrders,
+    });
+
+    updateState({ deleting: true, message: null });
 
     try {
-      // Delete the drop (this will cascade delete related inventory and orders)
-      const { error } = await supabase.from('drops').delete().eq('id', dropId);
+      // Proceed with deletion - this will cascade delete orders and drop_products
+      console.log('Attempting to delete drop with ID:', state.deletingDrop.id);
 
-      if (error) throw error;
+      // First, let's check what's related to this drop
+      const { data: dropProducts } = await supabase
+        .from('drop_products')
+        .select('id, product_id, stock_quantity')
+        .eq('drop_id', state.deletingDrop.id);
+
+      const { data: orderProducts } = await supabase
+        .from('order_products')
+        .select('id, drop_product_id, order_quantity')
+        .in('drop_product_id', dropProducts?.map(dp => dp.id) || []);
+
+      console.log('Related data before deletion:', {
+        dropProducts: dropProducts?.length || 0,
+        orderProducts: orderProducts?.length || 0,
+        dropProductsData: dropProducts,
+        orderProductsData: orderProducts,
+      });
+
+      // We need to delete in the correct order due to foreign key constraints:
+      // 1. order_products (references drop_products with RESTRICT)
+      // 2. orders (references drops with CASCADE, but we'll do it manually)
+      // 3. drop_products (references drops with CASCADE, but we'll do it manually)
+      // 4. drops (the main record)
+
+      // Step 1: Delete order_products that reference drop_products from this drop
+      if (orderProducts && orderProducts.length > 0) {
+        console.log('Deleting order_products...');
+        const { error: orderProductsError } = await supabase
+          .from('order_products')
+          .delete()
+          .in('drop_product_id', dropProducts?.map(dp => dp.id) || []);
+
+        if (orderProductsError) {
+          console.error('Error deleting order_products:', orderProductsError);
+          throw new Error(
+            `Failed to delete order products: ${orderProductsError.message}`
+          );
+        }
+      }
+
+      // Step 2: Delete orders for this drop
+      if (state.dropOrders.length > 0) {
+        console.log('Deleting orders...');
+        const { error: ordersError } = await supabase
+          .from('orders')
+          .delete()
+          .eq('drop_id', state.deletingDrop.id);
+
+        if (ordersError) {
+          console.error('Error deleting orders:', ordersError);
+          throw new Error(`Failed to delete orders: ${ordersError.message}`);
+        }
+      }
+
+      // Step 3: Delete drop_products for this drop
+      if (dropProducts && dropProducts.length > 0) {
+        console.log('Deleting drop_products...');
+        const { error: dropProductsError } = await supabase
+          .from('drop_products')
+          .delete()
+          .eq('drop_id', state.deletingDrop.id);
+
+        if (dropProductsError) {
+          console.error('Error deleting drop_products:', dropProductsError);
+          throw new Error(
+            `Failed to delete drop products: ${dropProductsError.message}`
+          );
+        }
+      }
+
+      // Step 4: Finally delete the drop itself
+      console.log('Deleting drop...');
+      const { error } = await supabase
+        .from('drops')
+        .delete()
+        .eq('id', state.deletingDrop.id);
+
+      if (error) {
+        console.error('Supabase deletion error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+          fullError: error,
+        });
+
+        // Provide specific error messages based on the error
+        if (error.code === '23503') {
+          // Foreign key constraint violation
+          updateState({
+            message: {
+              type: 'error',
+              text: `Cannot delete drop due to database constraints: ${error.message}. This usually means there are related records that prevent deletion.`,
+            },
+          });
+        } else {
+          updateState({
+            message: {
+              type: 'error',
+              text: `Failed to delete drop: ${error.message}`,
+            },
+          });
+        }
+        return;
+      }
+
+      console.log('✅ Drop deletion completed successfully!');
+
+      const orderCount = state.dropOrders.length;
+      const dropProductCount = dropProducts?.length || 0;
+      const orderProductCount = orderProducts?.length || 0;
 
       updateState({
-        message: { type: 'success', text: 'Drop deleted successfully!' },
+        message: {
+          type: 'success',
+          text:
+            orderCount > 0
+              ? `Drop deleted successfully! Removed: ${orderCount} order(s), ${dropProductCount} product(s), ${orderProductCount} order item(s).`
+              : 'Drop deleted successfully!',
+        },
+        showDeleteModal: false,
+        deletingDrop: null,
+        dropOrders: [],
       });
       await loadData();
     } catch (error) {
@@ -504,6 +702,45 @@ export default function DropManagementPage() {
           text: 'Failed to delete drop. Please try again.',
         },
       });
+    } finally {
+      updateState({ deleting: false });
+    }
+  };
+
+  const handleArchiveDrop = async () => {
+    if (!state.deletingDrop) return;
+
+    updateState({ archiving: true, message: null });
+
+    try {
+      const result = await changeDropStatus(state.deletingDrop.id, 'cancelled');
+
+      if (result.success) {
+        const orderCount = state.dropOrders.length;
+        updateState({
+          message: {
+            type: 'success',
+            text:
+              orderCount > 0
+                ? `Drop archived successfully! ${orderCount} order(s) preserved.`
+                : 'Drop archived successfully!',
+          },
+          showDeleteModal: false,
+          deletingDrop: null,
+          dropOrders: [],
+        });
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Error archiving drop:', error);
+      updateState({
+        message: {
+          type: 'error',
+          text: 'Failed to archive drop. Please try again.',
+        },
+      });
+    } finally {
+      updateState({ archiving: false });
     }
   };
 
@@ -768,7 +1005,7 @@ export default function DropManagementPage() {
 
                           {/* Delete */}
                           <DropdownMenuItem
-                            onClick={() => deleteDrop(drop.id)}
+                            onClick={() => openDeleteModal(drop)}
                             className="text-red-600 focus:text-red-600"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -841,6 +1078,25 @@ export default function DropManagementPage() {
         inventory={state.inventory}
         onInventoryChange={handleInventoryChange}
         onSaveDropMenu={saveDropMenu}
+      />
+
+      {/* Delete Drop Modal */}
+      <DeleteDropModal
+        open={state.showDeleteModal}
+        onOpenChange={open => {
+          if (!open) {
+            updateState({
+              showDeleteModal: false,
+              deletingDrop: null,
+              dropOrders: [],
+            });
+          }
+        }}
+        orders={state.dropOrders}
+        onArchive={handleArchiveDrop}
+        onDelete={handleDeleteConfirm}
+        isDeleting={state.deleting}
+        isArchiving={state.archiving}
       />
     </AdminPageTemplate>
   );

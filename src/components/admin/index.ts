@@ -6,6 +6,7 @@ export { default as DropSidebar } from './DropSidebar';
 export { default as DropAnalytics } from './DropAnalytics';
 export { default as EditDropModal } from './EditDropModal';
 export { default as InventoryModal } from './InventoryModal';
+export { DeleteDropModal } from './DeleteDropModal';
 
 // New admin UI components
 export * from './ui';
