@@ -94,11 +94,7 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
     return (
       <div
         ref={ref}
-        className={cn(
-          'flex flex-col h-full bg-gray-100 border-r border-gray-200',
-          'w-64',
-          className
-        )}
+        className={cn('flex flex-col h-full bg-gray-100', 'w-64', className)}
       >
         {/* Logo/Brand */}
         <div className="flex items-center justify-between pt-6 pr-7 pb-3 pl-7">
@@ -113,7 +109,7 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
           {onClose && (
             <AdminButton
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={onClose}
               className="lg:hidden"
             >

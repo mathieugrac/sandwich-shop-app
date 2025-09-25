@@ -36,7 +36,7 @@ const AdminBadge = forwardRef<HTMLSpanElement, AdminBadgeProps>(
       <Badge
         className={cn(
           // Admin-specific base styles
-          'font-medium text-xs px-2.5 py-0.5',
+          'font-medium text-xs px-1.5 py-0.5',
           'border transition-colors duration-200',
           // Apply admin variant styles
           adminStyles,

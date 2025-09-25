@@ -47,7 +47,7 @@ const AdminTableHead = forwardRef<
   <TableHead
     ref={ref}
     className={cn(
-      'font-semibold text-[#555] text-xs',
+      'font-medium text-[#777] text-xs',
       'px-3 py-3',
       'first:pl-4 last:pr-4',
       className

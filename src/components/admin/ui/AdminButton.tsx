@@ -27,12 +27,20 @@ const AdminButton = forwardRef<HTMLButtonElement, AdminButtonProps>(
         'bg-gray-100 hover:bg-gray-200 text-gray-900 border border-gray-300 font-medium',
     };
 
+    // Admin-specific size overrides
+    const adminSizeStyles = {
+      icon: 'size-8', // 32x32px instead of shadcn's default 36x36px
+    };
+
     // Use admin variant styles if it's an admin variant, otherwise pass through to shadcn
     const isAdminVariant = variant?.startsWith('admin-');
     const shadcnVariant = isAdminVariant ? 'default' : variant;
     const adminStyles = isAdminVariant
       ? adminVariantStyles[variant as keyof typeof adminVariantStyles]
       : '';
+
+    // Apply admin size override for icon size
+    const adminSizeOverride = size === 'icon' ? adminSizeStyles.icon : '';
 
     return (
       <Button
@@ -41,6 +49,10 @@ const AdminButton = forwardRef<HTMLButtonElement, AdminButtonProps>(
           'transition-colors duration-200',
           // Apply admin variant styles
           adminStyles,
+          // Apply admin size overrides
+          adminSizeOverride,
+          // Ghost variant hover - match MenuItem hover background
+          variant === 'ghost' && 'hover:bg-gray-200',
           className
         )}
         variant={shadcnVariant as any}

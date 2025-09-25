@@ -22,10 +22,10 @@ We defined a systematic approach to ensure thorough and consistent implementatio
 
 ### 2. **Design Review Process**
 
-1. **Create component list** from the migrated products page
+1. **Create component list** from the migrated products page, we'll review them one by one
 2. **Interview-based design specification** - gather exact design requirements for each component state
-3. **Implement design changes** with precise pixel values and color specifications
-4. **Test and iterate** on each component before moving to the next
+3. **Implement design changes** values expressed in pixel, use tailwind css classes, if doesn't match take the closest ones
+4. **Test and iterate** I will check the rend before validate so we can move on to the next
 5. **Commit progress** regularly to maintain clean development history
 
 ### 3. **Responsive-First Approach**
@@ -34,107 +34,29 @@ We defined a systematic approach to ensure thorough and consistent implementatio
 - Consistent breakpoint behavior (lg: 1024px+)
 - Proper touch targets and mobile navigation patterns
 
-## 📦 Component Implementation List
+## 🎯 Todo list
 
-### ✅ **Completed Components**
-
-#### 1. **MenuItem**
-
-- **Status**: ✅ Complete
-- **Features**: 16x16px icons, 10px gap, 32px height, 12px padding, 6px radius
-- **States**: Default (transparent bg, #555 text), Hover (gray bg), Active (white bg, #111 text)
-
-#### 2. **AdminSidebar**
-
-- **Status**: ✅ Complete
-- **Features**: #F5F5F5 background, Kusack logo (40px height), responsive menu order
-- **Mobile**: Close button, overlay behavior
-- **Padding**: Logo (24px top, 28px sides, 12px bottom), Navigation (16px), Gap (4px)
-
-#### 3. **AdminPageTemplate**
-
-- **Status**: ✅ Complete
-- **Features**: White background, borderless sections, responsive padding
-- **Layout**: Desktop sidebar, mobile overlay with 40% transparent background
-- **Spacing**: Header (28px v-padding), Filter bar (0px bottom), Content (32px top)
-
-### 🔄 **In Progress Components**
-
-#### 4. **FilterBar**
-
-- **Status**: 🔄 Partially Complete
-- **Completed**: Layout swap (filter button first, search full-width)
-- **Remaining**: Detailed styling review for all states
-
-### ⏳ **Pending Components**
-
-#### 5. **AdminCard + AdminCardContent**
-
-- **Current**: Basic wrapper with admin styling
-- **Needs**: Detailed spacing, borders, shadows, responsive behavior
-
-#### 6. **AdminTable Components**
-
-- **Components**: AdminTable, AdminTableHeader, AdminTableHead, AdminTableBody, AdminTableRow, AdminTableCell
-- **Current**: Enhanced styling with hover effects
-- **Needs**: Detailed review of spacing, borders, typography, responsive behavior
-
-#### 7. **AdminBadge**
-
-- **Current**: Success/warning/info variants added
-- **Needs**: Color specifications, sizing, spacing review
-
-#### 8. **AdminButton**
-
-- **Current**: Admin-primary and admin-secondary variants
-- **Needs**: Detailed state specifications (default, hover, active, disabled)
-
-#### 9. **AdminInput + AdminLabel**
-
-- **Current**: Basic admin styling with focus states
-- **Needs**: Detailed spacing, border colors, validation states
-
-## 📍 Current Status
-
-### **Phase 1: Foundation** ✅ **COMPLETE**
+### **Components**
 
 - [x] Component composition architecture established
 - [x] Core layout components (Sidebar, PageTemplate, MenuItem) implemented
 - [x] Responsive behavior and mobile navigation working
 - [x] Products page successfully migrated to new system
-
-### **Phase 2: Component Refinement** 🔄 **IN PROGRESS**
-
-#### **Layout Components** ✅ **COMPLETE**
-
 - [x] MenuItem design specifications implemented
 - [x] AdminSidebar design specifications implemented
 - [x] AdminPageTemplate design specifications implemented
-
-#### **Data Display Components** ⏳ **PENDING**
-
-- [ ] **AdminCard** - Spacing, borders, shadows, hover states
-- [ ] **AdminCardHeader** - Typography, padding, border styling
-- [ ] **AdminCardContent** - Internal padding, content spacing
-- [ ] **AdminCardFooter** - Actions layout, border styling
-- [ ] **AdminTable** - Overall table styling, borders, spacing
-- [ ] **AdminTableHeader** - Header background, typography, borders
-- [ ] **AdminTableHead** - Column header styling, sorting indicators
-- [ ] **AdminTableBody** - Row styling, hover effects
-- [ ] **AdminTableRow** - Row spacing, borders, hover states
-- [ ] **AdminTableCell** - Cell padding, typography, alignment
+- [x] **AdminCard** - Removed hover shadow effects, static appearance
+- [x] **AdminTable** - Overall table styling, borders, spacing
+- [x] **AdminTableHeader** - 1px border, 12px horizontal padding, gray-50 background
+- [x] **AdminTableHead** - 40px height, 12px/8px padding, 12px font-size, #555 color
+- [x] **AdminTableBody** - Row styling, hover effects
+- [x] **AdminTableRow** - 60px height for consistent row sizing
+- [x] **AdminTableCell** - 60px min-height, 14px font-size, #111 color, vertical alignment
 - [ ] **AdminButton** - All variants (default, hover, active, disabled, loading)
 - [ ] **AdminBadge** - Color system (success, warning, info, error), sizing
 - [ ] **AdminInput** - Border colors, focus states, validation styling
 - [ ] **AdminLabel** - Typography, spacing, required indicators
 - [ ] **AdminInputGroup** - Error states, helper text styling
-
-### **Phase 3: System Completion** ⏳ **PENDING**
-
-- [ ] All admin UI components refined
-- [ ] Consistent design system documentation
-- [ ] Migration of remaining admin pages
-- [ ] Final testing and polish
 
 ## 🎨 Design Specifications Applied
 
@@ -154,7 +76,7 @@ We defined a systematic approach to ensure thorough and consistent implementatio
 
 - Sidebar background: #F5F5F5 (bg-gray-100)
 - Main content: White
-- Text colors: #555 (default), #111 (active)
+- Text colors: #555 (secondary), #111 (primary)
 - Hover backgrounds: Contextual grays
 
 ### **Responsive Breakpoints**

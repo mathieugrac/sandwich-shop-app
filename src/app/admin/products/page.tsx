@@ -30,6 +30,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -44,6 +50,7 @@ import {
   X,
   Upload,
   Image as ImageIcon,
+  MoreHorizontal,
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -387,33 +394,33 @@ export default function ProductsPage() {
           <AdminTable>
             <AdminTableHeader>
               <AdminTableRow>
-                <AdminTableHead>Image</AdminTableHead>
-                <AdminTableHead>Name</AdminTableHead>
-                <AdminTableHead>Description</AdminTableHead>
-                <AdminTableHead>Selling Price</AdminTableHead>
-                <AdminTableHead>Production Cost</AdminTableHead>
+                <AdminTableHead>Product</AdminTableHead>
                 <AdminTableHead>Category</AdminTableHead>
                 <AdminTableHead>Status</AdminTableHead>
-                <AdminTableHead>Sort Order</AdminTableHead>
-                <AdminTableHead className="text-right">Actions</AdminTableHead>
+                <AdminTableHead>Price</AdminTableHead>
+                <AdminTableHead>Cost</AdminTableHead>
+                <AdminTableHead>Profit</AdminTableHead>
+                <AdminTableHead>Margin</AdminTableHead>
+                <AdminTableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </AdminTableHead>
               </AdminTableRow>
             </AdminTableHeader>
             <AdminTableBody>
               {filteredProducts.map(product => (
                 <AdminTableRow key={product.id}>
                   <AdminTableCell>
-                    <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
-                      <ImageIcon className="w-4 h-4 text-gray-400" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="w-4 h-4 text-gray-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate">
+                          {product.name}
+                        </div>
+                      </div>
                     </div>
                   </AdminTableCell>
-                  <AdminTableCell className="font-medium">
-                    {product.name}
-                  </AdminTableCell>
-                  <AdminTableCell className="max-w-xs truncate">
-                    {product.description || '-'}
-                  </AdminTableCell>
-                  <AdminTableCell>€{product.sell_price}</AdminTableCell>
-                  <AdminTableCell>€{product.production_cost}</AdminTableCell>
                   <AdminTableCell>
                     <AdminBadge variant="outline">
                       {product.category}
@@ -426,24 +433,41 @@ export default function ProductsPage() {
                       {product.active ? 'Active' : 'Inactive'}
                     </AdminBadge>
                   </AdminTableCell>
-                  <AdminTableCell>{product.sort_order}</AdminTableCell>
+                  <AdminTableCell>€{product.sell_price}</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    €{product.production_cost}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    €2.50
+                  </AdminTableCell>
+                  <AdminTableCell className="text-gray-900">35%</AdminTableCell>
                   <AdminTableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <AdminButton
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditModal(product)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </AdminButton>
-                      <AdminButton
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteProduct(product.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </AdminButton>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <AdminButton
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </AdminButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => openEditModal(product)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => deleteProduct(product.id)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </AdminTableCell>
                 </AdminTableRow>
               ))}

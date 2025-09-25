@@ -88,8 +88,8 @@ const AdminPageTemplate = forwardRef<HTMLDivElement, AdminPageTemplateProps>(
               <div className="flex items-center gap-4">
                 {/* Mobile menu button - only visible on mobile */}
                 <AdminButton
-                  variant="ghost"
-                  size="sm"
+                  variant="outline"
+                  size="icon"
                   className="lg:hidden"
                   onClick={() => setSidebarOpen(true)}
                 >
