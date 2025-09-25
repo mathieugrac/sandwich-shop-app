@@ -16,7 +16,8 @@ export async function POST(request: Request) {
     const {
       items,
       customerInfo,
-    }: { items: CartItem[]; customerInfo: CustomerInfo } = body;
+      dropId,
+    }: { items: CartItem[]; customerInfo: CustomerInfo; dropId?: string } = body;
 
     // Validate customer info and cart items
     const customerErrors = validateCustomerInfo(customerInfo);
@@ -33,19 +34,48 @@ export async function POST(request: Request) {
     // Calculate total amount
     const totalAmount = calculateCartTotal(items);
 
-    // Get active drop to validate items are available
-    const { data: activeDrop, error: dropError } = await supabase
-      .from('drops')
-      .select('id')
-      .eq('status', 'active')
-      .limit(1)
-      .single();
+    // Get the specific drop or fall back to any active drop
+    let targetDrop;
+    if (dropId) {
+      // Use specific drop ID if provided
+      const { data: specificDrop, error: specificDropError } = await supabase
+        .from('drops')
+        .select('id, status')
+        .eq('id', dropId)
+        .single();
 
-    if (dropError || !activeDrop) {
-      return NextResponse.json(
-        { error: 'No active drop available for ordering' },
-        { status: 400 }
-      );
+      if (specificDropError || !specificDrop) {
+        return NextResponse.json(
+          { error: 'Selected drop not found' },
+          { status: 400 }
+        );
+      }
+
+      if (specificDrop.status !== 'active') {
+        return NextResponse.json(
+          { error: 'Selected drop is no longer active for ordering' },
+          { status: 400 }
+        );
+      }
+
+      targetDrop = specificDrop;
+    } else {
+      // Fall back to any active drop (legacy behavior)
+      const { data: activeDrop, error: dropError } = await supabase
+        .from('drops')
+        .select('id')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+
+      if (dropError || !activeDrop) {
+        return NextResponse.json(
+          { error: 'No active drop available for ordering' },
+          { status: 400 }
+        );
+      }
+
+      targetDrop = activeDrop;
     }
 
     // Check availability without reserving
@@ -88,7 +118,7 @@ export async function POST(request: Request) {
         specialInstructions: customerInfo.specialInstructions || '',
         totalAmount: totalAmount.toString(),
         cartItems: JSON.stringify(items),
-        dropId: activeDrop.id,
+        dropId: targetDrop.id,
       },
     });
 

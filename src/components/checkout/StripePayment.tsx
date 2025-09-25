@@ -241,6 +241,18 @@ export function StripePayment({
     setError('');
 
     try {
+      // Get drop ID from localStorage
+      let dropId: string | undefined;
+      try {
+        const savedDrop = localStorage.getItem('currentDrop');
+        if (savedDrop) {
+          const parsedDrop = JSON.parse(savedDrop);
+          dropId = parsedDrop.id;
+        }
+      } catch (error) {
+        console.error('Error parsing drop info from localStorage:', error);
+      }
+
       const response = await fetch('/api/payment/create-intent', {
         method: 'POST',
         headers: {
@@ -249,6 +261,7 @@ export function StripePayment({
         body: JSON.stringify({
           items,
           customerInfo,
+          dropId, // Pass the specific drop ID
         }),
       });
 

@@ -31,7 +31,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get active drop with location in single query
+    // For direct orders (non-Stripe), we still need to find an active drop
+    // But this should be updated to accept dropId in the request body
     const { data: activeDrop, error: dropError } = await supabase
       .from('drops')
       .select(
