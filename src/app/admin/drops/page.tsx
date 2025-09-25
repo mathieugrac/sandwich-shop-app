@@ -2,8 +2,29 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
+import {
+  AdminPageTemplate,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableHead,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+  AdminCard,
+  AdminCardContent,
+  AdminButton,
+  AdminBadge,
+  CreateDropModal,
+  EditDropModal,
+  InventoryModal,
+} from '@/components/admin';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
 import {
@@ -13,12 +34,14 @@ import {
   AdminDrop,
 } from '@/lib/api/drops';
 import {
-  AdminLayout,
-  DropList,
-  CreateDropModal,
-  EditDropModal,
-  InventoryModal,
-} from '@/components/admin';
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Calendar,
+  Package,
+  MoreHorizontal,
+} from 'lucide-react';
 import type { Database } from '@/types/database';
 
 // Use types from database instead of duplicate interfaces
@@ -31,8 +54,17 @@ export default function DropManagementPage() {
   const [state, setState] = useState({
     // Data
     drops: { upcoming: [] as AdminDrop[], past: [] as AdminDrop[] },
+    allDrops: [] as AdminDrop[], // Merged drops for single table
     locations: [] as Location[],
     products: [] as Product[],
+
+    // Filter state
+    statusFilter: 'all' as
+      | 'all'
+      | 'upcoming'
+      | 'active'
+      | 'completed'
+      | 'cancelled',
 
     // UI State
     loading: true,
@@ -105,6 +137,12 @@ export default function DropManagementPage() {
       // Load past drops using enhanced function
       const pastDropsData = await fetchAdminPastDrops();
       updateNestedState('drops', { past: pastDropsData });
+
+      // Merge all drops for single table
+      const allDrops = [...upcomingDropsData, ...pastDropsData].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      updateState({ allDrops });
 
       // Load locations
       const { data: locationsData, error: locationsError } = await supabase
@@ -519,18 +557,53 @@ export default function DropManagementPage() {
     );
   }
 
+  // Filter drops based on status
+  const filteredDrops =
+    state.statusFilter === 'all'
+      ? state.allDrops
+      : state.allDrops.filter(drop => drop.status === state.statusFilter);
+
+  // Helper functions for table
+  const getStatusBadge = (status: string | null) => {
+    if (!status) return <AdminBadge variant="secondary">Unknown</AdminBadge>;
+
+    switch (status) {
+      case 'upcoming':
+        return <AdminBadge variant="secondary">Upcoming</AdminBadge>;
+      case 'active':
+        return <AdminBadge variant="success">Active</AdminBadge>;
+      case 'completed':
+        return <AdminBadge variant="outline">Completed</AdminBadge>;
+      case 'cancelled':
+        return <AdminBadge variant="destructive">Cancelled</AdminBadge>;
+      default:
+        return <AdminBadge variant="secondary">{status}</AdminBadge>;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const isToday = (dateString: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    return dateString === today;
+  };
+
   return (
-    <AdminLayout
-      title="Drop Management"
-      backUrl="/admin/dashboard"
-      actionButton={
-        <Button
-          onClick={() => updateState({ showCreateForm: true })}
-          className="bg-black hover:bg-gray-800"
-        >
-          Create Drop
-        </Button>
-      }
+    <AdminPageTemplate
+      title="Drops"
+      subtitle="Manage drop schedules and inventory"
+      primaryAction={{
+        label: 'Create Drop',
+        onClick: () => updateState({ showCreateForm: true }),
+        icon: Plus,
+      }}
     >
       {/* Message */}
       {state.message && (
@@ -547,16 +620,180 @@ export default function DropManagementPage() {
         </Alert>
       )}
 
-      {/* Drop List */}
-      <DropList
-        upcomingDrops={state.drops.upcoming}
-        pastDrops={state.drops.past}
-        onOpenInventory={openInventoryModal}
-        onOpenEdit={openEditModal}
-        onDeleteDrop={deleteDrop}
-        onStatusChange={handleStatusChange}
-        onViewOrders={handleViewOrders}
-      />
+      {/* Status Filter Buttons */}
+      <div className="flex gap-2 mb-6">
+        <AdminButton
+          variant={state.statusFilter === 'all' ? 'admin-primary' : 'outline'}
+          onClick={() => updateState({ statusFilter: 'all' })}
+        >
+          All
+        </AdminButton>
+        <AdminButton
+          variant={
+            state.statusFilter === 'upcoming' ? 'admin-primary' : 'outline'
+          }
+          onClick={() => updateState({ statusFilter: 'upcoming' })}
+        >
+          Upcoming
+        </AdminButton>
+        <AdminButton
+          variant={
+            state.statusFilter === 'active' ? 'admin-primary' : 'outline'
+          }
+          onClick={() => updateState({ statusFilter: 'active' })}
+        >
+          Active
+        </AdminButton>
+        <AdminButton
+          variant={
+            state.statusFilter === 'completed' ? 'admin-primary' : 'outline'
+          }
+          onClick={() => updateState({ statusFilter: 'completed' })}
+        >
+          Completed
+        </AdminButton>
+        <AdminButton
+          variant={
+            state.statusFilter === 'cancelled' ? 'admin-primary' : 'outline'
+          }
+          onClick={() => updateState({ statusFilter: 'cancelled' })}
+        >
+          Cancelled
+        </AdminButton>
+      </div>
+
+      {/* Drops Table */}
+      <AdminCard>
+        <AdminCardContent className="p-0">
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead>Date</AdminTableHead>
+                <AdminTableHead>Location</AdminTableHead>
+                <AdminTableHead>Status</AdminTableHead>
+                <AdminTableHead>Inventory</AdminTableHead>
+                <AdminTableHead>Sold</AdminTableHead>
+                <AdminTableHead>Loss</AdminTableHead>
+                <AdminTableHead>Completed</AdminTableHead>
+                <AdminTableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {filteredDrops.map(drop => (
+                <AdminTableRow key={drop.id}>
+                  <AdminTableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span
+                        className={isToday(drop.date) ? 'font-semibold' : ''}
+                      >
+                        {formatDate(drop.date)}
+                      </span>
+                      {isToday(drop.date) && (
+                        <AdminBadge variant="outline" className="mt-1 w-fit">
+                          Today
+                        </AdminBadge>
+                      )}
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    {drop.location_name || 'No location'}
+                  </AdminTableCell>
+                  <AdminTableCell>{getStatusBadge(drop.status)}</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    [45]
+                  </AdminTableCell>
+                  <AdminTableCell className="text-gray-900">32</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">13</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">85%</AdminTableCell>
+                  <AdminTableCell className="text-right">
+                    <div className="flex justify-end items-center gap-2">
+                      {/* Status-specific action buttons */}
+                      {drop.status === 'upcoming' && (
+                        <AdminButton
+                          size="sm"
+                          variant="admin-primary"
+                          onClick={() => handleStatusChange(drop.id, 'active')}
+                        >
+                          Open Orders
+                        </AdminButton>
+                      )}
+
+                      {drop.status === 'active' && (
+                        <AdminButton
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            handleStatusChange(drop.id, 'completed')
+                          }
+                        >
+                          Close Orders
+                        </AdminButton>
+                      )}
+
+                      {/* Options Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <AdminButton
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </AdminButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {/* Inventory Management */}
+                          <DropdownMenuItem
+                            onClick={() => openInventoryModal(drop)}
+                          >
+                            <Package className="w-4 h-4 mr-2" />
+                            Manage Inventory
+                          </DropdownMenuItem>
+
+                          {/* View Orders */}
+                          <DropdownMenuItem
+                            onClick={() => handleViewOrders(drop.id)}
+                          >
+                            <Calendar className="w-4 h-4 mr-2" />
+                            View Orders
+                          </DropdownMenuItem>
+
+                          {/* Edit */}
+                          <DropdownMenuItem onClick={() => openEditModal(drop)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+
+                          {/* Delete */}
+                          <DropdownMenuItem
+                            onClick={() => deleteDrop(drop.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+              {filteredDrops.length === 0 && (
+                <AdminTableRow>
+                  <AdminTableCell
+                    colSpan={8}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    No drops found for the selected filter
+                  </AdminTableCell>
+                </AdminTableRow>
+              )}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminCardContent>
+      </AdminCard>
 
       {/* Create Drop Modal */}
       <CreateDropModal
@@ -605,6 +842,6 @@ export default function DropManagementPage() {
         onInventoryChange={handleInventoryChange}
         onSaveDropMenu={saveDropMenu}
       />
-    </AdminLayout>
+    </AdminPageTemplate>
   );
 }
