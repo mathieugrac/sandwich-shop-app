@@ -2,23 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { AdminPageTemplate } from '@/components/admin/layout/AdminPageTemplate';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  AdminButton,
+  AdminCard,
+  AdminCardContent,
+  AdminCardHeader,
+  AdminCardTitle,
+  AdminTable,
+  AdminTableBody,
+  AdminTableCell,
+  AdminTableHead,
+  AdminTableHeader,
+  AdminTableRow,
+} from '@/components/admin/ui';
 import {
   Tooltip,
   TooltipContent,
@@ -26,21 +23,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { supabase } from '@/lib/supabase/client';
-import { AdminLayout } from '@/components/admin';
 import { useRequireAuth } from '@/lib/hooks';
-import {
-  Clock,
-  Package,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  User,
-  Phone,
-  Mail,
-  MessageCircle,
-  Euro,
-  MoreHorizontal,
-} from 'lucide-react';
+import { Clock, Package, MessageCircle } from 'lucide-react';
 import type { Database } from '@/types/database';
 
 // Types
@@ -64,26 +48,15 @@ interface OrderWithDetails extends Order {
   }>;
 }
 
-interface PreparationItem {
-  productName: string;
-  totalOrders: number;
-  stockQuantity: number;
-  remaining: number;
-}
-
 export default function DeliveryPage() {
   const [loading, setLoading] = useState(true);
-  const [activeDrop, setActiveDrop] = useState<
-    (Drop & { locations?: Location }) | null
-  >(null);
-  const [activeOrders, setActiveOrders] = useState<OrderWithDetails[]>([]);
-  const [deliveredOrders, setDeliveredOrders] = useState<OrderWithDetails[]>(
-    []
-  );
-  const [preparationItems, setPreparationItems] = useState<PreparationItem[]>(
-    []
-  );
-  const [showDelivered, setShowDelivered] = useState(false);
+  const [activeDrops, setActiveDrops] = useState<
+    (Drop & { locations?: Location })[]
+  >([]);
+  const [selectedDropId, setSelectedDropId] = useState<string | null>(null);
+  const [dropOrders, setDropOrders] = useState<
+    Record<string, OrderWithDetails[]>
+  >({});
   const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
   const router = useRouter();
 
@@ -97,8 +70,8 @@ export default function DeliveryPage() {
     try {
       setLoading(true);
 
-      // Get next active drop
-      const { data: activeDropData, error: dropError } = await supabase
+      // Get all active drops
+      const { data: activeDropsData, error: dropsError } = await supabase
         .from('drops')
         .select(
           `
@@ -112,136 +85,84 @@ export default function DeliveryPage() {
         `
         )
         .eq('status', 'active')
-        .order('date')
-        .limit(1)
-        .single();
+        .order('date');
 
-      if (dropError) {
-        console.error('Error loading active drop:', dropError);
-        setActiveDrop(null);
+      if (dropsError) {
+        console.error('Error loading active drops:', dropsError);
+        setActiveDrops([]);
         return;
       }
 
-      setActiveDrop(activeDropData);
+      if (!activeDropsData || activeDropsData.length === 0) {
+        setActiveDrops([]);
+        return;
+      }
 
-      // Load orders for this drop
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(
-          `
-          *,
-          clients (
-            email,
-            phone
-          ),
-          drops (
+      setActiveDrops(activeDropsData);
+
+      // Set selected drop to first one if none selected
+      if (!selectedDropId && activeDropsData.length > 0) {
+        setSelectedDropId(activeDropsData[0].id);
+      }
+
+      // Load orders for all active drops
+      const ordersPromises = activeDropsData.map(async drop => {
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select(
+            `
             *,
-            locations (
-              name,
-              address
-            )
-          ),
-          order_products (
-            order_quantity,
-            drop_products (
-              selling_price,
-              stock_quantity,
-              products (
+            clients (
+              email,
+              phone
+            ),
+            drops (
+              *,
+              locations (
                 name,
-                category
+                address
+              )
+            ),
+            order_products (
+              order_quantity,
+              drop_products (
+                selling_price,
+                products (
+                  name,
+                  category
+                )
               )
             )
+          `
           )
-        `
-        )
-        .eq('drop_id', activeDropData.id)
-        .order('pickup_time');
+          .eq('drop_id', drop.id)
+          .eq('status', 'confirmed')
+          .order('pickup_time');
 
-      if (ordersError) {
-        console.error('Error loading orders:', ordersError);
-        return;
-      }
+        if (ordersError) {
+          console.error(
+            `Error loading orders for drop ${drop.id}:`,
+            ordersError
+          );
+          return { dropId: drop.id, orders: [] };
+        }
 
-      // Separate active and delivered orders
-      const active =
-        ordersData?.filter(order => order.status === 'confirmed') || [];
-      const delivered =
-        ordersData?.filter(order => order.status === 'delivered') || [];
+        return { dropId: drop.id, orders: ordersData || [] };
+      });
 
-      setActiveOrders(active);
-      setDeliveredOrders(delivered);
+      const ordersResults = await Promise.all(ordersPromises);
 
-      // Calculate preparation overview
-      calculatePreparationOverview(activeDropData.id);
+      // Build orders map by drop ID
+      const ordersMap: Record<string, OrderWithDetails[]> = {};
+      ordersResults.forEach(({ dropId, orders }) => {
+        ordersMap[dropId] = orders;
+      });
+
+      setDropOrders(ordersMap);
     } catch (error) {
       console.error('Error loading delivery data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const calculatePreparationOverview = async (dropId: string) => {
-    try {
-      // Get all drop products for this drop with order quantities
-      const { data: dropProductsData, error } = await supabase
-        .from('drop_products')
-        .select(
-          `
-          *,
-          products (
-            name,
-            category
-          ),
-          order_products (
-            order_quantity,
-            orders (
-              status
-            )
-          )
-        `
-        )
-        .eq('drop_id', dropId);
-
-      if (error) {
-        console.error('Error calculating preparation overview:', error);
-        return;
-      }
-
-      const preparationMap = new Map<string, PreparationItem>();
-
-      dropProductsData?.forEach(dropProduct => {
-        const productName = dropProduct.products?.name || 'Unknown Product';
-
-        // Calculate total active orders for this product
-        const totalActiveOrders =
-          dropProduct.order_products?.reduce(
-            (
-              sum: number,
-              orderProduct: {
-                order_quantity: number;
-                orders?: { status: string };
-              }
-            ) => {
-              // Only count orders that are still active
-              if (orderProduct.orders?.status === 'confirmed') {
-                return sum + orderProduct.order_quantity;
-              }
-              return sum;
-            },
-            0
-          ) || 0;
-
-        preparationMap.set(productName, {
-          productName,
-          totalOrders: totalActiveOrders,
-          stockQuantity: dropProduct.stock_quantity,
-          remaining: dropProduct.stock_quantity - totalActiveOrders,
-        });
-      });
-
-      setPreparationItems(Array.from(preparationMap.values()));
-    } catch (error) {
-      console.error('Error in preparation calculation:', error);
     }
   };
 
@@ -268,32 +189,6 @@ export default function DeliveryPage() {
     }
   };
 
-  const changeOrderStatus = async (
-    orderId: string,
-    newStatus: 'confirmed' | 'delivered'
-  ) => {
-    try {
-      setUpdatingOrder(orderId);
-
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId);
-
-      if (error) {
-        console.error('Error updating order status:', error);
-        return;
-      }
-
-      // Reload data to reflect changes
-      await loadDeliveryData();
-    } catch (error) {
-      console.error('Error changing order status:', error);
-    } finally {
-      setUpdatingOrder(null);
-    }
-  };
-
   const formatTime = (timeString: string) => {
     return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -309,14 +204,21 @@ export default function DeliveryPage() {
     }).format(amount);
   };
 
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+  // Helper functions for new structure
+  const getSelectedDrop = () => {
+    return activeDrops.find(drop => drop.id === selectedDropId) || null;
+  };
+
+  const getCurrentOrders = () => {
+    return selectedDropId ? dropOrders[selectedDropId] || [] : [];
+  };
+
+  const getDropFilterTitle = (drop: Drop & { locations?: Location }) => {
+    const date = new Date(drop.date);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const location = drop.locations?.name || 'Unknown Location';
+    return `${day}/${month} ${location}`;
   };
 
   const getOrderItems = (order: OrderWithDetails) => {
@@ -345,136 +247,78 @@ export default function DeliveryPage() {
     );
   }
 
-  if (!activeDrop) {
+  if (!activeDrops.length) {
     return (
-      <AdminLayout title="Delivery Mode" backUrl="/admin/dashboard">
-        <Card>
-          <CardContent className="text-center py-12">
+      <AdminPageTemplate title="Delivery">
+        <AdminCard>
+          <AdminCardContent className="text-center py-12">
             <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Active Drop
+              No Active Drops
             </h3>
             <p className="text-gray-600 mb-6">
               There are no active drops available for delivery management.
             </p>
-            <Button onClick={() => router.push('/admin/drops')}>
+            <AdminButton onClick={() => router.push('/admin/drops')}>
               Manage Drops
-            </Button>
-          </CardContent>
-        </Card>
-      </AdminLayout>
+            </AdminButton>
+          </AdminCardContent>
+        </AdminCard>
+      </AdminPageTemplate>
     );
   }
 
-  const getDropTitle = () => {
-    return new Date(activeDrop.date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const getDropDescription = () => {
-    const location = activeDrop.locations?.name || 'Unknown Location';
-    const hours =
-      activeDrop.locations?.pickup_hour_start &&
-      activeDrop.locations?.pickup_hour_end
-        ? `${activeDrop.locations.pickup_hour_start} - ${activeDrop.locations.pickup_hour_end}`
-        : 'Hours not set';
-    return `${location} • ${hours}`;
-  };
+  const selectedDrop = getSelectedDrop();
+  const currentOrders = getCurrentOrders();
 
   return (
     <TooltipProvider>
-      <AdminLayout
-        title={getDropTitle()}
-        subtitle={getDropDescription()}
-        backUrl="/admin/dashboard"
-      >
-        {/* Preparation Overview */}
-        <Card className="mb-6">
-          <CardHeader className="gap-0">
-            <CardTitle className="flex items-center space-x-2 mb-3">
-              <Package className="w-5 h-5" />
-              <span>Preparation Overview</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {preparationItems.length === 0 ? (
-              <p className="text-gray-600">No items to prepare</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {preparationItems.map((item, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <h4 className="font-medium mb-2">{item.productName}</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span>Ordered:</span>
-                        <span className="font-medium">{item.totalOrders}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Remaining Stock:</span>
-                        <span
-                          className={
-                            item.remaining < 0 ? 'text-red-600 font-medium' : ''
-                          }
-                        >
-                          {item.remaining}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <AdminPageTemplate title="Delivery Mode">
+        {/* Drop Filter Buttons */}
+        <div className="flex gap-2 mb-6">
+          {activeDrops.map(drop => (
+            <AdminButton
+              key={drop.id}
+              variant={selectedDropId === drop.id ? 'admin-primary' : 'outline'}
+              onClick={() => setSelectedDropId(drop.id)}
+            >
+              {getDropFilterTitle(drop)}
+            </AdminButton>
+          ))}
+        </div>
 
-        {/* Active Orders */}
-        <Card className="mb-6">
-          <CardHeader className="gap-0">
-            <CardTitle className="flex items-center space-x-2 mb-3">
-              <Clock className="w-5 h-5" />
-              <span>Active Orders ({activeOrders.length})</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Pickup Time</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Instructions</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activeOrders.map(order => (
-                  <TableRow key={order.id}>
-                    <TableCell>
+        {/* Orders Table */}
+        <AdminCard>
+          <AdminCardContent className="p-0">
+            <AdminTable>
+              <AdminTableHeader>
+                <AdminTableRow>
+                  <AdminTableHead>Order #</AdminTableHead>
+                  <AdminTableHead>Time</AdminTableHead>
+                  <AdminTableHead>Customer</AdminTableHead>
+                  <AdminTableHead>Items</AdminTableHead>
+                  <AdminTableHead>Instructions</AdminTableHead>
+                  <AdminTableHead>Total</AdminTableHead>
+                  <AdminTableHead className="text-right">Action</AdminTableHead>
+                </AdminTableRow>
+              </AdminTableHeader>
+              <AdminTableBody>
+                {currentOrders.map(order => (
+                  <AdminTableRow key={order.id}>
+                    <AdminTableCell>
                       <span className="text-sm font-medium text-blue-600">
                         #{order.order_number}
                       </span>
-                    </TableCell>
-                    <TableCell>
+                    </AdminTableCell>
+                    <AdminTableCell>
                       <span className="text-sm font-medium">
                         {formatTime(order.pickup_time)}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{order.customer_name}</p>
-                        <p className="text-sm text-gray-600">
-                          {order.clients?.email}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <span className="font-medium">{order.customer_name}</span>
+                    </AdminTableCell>
+                    <AdminTableCell>
                       <div className="max-w-xs">
                         {getOrderItemsText(order).map((item, index) => (
                           <p key={index} className="text-sm">
@@ -482,8 +326,8 @@ export default function DeliveryPage() {
                           </p>
                         ))}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </AdminTableCell>
+                    <AdminTableCell>
                       {order.special_instructions ? (
                         <Tooltip delayDuration={0}>
                           <TooltipTrigger asChild>
@@ -500,177 +344,43 @@ export default function DeliveryPage() {
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </AdminTableCell>
+                    <AdminTableCell>
                       <span className="font-medium">
                         {formatCurrency(order.total_amount)}
                       </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-600">
-                        {formatDateTime(order.created_at || '')}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
+                    </AdminTableCell>
+                    <AdminTableCell className="text-right">
+                      <AdminButton
                         size="sm"
                         onClick={() => markAsDelivered(order.id)}
                         disabled={updatingOrder === order.id}
-                        className="bg-black hover:bg-gray-800"
+                        variant="admin-primary"
                       >
                         {updatingOrder === order.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                         ) : (
-                          'Mark as delivered'
+                          'Delivered'
                         )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                      </AdminButton>
+                    </AdminTableCell>
+                  </AdminTableRow>
                 ))}
-                {activeOrders.length === 0 && (
-                  <TableRow>
-                    <TableCell
+                {currentOrders.length === 0 && (
+                  <AdminTableRow>
+                    <AdminTableCell
                       colSpan={7}
                       className="text-center py-8 text-gray-500"
                     >
-                      No active orders
-                    </TableCell>
-                  </TableRow>
+                      No orders for this drop
+                    </AdminTableCell>
+                  </AdminTableRow>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Delivered Orders Toggle */}
-        {deliveredOrders.length > 0 && (
-          <Card>
-            <CardHeader className="gap-0">
-              <CardTitle
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setShowDelivered(!showDelivered)}
-              >
-                <span className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span>Delivered Orders ({deliveredOrders.length})</span>
-                </span>
-                {showDelivered ? (
-                  <ChevronUp className="w-5 h-5" />
-                ) : (
-                  <ChevronDown className="w-5 h-5" />
-                )}
-              </CardTitle>
-            </CardHeader>
-            {showDelivered && (
-              <CardContent className="mt-3">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Pickup Time</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Instructions</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Order Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {deliveredOrders.map(order => (
-                      <TableRow key={order.id} className="bg-gray-50">
-                        <TableCell>
-                          <span className="text-sm font-medium text-blue-600">
-                            #{order.order_number}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm font-medium">
-                            {formatTime(order.pickup_time)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{order.customer_name}</p>
-                            <p className="text-sm text-gray-600">
-                              {order.clients?.email}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-xs">
-                            {getOrderItemsText(order).map((item, index) => (
-                              <p key={index} className="text-sm">
-                                {item}
-                              </p>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {order.special_instructions ? (
-                            <Tooltip delayDuration={0}>
-                              <TooltipTrigger asChild>
-                                <div className="flex items-center justify-center w-8 h-8 rounded-md cursor-pointer hover:bg-gray-200 transition-colors">
-                                  <MessageCircle className="w-4 h-4 text-black" />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="max-w-xs">
-                                  {order.special_instructions}
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-medium">
-                            {formatCurrency(order.total_amount)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-600">
-                            {formatDateTime(order.created_at || '')}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                disabled={updatingOrder === order.id}
-                              >
-                                {updatingOrder === order.id ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" />
-                                ) : (
-                                  <MoreHorizontal className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  changeOrderStatus(order.id, 'confirmed')
-                                }
-                                className="cursor-pointer"
-                              >
-                                Change status to Confirmed
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            )}
-          </Card>
-        )}
-      </AdminLayout>
+              </AdminTableBody>
+            </AdminTable>
+          </AdminCardContent>
+        </AdminCard>
+      </AdminPageTemplate>
     </TooltipProvider>
   );
 }
