@@ -236,6 +236,19 @@ export default function DeliveryPage() {
     return items.map(item => `${item.quantity}x ${item.name}`);
   };
 
+  // Generate Stripe dashboard URL for payment intent
+  const getStripePaymentUrl = (paymentIntentId: string) => {
+    const accountId = process.env.NEXT_PUBLIC_STRIPE_ACCOUNT_ID;
+    const environment = process.env.NEXT_PUBLIC_STRIPE_ENVIRONMENT || 'test';
+    
+    if (!accountId) {
+      console.warn('NEXT_PUBLIC_STRIPE_ACCOUNT_ID not configured');
+      return '#';
+    }
+
+    return `https://dashboard.stripe.com/${accountId}/${environment}/payments/${paymentIntentId}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -348,7 +361,7 @@ export default function DeliveryPage() {
                     <AdminTableCell>
                       {order.payment_intent_id ? (
                         <a
-                          href={`https://dashboard.stripe.com/acct_1S44UQFKFt7Rb5ez/test/payments/${order.payment_intent_id}`}
+                          href={getStripePaymentUrl(order.payment_intent_id)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-mono text-blue-600 hover:text-blue-800 hover:underline"
