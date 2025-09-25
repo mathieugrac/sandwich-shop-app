@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  AdminPageTemplate,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableHead,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+  AdminCard,
+  AdminCardContent,
+  AdminButton,
+  AdminBadge,
+  AdminInput,
+  AdminLabel,
+} from '@/components/admin';
 import {
   Dialog,
   DialogContent,
@@ -22,17 +24,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
 import {
-  ArrowLeft,
   Plus,
   Edit,
   Trash2,
   Save,
   X,
   ExternalLink,
+  MoreHorizontal,
 } from 'lucide-react';
 import type { Database } from '@/types/database';
 
@@ -184,239 +192,230 @@ export default function LocationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => router.push('/admin/dashboard')}
-              variant="ghost"
-              size="sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Locations</h1>
-              <p className="text-gray-600">
-                Manage delivery locations and timeframes
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={openCreateModal}
-            className="bg-black hover:bg-gray-800"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Location
-          </Button>
-        </div>
-
-        {/* Locations Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Locations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>District</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Pickup Hours</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {locations.map(location => (
-                  <TableRow key={location.id}>
-                    <TableCell className="font-medium">
-                      {location.name}
-                    </TableCell>
-                    <TableCell>{location.district}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {location.address}
-                    </TableCell>
-                    <TableCell>
-                      {location.pickup_hour_start} - {location.pickup_hour_end}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={location.active ? 'default' : 'secondary'}
-                      >
-                        {location.active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
+    <AdminPageTemplate
+      title="Locations"
+      subtitle="Manage delivery locations and timeframes"
+      primaryAction={{
+        label: 'Add Location',
+        onClick: openCreateModal,
+        icon: Plus,
+      }}
+    >
+      {/* Locations Table */}
+      <AdminCard>
+        <AdminCardContent className="p-0">
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead>Name</AdminTableHead>
+                <AdminTableHead>District</AdminTableHead>
+                <AdminTableHead>Address</AdminTableHead>
+                <AdminTableHead>Pickup Hours</AdminTableHead>
+                <AdminTableHead>Status</AdminTableHead>
+                <AdminTableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {locations.map(location => (
+                <AdminTableRow key={location.id}>
+                  <AdminTableCell className="font-medium">
+                    {location.name}
+                  </AdminTableCell>
+                  <AdminTableCell>{location.district}</AdminTableCell>
+                  <AdminTableCell className="max-w-xs truncate">
+                    {location.address}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    {location.pickup_hour_start} - {location.pickup_hour_end}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <AdminBadge
+                      variant={location.active ? 'success' : 'secondary'}
+                    >
+                      {location.active ? 'Active' : 'Inactive'}
+                    </AdminBadge>
+                  </AdminTableCell>
+                  <AdminTableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <AdminButton
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </AdminButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
                         {location.location_url && (
-                          <Button
-                            size="sm"
-                            variant="outline"
+                          <DropdownMenuItem
                             onClick={() =>
                               window.open(location.location_url!, '_blank')
                             }
                           >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            View Location
+                          </DropdownMenuItem>
                         )}
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <DropdownMenuItem
                           onClick={() => openEditModal(location)}
                         >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => deleteLocation(location.id)}
+                          className="text-red-600 focus:text-red-600"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminCardContent>
+      </AdminCard>
 
-        {/* Create/Edit Modal */}
-        <Dialog
-          open={showCreateModal || !!editingLocation}
-          onOpenChange={closeModal}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingLocation ? 'Edit Location' : 'Create Location'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingLocation
-                  ? 'Update location information'
-                  : 'Add a new delivery location'}
-              </DialogDescription>
-            </DialogHeader>
+      {/* Create/Edit Modal */}
+      <Dialog
+        open={showCreateModal || !!editingLocation}
+        onOpenChange={closeModal}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLocation ? 'Edit Location' : 'Create Location'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingLocation
+                ? 'Update location information'
+                : 'Add a new delivery location'}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
+          <div className="space-y-4">
+            <div>
+              <AdminLabel htmlFor="name">Location Name</AdminLabel>
+              <AdminInput
+                id="name"
+                value={formData.name}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="e.g., Impact Hub"
+              />
+            </div>
+
+            <div>
+              <AdminLabel htmlFor="district">District</AdminLabel>
+              <AdminInput
+                id="district"
+                value={formData.district}
+                onChange={e =>
+                  setFormData({ ...formData, district: e.target.value })
+                }
+                placeholder="e.g., Penha da França"
+              />
+            </div>
+
+            <div>
+              <AdminLabel htmlFor="address">Address</AdminLabel>
+              <Textarea
+                id="address"
+                value={formData.address}
+                onChange={e =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                placeholder="Full address"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <AdminLabel htmlFor="location_url">
+                Location URL (Optional)
+              </AdminLabel>
+              <AdminInput
+                id="location_url"
+                value={formData.location_url}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    location_url: e.target.value,
+                  })
+                }
+                placeholder="https://maps.google.com/..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Location Name</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={e =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="e.g., Impact Hub"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="district">District</Label>
-                <Input
-                  id="district"
-                  value={formData.district}
-                  onChange={e =>
-                    setFormData({ ...formData, district: e.target.value })
-                  }
-                  placeholder="e.g., Penha da França"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  value={formData.address}
-                  onChange={e =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  placeholder="Full address"
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="location_url">Location URL (Optional)</Label>
-                <Input
-                  id="location_url"
-                  value={formData.location_url}
+                <AdminLabel htmlFor="pickup_hour_start">
+                  Pickup Start Time
+                </AdminLabel>
+                <AdminInput
+                  id="pickup_hour_start"
+                  type="time"
+                  value={formData.pickup_hour_start}
                   onChange={e =>
                     setFormData({
                       ...formData,
-                      location_url: e.target.value,
+                      pickup_hour_start: e.target.value,
                     })
                   }
-                  placeholder="https://maps.google.com/..."
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="pickup_hour_start">Pickup Start Time</Label>
-                  <Input
-                    id="pickup_hour_start"
-                    type="time"
-                    value={formData.pickup_hour_start}
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        pickup_hour_start: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="pickup_hour_end">Pickup End Time</Label>
-                  <Input
-                    id="pickup_hour_end"
-                    type="time"
-                    value={formData.pickup_hour_end}
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        pickup_hour_end: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  id="active"
-                  type="checkbox"
-                  checked={formData.active}
+              <div>
+                <AdminLabel htmlFor="pickup_hour_end">
+                  Pickup End Time
+                </AdminLabel>
+                <AdminInput
+                  id="pickup_hour_end"
+                  type="time"
+                  value={formData.pickup_hour_end}
                   onChange={e =>
-                    setFormData({ ...formData, active: e.target.checked })
+                    setFormData({
+                      ...formData,
+                      pickup_hour_end: e.target.value,
+                    })
                   }
-                  className="rounded"
                 />
-                <Label htmlFor="active">Active</Label>
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button onClick={closeModal} variant="outline">
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={saveLocation}
-                className="bg-black hover:bg-gray-800"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {editingLocation ? 'Update' : 'Create'}
-              </Button>
+            <div className="flex items-center space-x-2">
+              <input
+                id="active"
+                type="checkbox"
+                checked={formData.active}
+                onChange={e =>
+                  setFormData({ ...formData, active: e.target.checked })
+                }
+                className="rounded"
+              />
+              <AdminLabel htmlFor="active">Active</AdminLabel>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <AdminButton onClick={closeModal} variant="outline">
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </AdminButton>
+            <AdminButton onClick={saveLocation} variant="admin-primary">
+              <Save className="w-4 h-4 mr-2" />
+              {editingLocation ? 'Update' : 'Create'}
+            </AdminButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AdminPageTemplate>
   );
 }
