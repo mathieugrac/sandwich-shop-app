@@ -19,7 +19,6 @@ import {
   Users,
   BarChart3,
   LogOut,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface ActiveDropData {
@@ -40,8 +39,6 @@ interface ActiveDropData {
     totalAvailable: number;
   };
   timeUntilDeadline: string | null;
-  multipleActiveDrops?: boolean;
-  totalActiveDrops?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -63,26 +60,7 @@ export default function AdminDashboardPage() {
     try {
       setLoadingActiveDrop(true);
 
-      // First, check how many active drops exist
-      const { data: activeDropsCount, error: countError } = await supabase
-        .from('drops')
-        .select('id')
-        .eq('status', 'active');
-
-      if (countError) {
-        console.error('Error counting active drops:', countError);
-        setActiveDropData(null);
-        return;
-      }
-
-      const totalActiveDrops = activeDropsCount?.length || 0;
-
-      if (totalActiveDrops === 0) {
-        setActiveDropData(null);
-        return;
-      }
-
-      // Get the oldest active drop (current behavior)
+      // Get the oldest active drop
       const { data: dropData, error: dropError } = await supabase
         .from('drops')
         .select(
@@ -191,8 +169,6 @@ export default function AdminDashboardPage() {
         orderStats,
         inventoryStats,
         timeUntilDeadline,
-        multipleActiveDrops: totalActiveDrops > 1,
-        totalActiveDrops,
       });
     } catch (error) {
       console.error('Error loading active drop data:', error);
@@ -223,14 +199,7 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <AdminPageTemplate
-      title="Dashboard"
-      secondaryActions={
-        <AdminButton onClick={handleLogout} variant="outline">
-          <LogOut className="w-4 h-4" />
-        </AdminButton>
-      }
-    >
+    <AdminPageTemplate title="Dashboard">
       {/* Next Drop Card */}
       <div className="mb-4">
         {loadingActiveDrop ? (
@@ -255,23 +224,6 @@ export default function AdminDashboardPage() {
                 </AdminCardTitle>
               </AdminCardHeader>
               <AdminCardContent className="text-center space-y-4">
-                {/* Warning for multiple active drops */}
-                {activeDropData.multipleActiveDrops && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                    <div className="flex items-center justify-center space-x-2 text-amber-800">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        Warning: {activeDropData.totalActiveDrops} active drops
-                        found
-                      </span>
-                    </div>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Showing oldest drop. Check Drops page to manage all active
-                      drops.
-                    </p>
-                  </div>
-                )}
-
                 <div>
                   <p className="text-xl font-semibold mb-1">
                     {new Date(activeDropData.drop.date).toLocaleDateString(
@@ -322,23 +274,6 @@ export default function AdminDashboardPage() {
             {/* Desktop Layout */}
             <div className="hidden md:block">
               <AdminCardContent className="p-6">
-                {/* Warning for multiple active drops */}
-                {activeDropData.multipleActiveDrops && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                    <div className="flex items-center space-x-2 text-amber-800">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="text-sm font-medium">
-                        Warning: {activeDropData.totalActiveDrops} active drops
-                        found
-                      </span>
-                    </div>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Showing oldest drop. Check Drops page to manage all active
-                      drops.
-                    </p>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between">
                   {/* Left Side: Title + Date + Location */}
                   <div className="flex items-center space-x-4">
@@ -450,64 +385,6 @@ export default function AdminDashboardPage() {
             </div>
           </AdminCard>
         )}
-      </div>
-
-      {/* Navigation Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        {/* Drops */}
-        <AdminCard
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigateTo('/admin/drops')}
-        >
-          <AdminCardHeader className="text-center py-8">
-            <Calendar className="w-12 h-12 mx-auto mb-4 text-purple-600" />
-            <AdminCardTitle>Drops</AdminCardTitle>
-          </AdminCardHeader>
-        </AdminCard>
-
-        {/* Analytics */}
-        <AdminCard
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigateTo('/admin/analytics')}
-        >
-          <AdminCardHeader className="text-center py-8">
-            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-red-600" />
-            <AdminCardTitle>Analytics</AdminCardTitle>
-          </AdminCardHeader>
-        </AdminCard>
-
-        {/* Products */}
-        <AdminCard
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigateTo('/admin/products')}
-        >
-          <AdminCardHeader className="text-center py-8">
-            <Package className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-            <AdminCardTitle>Products</AdminCardTitle>
-          </AdminCardHeader>
-        </AdminCard>
-
-        {/* Clients */}
-        <AdminCard
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigateTo('/admin/clients')}
-        >
-          <AdminCardHeader className="text-center py-8">
-            <Users className="w-12 h-12 mx-auto mb-4 text-orange-600" />
-            <AdminCardTitle>Clients</AdminCardTitle>
-          </AdminCardHeader>
-        </AdminCard>
-
-        {/* Locations */}
-        <AdminCard
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigateTo('/admin/locations')}
-        >
-          <AdminCardHeader className="text-center py-8">
-            <MapPin className="w-12 h-12 mx-auto mb-4 text-green-600" />
-            <AdminCardTitle>Locations</AdminCardTitle>
-          </AdminCardHeader>
-        </AdminCard>
       </div>
     </AdminPageTemplate>
   );

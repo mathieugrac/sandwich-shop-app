@@ -34,7 +34,7 @@ const AdminCardHeader = forwardRef<
 >(({ className, ...props }, ref) => (
   <CardHeader
     ref={ref}
-    className={cn('px-6 py-4 border-b border-gray-100 bg-gray-50', className)}
+    className={cn('px-6 py-4 no-border', className)}
     {...props}
   />
 ));
@@ -71,7 +71,11 @@ const AdminCardContent = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <CardContent ref={ref} className={cn('px-6', className)} {...props} />
+  <CardContent
+    ref={ref}
+    className={cn('px-6 py-6 pt-2', className)}
+    {...props}
+  />
 ));
 AdminCardContent.displayName = 'AdminCardContent';
 
