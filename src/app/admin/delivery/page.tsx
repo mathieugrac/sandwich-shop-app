@@ -346,15 +346,19 @@ export default function DeliveryPage() {
                       )}
                     </AdminTableCell>
                     <AdminTableCell>
-                      <span className="text-sm font-mono text-gray-600">
-                        {order.payment_intent_id ? (
-                          <span title={order.payment_intent_id}>
-                            {order.payment_intent_id.substring(0, 20)}...
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </span>
+                      {order.payment_intent_id ? (
+                        <a
+                          href={`https://dashboard.stripe.com/acct_1S44UQFKFt7Rb5ez/test/payments/${order.payment_intent_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-mono text-blue-600 hover:text-blue-800 hover:underline"
+                          title={`Open in Stripe: ${order.payment_intent_id}`}
+                        >
+                          {order.payment_intent_id.substring(0, 20)}...
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">-</span>
+                      )}
                     </AdminTableCell>
                     <AdminTableCell className="text-right">
                       <AdminButton
