@@ -2,18 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  AdminPageTemplate,
+  AdminTable,
+  AdminTableHeader,
+  AdminTableHead,
+  AdminTableBody,
+  AdminTableRow,
+  AdminTableCell,
+  AdminCard,
+  AdminCardContent,
+  AdminButton,
+  AdminBadge,
+  AdminInput,
+  AdminLabel,
+} from '@/components/admin';
 import {
   Dialog,
   DialogContent,
@@ -21,12 +24,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/lib/supabase/client';
 import { useRequireAuth } from '@/lib/hooks';
 import type { Database } from '@/types/database';
 import {
-  ArrowLeft,
   Plus,
   Edit,
   Trash2,
@@ -34,6 +41,7 @@ import {
   X,
   Phone,
   Calendar,
+  MoreHorizontal,
 } from 'lucide-react';
 
 // Use types from database instead of duplicate interfaces
@@ -302,222 +310,200 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => router.push('/admin/dashboard')}
-              variant="ghost"
-              size="sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
-              <p className="text-gray-600">
-                Manage customer information and history
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={openCreateModal}
-            className="bg-black hover:bg-gray-800"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Client
-          </Button>
-        </div>
-
-        {/* Clients Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Clients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Total Orders</TableHead>
-                  <TableHead>Total Spent</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map(client => (
-                  <TableRow key={client.id}>
-                    <TableCell className="font-medium">
-                      {client.email}
-                    </TableCell>
-                    <TableCell>
-                      {client.phone ? (
-                        <div className="flex items-center space-x-2">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <span>{client.phone}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {client.total_orders || 0}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        €{(client.total_spent || 0).toFixed(2)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {client.created_at
-                        ? new Date(client.created_at).toLocaleDateString()
-                        : 'Unknown'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
+    <AdminPageTemplate
+      title="Customers"
+      subtitle="Manage customer information and history"
+      primaryAction={{
+        label: 'Add Customer',
+        onClick: openCreateModal,
+        icon: Plus,
+      }}
+    >
+      {/* Customers Table */}
+      <AdminCard>
+        <AdminCardContent className="p-0">
+          <AdminTable>
+            <AdminTableHeader>
+              <AdminTableRow>
+                <AdminTableHead>Email</AdminTableHead>
+                <AdminTableHead>Phone</AdminTableHead>
+                <AdminTableHead>Total Orders</AdminTableHead>
+                <AdminTableHead>Total Spent</AdminTableHead>
+                <AdminTableHead>Created</AdminTableHead>
+                <AdminTableHead className="w-12">
+                  <span className="sr-only">Actions</span>
+                </AdminTableHead>
+              </AdminTableRow>
+            </AdminTableHeader>
+            <AdminTableBody>
+              {clients.map(client => (
+                <AdminTableRow key={client.id}>
+                  <AdminTableCell className="font-medium">
+                    {client.email}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    {client.phone ? (
+                      <div className="flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span>{client.phone}</span>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </AdminTableCell>
+                  <AdminTableCell>{client.total_orders || 0}</AdminTableCell>
+                  <AdminTableCell>
+                    €{(client.total_spent || 0).toFixed(2)}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    {client.created_at
+                      ? new Date(client.created_at).toLocaleDateString()
+                      : 'Unknown'}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <AdminButton
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </AdminButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
                           onClick={() => openOrdersModal(client)}
                         >
-                          <Calendar className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openEditModal(client)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
+                          <Calendar className="w-4 h-4 mr-2" />
+                          View Orders
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openEditModal(client)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => deleteClient(client.id)}
+                          className="text-red-600 focus:text-red-600"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTableBody>
+          </AdminTable>
+        </AdminCardContent>
+      </AdminCard>
 
-        {/* Create/Edit Modal */}
-        <Dialog
-          open={showCreateModal || !!editingClient}
-          onOpenChange={closeModal}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {editingClient ? 'Edit Client' : 'Create Client'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingClient
-                  ? 'Update client information'
-                  : 'Add a new client'}
-              </DialogDescription>
-            </DialogHeader>
+      {/* Create/Edit Modal */}
+      <Dialog
+        open={showCreateModal || !!editingClient}
+        onOpenChange={closeModal}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingClient ? 'Edit Customer' : 'Create Customer'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingClient
+                ? 'Update customer information'
+                : 'Add a new customer'}
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={e =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="client@example.com"
-                />
+          <div className="space-y-4">
+            <div>
+              <AdminLabel htmlFor="email">Email</AdminLabel>
+              <AdminInput
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={e =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="customer@example.com"
+              />
+            </div>
+
+            <div>
+              <AdminLabel htmlFor="phone">Phone (Optional)</AdminLabel>
+              <AdminInput
+                id="phone"
+                value={formData.phone}
+                onChange={e =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder="+1234567890"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <AdminButton onClick={closeModal} variant="outline">
+              <X className="w-4 h-4 mr-2" />
+              Cancel
+            </AdminButton>
+            <AdminButton onClick={saveClient} variant="admin-primary">
+              <Save className="w-4 h-4 mr-2" />
+              {editingClient ? 'Update' : 'Create'}
+            </AdminButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Orders Modal */}
+      <Dialog open={showOrdersModal} onOpenChange={setShowOrdersModal}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Order History - {selectedClient?.email}</DialogTitle>
+            <DialogDescription>
+              View all orders for this customer
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-96 overflow-y-auto">
+            {clientOrders.length > 0 ? (
+              <AdminTable>
+                <AdminTableHeader>
+                  <AdminTableRow>
+                    <AdminTableHead>Order #</AdminTableHead>
+                    <AdminTableHead>Date</AdminTableHead>
+                    <AdminTableHead>Status</AdminTableHead>
+                    <AdminTableHead>Amount</AdminTableHead>
+                  </AdminTableRow>
+                </AdminTableHeader>
+                <AdminTableBody>
+                  {clientOrders.map(order => (
+                    <AdminTableRow key={order.id}>
+                      <AdminTableCell className="font-medium">
+                        {order.order_number}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <AdminBadge variant="outline">
+                          {order.status}
+                        </AdminBadge>
+                      </AdminTableCell>
+                      <AdminTableCell>€{order.total_amount}</AdminTableCell>
+                    </AdminTableRow>
+                  ))}
+                </AdminTableBody>
+              </AdminTable>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No orders found for this customer</p>
               </div>
-
-              <div>
-                <Label htmlFor="phone">Phone (Optional)</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={e =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+1234567890"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button onClick={closeModal} variant="outline">
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={saveClient}
-                className="bg-black hover:bg-gray-800"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {editingClient ? 'Update' : 'Create'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Orders Modal */}
-        <Dialog open={showOrdersModal} onOpenChange={setShowOrdersModal}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Order History - {selectedClient?.name}</DialogTitle>
-              <DialogDescription>
-                View all orders for this client
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="max-h-96 overflow-y-auto">
-              {clientOrders.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientOrders.map(order => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium">
-                          {order.order_number}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(order.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{order.status}</Badge>
-                        </TableCell>
-                        <TableCell>€{order.total_amount}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  {/* Removed Users icon */}
-                  <p>No orders found for this client</p>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AdminPageTemplate>
   );
 }
