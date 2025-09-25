@@ -312,7 +312,9 @@ export default function DeliveryPage() {
                   <AdminTableHead>Products</AdminTableHead>
                   <AdminTableHead>Instructions</AdminTableHead>
                   <AdminTableHead>Stripe</AdminTableHead>
-                  <AdminTableHead className="text-right sr-only">Action</AdminTableHead>
+                  <AdminTableHead className="text-right sr-only">
+                    Action
+                  </AdminTableHead>
                 </AdminTableRow>
               </AdminTableHeader>
               <AdminTableBody>
@@ -371,7 +373,7 @@ export default function DeliveryPage() {
                         <span className="text-sm text-gray-400">-</span>
                       )}
                     </AdminTableCell>
-                    <AdminTableCell className="text-right sr-only">
+                    <AdminTableCell className="text-right">
                       <AdminButton
                         size="sm"
                         onClick={() => markAsDelivered(order.id)}
