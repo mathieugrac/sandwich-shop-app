@@ -303,7 +303,8 @@ export default function DeliveryPage() {
         {/* Orders Table */}
         <AdminCard>
           <AdminCardContent className="p-0">
-            <AdminTable>
+            <div className="overflow-x-auto">
+              <AdminTable>
               <AdminTableHeader>
                 <AdminTableRow>
                   <AdminTableHead>Order</AdminTableHead>
@@ -339,18 +340,18 @@ export default function DeliveryPage() {
                       </div>
                     </AdminTableCell>
                     <AdminTableCell>
-                      <div className="max-w-xs">
+                      <div className="max-w-40 min-w-28">
                         {getOrderItemsText(order).map((item, index) => (
-                          <p key={index} className="text-sm">
+                          <p key={index} className="text-sm break-words">
                             {item}
                           </p>
                         ))}
                       </div>
                     </AdminTableCell>
                     <AdminTableCell>
-                      <div className="max-w-xs">
+                      <div className="max-w-48 min-w-32">
                         {order.special_instructions ? (
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-gray-700 break-words leading-relaxed">
                             {order.special_instructions}
                           </p>
                         ) : (
@@ -401,6 +402,7 @@ export default function DeliveryPage() {
                 )}
               </AdminTableBody>
             </AdminTable>
+            </div>
           </AdminCardContent>
         </AdminCard>
       </AdminPageTemplate>
