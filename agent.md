@@ -195,6 +195,14 @@ scripts/                       # Utility scripts
   - Order lifecycle management (pending → confirmed → completed)
   - Real-time inventory validation and reservation
   - Admin dashboard for comprehensive business management
+  - **Order Assignment Flow**: Critical multi-step process ensuring orders are assigned to correct drops:
+    1. Customer visits /drop/[id] page
+    2. Adds items to cart → Drop ID stored in localStorage
+    3. Goes to checkout → Drop info displayed correctly
+    4. Payment page → StripePayment reads drop ID from localStorage
+    5. Payment intent created → Uses SPECIFIC drop ID, not first active
+    6. Stripe webhook → Creates order with CORRECT drop ID
+    7. Delivery page → Shows orders under correct drop tabs
 - **Integration Points**:
   - Supabase: Database, authentication, real-time subscriptions, file storage
   - Stripe: Payment processing, webhooks for order confirmation

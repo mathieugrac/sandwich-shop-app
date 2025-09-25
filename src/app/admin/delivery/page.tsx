@@ -298,7 +298,7 @@ export default function DeliveryPage() {
                   <AdminTableHead>Customer</AdminTableHead>
                   <AdminTableHead>Items</AdminTableHead>
                   <AdminTableHead>Instructions</AdminTableHead>
-                  <AdminTableHead>Total</AdminTableHead>
+                  <AdminTableHead>Stripe ID</AdminTableHead>
                   <AdminTableHead className="text-right">Action</AdminTableHead>
                 </AdminTableRow>
               </AdminTableHeader>
@@ -346,8 +346,14 @@ export default function DeliveryPage() {
                       )}
                     </AdminTableCell>
                     <AdminTableCell>
-                      <span className="font-medium">
-                        {formatCurrency(order.total_amount)}
+                      <span className="text-sm font-mono text-gray-600">
+                        {order.payment_intent_id ? (
+                          <span title={order.payment_intent_id}>
+                            {order.payment_intent_id.substring(0, 20)}...
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </span>
                     </AdminTableCell>
                     <AdminTableCell className="text-right">
