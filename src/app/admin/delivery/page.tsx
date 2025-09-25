@@ -305,103 +305,113 @@ export default function DeliveryPage() {
           <AdminCardContent className="p-0">
             <div className="overflow-x-auto">
               <AdminTable>
-              <AdminTableHeader>
-                <AdminTableRow>
-                  <AdminTableHead>Order</AdminTableHead>
-                  <AdminTableHead>Pickup</AdminTableHead>
-                  <AdminTableHead>Customer</AdminTableHead>
-                  <AdminTableHead>Products</AdminTableHead>
-                  <AdminTableHead>Instructions</AdminTableHead>
-                  <AdminTableHead>Stripe</AdminTableHead>
-                  <AdminTableHead className="text-right sr-only">
-                    Action
-                  </AdminTableHead>
-                </AdminTableRow>
-              </AdminTableHeader>
-              <AdminTableBody>
-                {currentOrders.map(order => (
-                  <AdminTableRow key={order.id}>
-                    <AdminTableCell>
-                      <span className="text-sm font-medium text-blue-600">
-                        #{order.order_number}
-                      </span>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <span className="text-sm font-medium">
-                        {formatTime(order.pickup_time)}
-                      </span>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <div>
-                        <p className="font-medium">{order.customer_name}</p>
-                        <p className="text-sm" style={{ color: '#555' }}>
-                          {order.clients?.email}
-                        </p>
-                      </div>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <div className="max-w-40 min-w-28">
-                        {getOrderItemsText(order).map((item, index) => (
-                          <p key={index} className="text-sm break-words">
-                            {item}
-                          </p>
-                        ))}
-                      </div>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      <div className="max-w-48 min-w-32">
-                        {order.special_instructions ? (
-                          <p className="text-sm text-gray-700 break-words leading-relaxed">
-                            {order.special_instructions}
-                          </p>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </div>
-                    </AdminTableCell>
-                    <AdminTableCell>
-                      {order.payment_intent_id ? (
-                        <a
-                          href={getStripePaymentUrl(order.payment_intent_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-mono text-blue-600 hover:text-blue-800 hover:underline"
-                          title={`Open in Stripe: ${order.payment_intent_id}`}
-                        >
-                          {order.payment_intent_id.substring(0, 20)}...
-                        </a>
-                      ) : (
-                        <span className="text-sm text-gray-400">-</span>
-                      )}
-                    </AdminTableCell>
-                    <AdminTableCell className="text-right">
-                      <AdminButton
-                        size="sm"
-                        onClick={() => markAsDelivered(order.id)}
-                        disabled={updatingOrder === order.id}
-                        variant="admin-primary"
-                      >
-                        {updatingOrder === order.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                        ) : (
-                          'Delivered'
-                        )}
-                      </AdminButton>
-                    </AdminTableCell>
-                  </AdminTableRow>
-                ))}
-                {currentOrders.length === 0 && (
+                <AdminTableHeader>
                   <AdminTableRow>
-                    <AdminTableCell
-                      colSpan={7}
-                      className="text-center py-8 text-gray-500"
-                    >
-                      No orders to deliver
-                    </AdminTableCell>
+                    <AdminTableHead>Order</AdminTableHead>
+                    <AdminTableHead>Pickup</AdminTableHead>
+                    <AdminTableHead>Customer</AdminTableHead>
+                    <AdminTableHead>Products</AdminTableHead>
+                    <AdminTableHead>Instructions</AdminTableHead>
+                    <AdminTableHead>Stripe</AdminTableHead>
+                    <AdminTableHead className="text-right sr-only">
+                      Action
+                    </AdminTableHead>
                   </AdminTableRow>
-                )}
-              </AdminTableBody>
-            </AdminTable>
+                </AdminTableHeader>
+                <AdminTableBody>
+                  {currentOrders.map(order => (
+                    <AdminTableRow key={order.id}>
+                      <AdminTableCell className="align-top">
+                        <div className="py-1">
+                          <span className="text-sm font-medium text-blue-600">
+                            #{order.order_number}
+                          </span>
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="align-top">
+                        <div className="py-1">
+                          <span className="text-sm font-medium">
+                            {formatTime(order.pickup_time)}
+                          </span>
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="align-top">
+                        <div className="py-1">
+                          <p className="font-medium">{order.customer_name}</p>
+                          <p className="text-sm" style={{ color: '#555' }}>
+                            {order.clients?.email}
+                          </p>
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="align-top">
+                        <div className="max-w-40 min-w-28 py-1">
+                          {getOrderItemsText(order).map((item, index) => (
+                            <p key={index} className="text-sm break-words">
+                              {item}
+                            </p>
+                          ))}
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="align-top">
+                        <div className="max-w-48 min-w-32 py-1">
+                          {order.special_instructions ? (
+                            <p className="text-sm text-gray-700 break-words leading-relaxed whitespace-pre-wrap">
+                              {order.special_instructions}
+                            </p>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="align-top">
+                        <div className="py-1">
+                          {order.payment_intent_id ? (
+                            <a
+                              href={getStripePaymentUrl(
+                                order.payment_intent_id
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-mono text-blue-600 hover:text-blue-800 hover:underline"
+                              title={`Open in Stripe: ${order.payment_intent_id}`}
+                            >
+                              {order.payment_intent_id.substring(0, 20)}...
+                            </a>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
+                      </AdminTableCell>
+                      <AdminTableCell className="text-right align-top">
+                        <div className="py-1">
+                          <AdminButton
+                            size="sm"
+                            onClick={() => markAsDelivered(order.id)}
+                            disabled={updatingOrder === order.id}
+                            variant="admin-primary"
+                          >
+                            {updatingOrder === order.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                            ) : (
+                              'Delivered'
+                            )}
+                          </AdminButton>
+                        </div>
+                      </AdminTableCell>
+                    </AdminTableRow>
+                  ))}
+                  {currentOrders.length === 0 && (
+                    <AdminTableRow>
+                      <AdminTableCell
+                        colSpan={7}
+                        className="text-center py-8 text-gray-500"
+                      >
+                        No orders to deliver
+                      </AdminTableCell>
+                    </AdminTableRow>
+                  )}
+                </AdminTableBody>
+              </AdminTable>
             </div>
           </AdminCardContent>
         </AdminCard>
