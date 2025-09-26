@@ -32,6 +32,10 @@ export interface DropWithProducts extends Drop {
 export interface AdminDrop extends Drop {
   location_name: string;
   total_available: number;
+  total_inventory: number;    // Total items prepared
+  total_orders: number;       // Total orders placed  
+  total_loss: number;         // Items not ordered (loss)
+  loss_percentage: number;    // Loss as percentage
 }
 
 export async function fetchDrops(): Promise<DropWithCalculatedFields[]> {

@@ -911,7 +911,7 @@ export default function DropManagementPage() {
                 <AdminTableHead>Inventory</AdminTableHead>
                 <AdminTableHead>Sold</AdminTableHead>
                 <AdminTableHead>Loss</AdminTableHead>
-                <AdminTableHead>Completed</AdminTableHead>
+                <AdminTableHead>Total Sold</AdminTableHead>
                 <AdminTableHead className="w-12">
                   <span className="sr-only">Actions</span>
                 </AdminTableHead>
@@ -939,11 +939,19 @@ export default function DropManagementPage() {
                   </AdminTableCell>
                   <AdminTableCell>{getStatusBadge(drop.status)}</AdminTableCell>
                   <AdminTableCell className="text-gray-900">
-                    [45]
+                    {drop.total_inventory || 0}
                   </AdminTableCell>
-                  <AdminTableCell className="text-gray-900">32</AdminTableCell>
-                  <AdminTableCell className="text-gray-900">13</AdminTableCell>
-                  <AdminTableCell className="text-gray-900">85%</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    {drop.total_orders || 0}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    {drop.total_orders > 0 ? drop.total_loss || 0 : '–'}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    {drop.total_inventory > 0 && drop.total_orders > 0
+                      ? `${Math.round((drop.total_orders / drop.total_inventory) * 100)}%`
+                      : '–'}
+                  </AdminTableCell>
                   <AdminTableCell className="text-right">
                     <div className="flex justify-end items-center gap-2">
                       {/* Status-specific action buttons */}
