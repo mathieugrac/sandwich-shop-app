@@ -1,10 +1,11 @@
 -- Create storage bucket for product images
 
--- Create the product-images bucket (simplified for compatibility)
-INSERT INTO storage.buckets (id, name)
+-- Create the product-images bucket as public (simplified for compatibility)
+INSERT INTO storage.buckets (id, name, public)
 VALUES (
   'product-images',
-  'product-images'
+  'product-images',
+  true
 ) ON CONFLICT (id) DO NOTHING;
 
 -- Create storage policy to allow public access for reading

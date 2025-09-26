@@ -56,10 +56,18 @@ import Image from 'next/image';
 
 // Use types from database instead of duplicate interfaces
 type Product = Database['public']['Tables']['products']['Row'];
+type ProductImage = Database['public']['Tables']['product_images']['Row'];
+
+// Extended product type with images
+interface ProductWithImages extends Product {
+  product_images?: ProductImage[];
+}
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductWithImages[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithImages[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -112,7 +120,17 @@ export default function ProductsPage() {
     try {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select(
+          `
+          *,
+          product_images (
+            id,
+            image_url,
+            alt_text,
+            sort_order
+          )
+        `
+        )
         .order('sort_order', { ascending: true });
 
       if (error) throw error;
@@ -202,18 +220,17 @@ export default function ProductsPage() {
       // Upload to Supabase Storage
       const fileExt = selectedImage.name.split('.').pop();
       const fileName = `${productId}-${Date.now()}.${fileExt}`;
-      const filePath = `product-images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('product-images')
-        .upload(filePath, selectedImage);
+        .upload(fileName, selectedImage);
 
       if (uploadError) throw uploadError;
 
       // Get public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from('product-images').getPublicUrl(filePath);
+      } = supabase.storage.from('product-images').getPublicUrl(fileName);
 
       return publicUrl;
     } catch (error) {
@@ -301,11 +318,9 @@ export default function ProductsPage() {
 
       if (images) {
         for (const image of images) {
-          const filePath = image.image_url.split('/').pop();
-          if (filePath) {
-            await supabase.storage
-              .from('product-images')
-              .remove([`product-images/${filePath}`]);
+          const fileName = image.image_url.split('/').pop();
+          if (fileName) {
+            await supabase.storage.from('product-images').remove([fileName]);
           }
         }
       }
@@ -411,8 +426,21 @@ export default function ProductsPage() {
                 <AdminTableRow key={product.id}>
                   <AdminTableCell>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0">
-                        <ImageIcon className="w-4 h-4 text-gray-400" />
+                      <div className="w-10 h-10 bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {product.product_images &&
+                        product.product_images.length > 0 ? (
+                          <Image
+                            src={product.product_images[0].image_url}
+                            alt={
+                              product.product_images[0].alt_text || product.name
+                            }
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 text-gray-400" />
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="font-medium text-gray-900 truncate">
@@ -438,9 +466,13 @@ export default function ProductsPage() {
                     €{product.production_cost}
                   </AdminTableCell>
                   <AdminTableCell className="text-gray-900">
-                    €2.50
+                    €{(product.sell_price - product.production_cost).toFixed(2)}
                   </AdminTableCell>
-                  <AdminTableCell className="text-gray-900">35%</AdminTableCell>
+                  <AdminTableCell className="text-gray-900">
+                    {product.sell_price > 0
+                      ? `${Math.round(((product.sell_price - product.production_cost) / product.sell_price) * 100)}%`
+                      : '0%'}
+                  </AdminTableCell>
                   <AdminTableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
