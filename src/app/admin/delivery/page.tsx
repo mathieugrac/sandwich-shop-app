@@ -238,15 +238,13 @@ export default function DeliveryPage() {
 
   // Generate Stripe dashboard URL for payment intent
   const getStripePaymentUrl = (paymentIntentId: string) => {
-    const accountId = process.env.NEXT_PUBLIC_STRIPE_ACCOUNT_ID;
-    const environment = process.env.NEXT_PUBLIC_STRIPE_ENVIRONMENT || 'test';
+    // Determine environment based on payment intent ID prefix
+    const isLive =
+      paymentIntentId.startsWith('pi_live_') ||
+      (paymentIntentId.startsWith('pi_1') && !paymentIntentId.includes('test'));
+    const environment = isLive ? '' : 'test/';
 
-    if (!accountId) {
-      console.warn('NEXT_PUBLIC_STRIPE_ACCOUNT_ID not configured');
-      return '#';
-    }
-
-    return `https://dashboard.stripe.com/${accountId}/${environment}/payments/${paymentIntentId}`;
+    return `https://dashboard.stripe.com/${environment}payments/${paymentIntentId}`;
   };
 
   if (loading) {

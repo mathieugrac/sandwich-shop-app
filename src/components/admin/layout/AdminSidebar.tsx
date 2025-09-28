@@ -12,6 +12,7 @@ import {
   ExternalLink,
   LogOut,
   X,
+  ShoppingBag,
 } from 'lucide-react';
 import { MenuItem } from '../ui/MenuItem';
 import { AdminButton } from '../ui/AdminButton';
@@ -49,6 +50,11 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         href: '/admin/delivery',
         icon: Truck,
         label: 'Delivery',
+      },
+      {
+        href: '/admin/orders',
+        icon: ShoppingBag,
+        label: 'Orders',
       },
       {
         href: '/admin/drops',
