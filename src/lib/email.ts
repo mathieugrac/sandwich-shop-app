@@ -19,6 +19,7 @@ export interface OrderConfirmationEmailData {
   totalAmount: number;
   specialInstructions?: string;
   locationName: string;
+  locationDistrict: string;
   locationUrl: string;
 }
 

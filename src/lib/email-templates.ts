@@ -75,6 +75,7 @@ export function getShopInfo() {
     shopName: process.env.NEXT_PUBLIC_SHOP_NAME || 'Your Sandwich Shop',
     shopPhone: process.env.NEXT_PUBLIC_SHOP_PHONE || '+1234567890',
     shopEmail: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
+    shopPhoneNumber: process.env.NEXT_PUBLIC_SHOP_PHONE_NUMBER || '+33 6 52 41 39 01',
     baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   };
 }

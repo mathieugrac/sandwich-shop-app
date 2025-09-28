@@ -3,9 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      All set! Your Fomé order is confirmed, see you at {{pickupTime}}!
-    </title>
+    <title>All set! We've got your lunch.</title>
     <link rel="stylesheet" href="https://fome-sandes.pt/emails/styles.css" />
   </head>
   <body>
@@ -15,52 +13,51 @@
       </div>
 
       <div class="email-content">
-        <p>Hi {{customerName}},</p>
+        <p>Hey {{customerName}},</p>
         <p>
-          Thanks for choosing Fomé! Your order is all set and we're excited to
-          prepare it for you.
+          Thanks for ordering from Fomé. We'll prepare your lunch in the morning
+          and have it waiting for you at your pickup time.
         </p>
 
         <div class="order-summary">
-          <h3>Order #{{orderNumber}}</h3>
-          <ul class="order-items">
-            {{#each items}}
-            <li class="order-item">
-              <span>{{productName}} × {{quantity}}</span>
-            </li>
-            {{/each}}
-            <li class="order-total">Total: {{totalAmount}}€</li>
-            <li class="pickup-info">
-              Ready for pickup:
-              <strong>{{pickupDate}} at {{pickupTime}}</strong>
-            </li>
-            <li class="location-info">
-              Where?
-              <a href="{{locationUrl}}" class="location-link">
-                <strong>{{locationName}}</strong>
-              </a>
-            </li>
+          <h3><strong>Pickup details</strong></h3>
+          <ul class="pickup-details">
+            <li>🗓 {{pickupDate}}</li>
+            <li>⏰ Pickup Time: {{pickupTime}}</li>
+            <li>📍 {{locationName}}, {{locationDistrict}}</li>
           </ul>
         </div>
 
-        <div class="reminders">
-          <h3>Quick reminders</h3>
-          <p>
-            Please plan to arrive within 10 minutes of your pickup time, and
-            bring cash for payment. Mbway is accepted.
-          </p>
+        <div class="order-items-section">
+          <h3><strong>Order {{orderNumber}}</strong></h3>
+          <ul class="order-items">
+            {{#each items}}
+            <li class="order-item">- {{quantity}} × {{productName}}</li>
+            {{/each}}
+          </ul>
         </div>
 
         <div class="contact-info">
-          <h3>Questions?</h3>
+          <h3><strong>Need anything?</strong></h3>
           <ul>
-            <li>WhatsApp: +33 6 52 41 39 01</li>
+            <li>WhatsApp: {{shopPhoneNumber}}</li>
             <li>Email: {{shopEmail}}</li>
           </ul>
         </div>
 
         <div class="footer">
-          <p>See you soon! The Fomé team</p>
+          <p>
+            We're happy to have you as part of our first tasters, see you at
+            lunch!
+          </p>
+          <p>The Fomé Team</p>
+          <p>
+            <em
+              >PS: We share each week's drops on
+              <a href="https://www.instagram.com/fome.sandwiches/">Instagram</a
+              >. Join us there to stay in the loop.</em
+            >
+          </p>
         </div>
       </div>
     </div>

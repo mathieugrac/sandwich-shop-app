@@ -266,6 +266,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
           `
           locations (
             name,
+            district,
             address,
             location_url
           )
@@ -284,6 +285,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
         totalAmount: parseFloat(metadata.totalAmount),
         specialInstructions: metadata.specialInstructions,
         locationName: dropWithLocation?.locations?.name || 'Pickup Location',
+        locationDistrict: dropWithLocation?.locations?.district || 'District',
         locationUrl: dropWithLocation?.locations?.location_url || '#',
       });
 
