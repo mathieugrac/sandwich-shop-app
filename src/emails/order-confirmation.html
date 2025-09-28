@@ -8,10 +8,6 @@
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>Fomé</h1>
-      </div>
-
       <div class="email-content">
         <p>Hey {{customerName}},</p>
         <p>
@@ -32,7 +28,7 @@
           <h3><strong>Order {{orderNumber}}</strong></h3>
           <ul class="order-items">
             {{#each items}}
-            <li class="order-item">- {{quantity}} × {{productName}}</li>
+            <li class="order-item">{{quantity}} × {{productName}}</li>
             {{/each}}
           </ul>
         </div>
@@ -40,7 +36,7 @@
         <div class="contact-info">
           <h3><strong>Need anything?</strong></h3>
           <ul>
-            <li>WhatsApp: {{shopPhoneNumber}}</li>
+            <li>WhatsApp: {{shopPhone}}</li>
             <li>Email: {{shopEmail}}</li>
           </ul>
         </div>
@@ -51,6 +47,7 @@
             lunch!
           </p>
           <p>The Fomé Team</p>
+          <p>--</p>
           <p>
             <em
               >PS: We share each week's drops on

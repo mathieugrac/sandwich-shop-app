@@ -1,8 +1,8 @@
 import { Resend } from 'resend';
 import { renderTemplate, getShopInfo } from './email-templates';
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend client only if API key is available
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export interface OrderConfirmationEmailData {
   orderNumber: string;
@@ -27,6 +27,19 @@ export async function sendOrderConfirmationEmail(
   data: OrderConfirmationEmailData
 ) {
   try {
+    // Check if Resend is available
+    if (!resend) {
+      console.log('📧 Resend not configured - email would be sent to:', data.customerEmail);
+      console.log('📧 Order confirmation email content:', {
+        orderNumber: data.orderNumber,
+        customerName: data.customerName,
+        pickupTime: data.pickupTime,
+        pickupDate: data.pickupDate,
+        totalAmount: data.totalAmount
+      });
+      return null;
+    }
+
     // Validate required data
     if (!data.customerEmail || !data.orderNumber) {
       throw new Error(
@@ -52,7 +65,7 @@ export async function sendOrderConfirmationEmail(
     const { data: emailData, error } = await resend.emails.send({
       from: shopInfo.shopEmail,
       to: data.customerEmail,
-      subject: `All set! Your Fomé order is confirmed — see you at ${data.pickupTime}!`,
+      subject: 'All set! We’ve got your lunch.',
       html,
     });
 
@@ -87,6 +100,17 @@ export async function sendPaymentFailureNotification(
   data: PaymentFailureNotificationData
 ) {
   try {
+    // Check if Resend is available
+    if (!resend) {
+      console.log('📧 Resend not configured - admin notification would be sent for payment failure:', {
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        paymentIntentId: data.paymentIntentId,
+        errorReason: data.errorReason
+      });
+      return null;
+    }
+
     // Get admin email from environment
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) {
@@ -132,6 +156,17 @@ export async function sendOrderStatusUpdateEmail(
   status: string
 ) {
   try {
+    // Check if Resend is available
+    if (!resend) {
+      console.log('📧 Resend not configured - status update email would be sent to:', customerEmail);
+      console.log('📧 Status update details:', {
+        orderNumber,
+        customerName,
+        status
+      });
+      return null;
+    }
+
     // Validate required data
     if (!customerEmail || !orderNumber || !status) {
       throw new Error('Missing required data for status update email');
