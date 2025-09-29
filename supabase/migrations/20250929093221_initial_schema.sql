@@ -233,12 +233,12 @@ CREATE OR REPLACE FUNCTION reserve_multiple_drop_products(
   p_order_items JSONB)
 RETURNS BOOLEAN AS $$
 DECLARE
-  item RECORD;
+  item JSONB;
   available_qty INTEGER;
   can_reserve BOOLEAN := TRUE;
 BEGIN
   -- First check if all items can be reserved
-  FOR item IN SELECT * FROM jsonb_array_elements(p_order_items)
+  FOR item IN SELECT value FROM jsonb_array_elements(p_order_items)
   LOOP
     SELECT available_quantity INTO available_qty
     FROM drop_products
@@ -252,7 +252,7 @@ BEGIN
   
   -- If all can be reserved, reserve them
   IF can_reserve THEN
-    FOR item IN SELECT * FROM jsonb_array_elements(p_order_items)
+    FOR item IN SELECT value FROM jsonb_array_elements(p_order_items)
     LOOP
       UPDATE drop_products
       SET reserved_quantity = reserved_quantity + (item->>'order_quantity')::INTEGER,
@@ -326,10 +326,10 @@ CREATE OR REPLACE FUNCTION release_multiple_drop_products(
   p_order_items JSONB)
 RETURNS BOOLEAN AS $$
 DECLARE
-  item RECORD;
+  item JSONB;
 BEGIN
   -- Release reserved quantities for all items
-  FOR item IN SELECT * FROM jsonb_array_elements(p_order_items)
+  FOR item IN SELECT value FROM jsonb_array_elements(p_order_items)
   LOOP
     UPDATE drop_products
     SET reserved_quantity = GREATEST(0, reserved_quantity - (item->>'order_quantity')::INTEGER),

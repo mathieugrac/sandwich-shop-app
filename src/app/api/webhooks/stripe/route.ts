@@ -115,10 +115,9 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
       throw new Error('Failed to process customer information');
     }
 
-    // Generate order number with drop_id
+    // Generate order number
     const { data: orderNumber, error: orderNumberError } = await supabase.rpc(
-      'generate_order_number',
-      { p_drop_id: metadata.dropId }
+      'generate_order_number'
     );
 
     if (orderNumberError) {
