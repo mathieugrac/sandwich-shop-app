@@ -76,6 +76,7 @@ export default function ProductsPage() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    allergens: '',
     sell_price: '',
     production_cost: '',
     category: 'sandwich' as 'sandwich' | 'side' | 'dessert' | 'beverage',
@@ -146,6 +147,7 @@ export default function ProductsPage() {
     setFormData({
       name: '',
       description: '',
+      allergens: '',
       sell_price: '',
       production_cost: '',
       category: 'sandwich',
@@ -165,6 +167,7 @@ export default function ProductsPage() {
     setFormData({
       name: product.name,
       description: product.description || '',
+      allergens: product.allergens || '',
       sell_price: product.sell_price.toString(),
       production_cost: product.production_cost.toString(),
       category:
@@ -249,6 +252,7 @@ export default function ProductsPage() {
       const productData = {
         name: formData.name,
         description: formData.description || null,
+        allergens: formData.allergens || null,
         sell_price: parseFloat(formData.sell_price),
         production_cost: parseFloat(formData.production_cost),
         category: formData.category,
@@ -599,6 +603,18 @@ export default function ProductsPage() {
                   setFormData({ ...formData, description: e.target.value })
                 }
                 placeholder="Product description"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <AdminLabel htmlFor="allergens">Allergens</AdminLabel>
+              <AdminInput
+                id="allergens"
+                value={formData.allergens}
+                onChange={e =>
+                  setFormData({ ...formData, allergens: e.target.value })
+                }
+                placeholder="e.g., Contains gluten, dairy, nuts"
               />
             </div>
 

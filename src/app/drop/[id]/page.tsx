@@ -342,6 +342,7 @@ export default function DropPage() {
                   key={dropProduct.id}
                   name={dropProduct.product.name}
                   description={dropProduct.product.description || undefined}
+                  allergens={dropProduct.product.allergens || undefined}
                   price={dropProduct.selling_price}
                   availableStock={getAvailableStock(dropProduct.id)}
                   images={dropProduct.product.product_images}

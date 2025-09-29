@@ -33,6 +33,7 @@ export async function POST(request: Request) {
     const {
       name,
       description,
+      allergens,
       sell_price,
       production_cost,
       category,
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
       .insert({
         name,
         description,
+        allergens,
         sell_price,
         production_cost,
         category,
@@ -95,6 +97,7 @@ export async function PUT(request: Request) {
       id,
       name,
       description,
+      allergens,
       sell_price,
       production_cost,
       category,
@@ -112,6 +115,7 @@ export async function PUT(request: Request) {
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (allergens !== undefined) updateData.allergens = allergens;
     if (sell_price !== undefined) updateData.sell_price = sell_price;
     if (production_cost !== undefined)
       updateData.production_cost = production_cost;

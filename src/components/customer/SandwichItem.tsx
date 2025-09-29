@@ -15,6 +15,7 @@ interface ProductImage {
 interface SandwichItemProps {
   name: string;
   description?: string;
+  allergens?: string;
   price: number;
   availableStock: number;
   images?: ProductImage[];
@@ -27,6 +28,7 @@ interface SandwichItemProps {
 export function SandwichItem({
   name,
   description,
+  allergens,
   price,
   availableStock,
   images,
@@ -169,6 +171,11 @@ export function SandwichItem({
           >
             {description}
           </div>
+        )}
+
+        {/* Allergens */}
+        {allergens && (
+          <p className="text-sm text-gray-500 mt-2">Allergens: {allergens}</p>
         )}
       </div>
     </Card>

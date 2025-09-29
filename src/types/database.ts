@@ -420,6 +420,7 @@ export type Database = {
       products: {
         Row: {
           active: boolean | null
+          allergens: string | null
           category: string
           created_at: string | null
           description: string | null
@@ -432,6 +433,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
+          allergens?: string | null
           category: string
           created_at?: string | null
           description?: string | null
@@ -444,6 +446,7 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
+          allergens?: string | null
           category?: string
           created_at?: string | null
           description?: string | null

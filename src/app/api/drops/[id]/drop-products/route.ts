@@ -58,6 +58,7 @@ export async function GET(
           id,
           name,
           description,
+          allergens,
           category,
           sell_price,
           production_cost,
