@@ -384,7 +384,8 @@ export default function CartPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-gray-500 mt-4">
-                  More explanation here about the pickup: where, how.
+                  You will meet us in the kitchen, on the third floor of Impact
+                  Hub.
                 </p>
               </Card>
 

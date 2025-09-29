@@ -172,6 +172,9 @@ scripts/                       # Utility scripts
 - **Git Strategy**: Main branch development (detected from git status)
 - **Commit Style**: AI should auto-commit work after completing relevant pieces when supported by AI capabilities
 - **File Modification Approach**: AI can modify files directly after receiving permission. Rely on git for version control - AI should auto-commit work after completing relevant pieces of work (when supported by AI capabilities).
+- **Database Management**:
+  - Always use `npm run db:reset-full` instead of `supabase db reset` for database resets
+  - This ensures proper cleanup and initialization of the local development environment
 - **Backup & Safety**:
   - Supabase CLI with local/remote synchronization
   - Docker-based local development environment

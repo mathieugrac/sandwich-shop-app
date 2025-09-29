@@ -14,7 +14,7 @@ const supabaseServiceKey =
 
 // Admin user credentials (matching seed.sql)
 const ADMIN_EMAIL = 'admin@fome.local';
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = 'MvJ*F8_t';
 const ADMIN_NAME = 'Local Admin';
 
 async function createAdminUser() {
