@@ -115,6 +115,15 @@ export default function OrdersPage() {
       .join(', ');
   };
 
+  const getOrderProductsList = (order: OrderWithDetails) => {
+    const products = getOrderProducts(order);
+    return products.map((product, index) => (
+      <p key={index} className="text-sm break-words mb-1 last:mb-0">
+        {product.quantity}x {product.name}
+      </p>
+    ));
+  };
+
   // Generate Stripe dashboard URL for payment intent
   const getStripePaymentUrl = (paymentIntentId: string) => {
     // Determine environment based on payment intent ID prefix
@@ -179,9 +188,7 @@ export default function OrdersPage() {
                     </AdminTableCell>
                     <AdminTableCell className="align-top">
                       <div className="max-w-48 min-w-32 py-1">
-                        <p className="text-sm break-words">
-                          {getOrderProductsText(order)}
-                        </p>
+                        {getOrderProductsList(order)}
                       </div>
                     </AdminTableCell>
                     <AdminTableCell className="align-top">
