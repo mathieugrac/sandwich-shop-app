@@ -322,7 +322,7 @@ export default function DeliveryPage() {
                       <AdminTableCell className="align-top">
                         <div className="py-1">
                           <span className="text-sm font-medium text-blue-600">
-                            #{order.order_number}
+                            #{order.public_code}
                           </span>
                         </div>
                       </AdminTableCell>

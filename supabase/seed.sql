@@ -16,8 +16,8 @@ ON CONFLICT (email) DO NOTHING;
 -- This can be done via the Supabase Studio UI or API call
 
 -- Sample locations data (matching production)
-INSERT INTO locations (name, district, address, location_url, pickup_hour_start, pickup_hour_end) VALUES
-('Impact Hub', 'Príncipe Real', 'Rua Fialho de Almeida 3, 1170-131 Lisboa', 'https://maps.google.com/?q=Impact+Hub+Lisboa', '12:00', '13:00');
+INSERT INTO locations (name, code, district, address, location_url, pickup_hour_start, pickup_hour_end) VALUES
+('Impact Hub', 'IH', 'Príncipe Real', 'Rua Fialho de Almeida 3, 1170-131 Lisboa', 'https://maps.google.com/?q=Impact+Hub+Lisboa', '12:00', '13:00');
 
 -- Sample products data (matching production)
 INSERT INTO products (name, description, category, sell_price, production_cost, sort_order) VALUES
@@ -27,28 +27,31 @@ INSERT INTO products (name, description, category, sell_price, production_cost, 
 
 -- Sample drops data (active and upcoming test drops)
 -- Create an active drop for today so orders can be placed
-INSERT INTO drops (date, location_id, status, notes) 
+INSERT INTO drops (date, location_id, drop_number, status, notes) 
 SELECT 
   CURRENT_DATE,
   l.id,
+  get_next_drop_number(l.id),
   'active',
   'Active test drop for local development - orders can be placed'
 FROM locations l 
 WHERE l.name = 'Impact Hub';
 
-INSERT INTO drops (date, location_id, status, notes) 
+INSERT INTO drops (date, location_id, drop_number, status, notes) 
 SELECT 
   CURRENT_DATE + INTERVAL '1 day',
   l.id,
+  get_next_drop_number(l.id),
   'upcoming',
   'Test drop for local development'
 FROM locations l 
 WHERE l.name = 'Impact Hub';
 
-INSERT INTO drops (date, location_id, status, notes) 
+INSERT INTO drops (date, location_id, drop_number, status, notes) 
 SELECT 
   CURRENT_DATE + INTERVAL '8 days',
   l.id,
+  get_next_drop_number(l.id),
   'upcoming', 
   'Second test drop for local development'
 FROM locations l 

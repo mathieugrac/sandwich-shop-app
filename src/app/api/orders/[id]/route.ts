@@ -68,7 +68,8 @@ export async function GET(
     // Transform the data to match the expected format
     const transformedOrder = {
       id: order.id,
-      order_number: order.order_number,
+      public_code: order.public_code, // New human-friendly order code
+      order_number: order.order_number, // Keep for backward compatibility
       status: order.status, // Add the missing status field
       customer_name: order.customer_name || 'Unknown',
       customer_email: order.clients?.email || 'Unknown',

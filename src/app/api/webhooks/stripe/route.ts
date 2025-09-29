@@ -6,6 +6,7 @@ import {
   sendOrderConfirmationEmail,
   sendPaymentFailureNotification,
 } from '@/lib/email';
+import { createOrderWithCode } from '@/lib/order-codes';
 
 export async function POST(request: Request) {
   try {
@@ -74,7 +75,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
     // Check if order already exists for this payment intent (webhook retry handling)
     const { data: existingOrder } = await supabase
       .from('orders')
-      .select('id, order_number, status')
+      .select('id, public_code, status')
       .eq('payment_intent_id', paymentIntent.id)
       .single();
 
@@ -84,7 +85,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
         {
           paymentIntentId: paymentIntent.id,
           orderId: existingOrder.id,
-          orderNumber: existingOrder.order_number,
+          orderNumber: existingOrder.public_code,
           status: existingOrder.status,
         }
       );
@@ -115,22 +116,29 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
       throw new Error('Failed to process customer information');
     }
 
-    // Generate order number
-    const { data: orderNumber, error: orderNumberError } = await supabase.rpc(
-      'generate_order_number'
-    );
-
-    if (orderNumberError) {
-      console.error('Error generating order number:', orderNumberError);
-      throw new Error('Failed to generate order number');
+    // Allocate sequence number using server Supabase (with service role permissions)
+    const { data: sequenceNumber, error: sequenceError } = await supabase.rpc('allocate_order_sequence', {
+      p_drop_id: metadata.dropId
+    });
+    
+    if (sequenceError) {
+      throw new Error(`Failed to allocate sequence: ${sequenceError.message}`);
     }
-
-    // Create order with 'confirmed' status (payment already processed)
+    
+    // Generate the public code using server Supabase
+    const { data: publicCode, error: codeError } = await supabase.rpc('generate_order_code', {
+      p_drop_id: metadata.dropId,
+      p_sequence_number: sequenceNumber
+    });
+    
+    if (codeError) {
+      throw new Error(`Failed to generate code: ${codeError.message}`);
+    }
+    
+    // Create the order directly using server Supabase
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        order_number: orderNumber,
-        drop_id: metadata.dropId,
         client_id: clientId,
         customer_name: metadata.customerName, // Store name at order level for delivery bag
         pickup_time: metadata.pickupTime,
@@ -140,13 +148,15 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
         status: 'confirmed', // Paid orders start as confirmed
         payment_intent_id: paymentIntent.id,
         payment_method: 'stripe',
+        drop_id: metadata.dropId,
+        sequence_number: sequenceNumber,
+        public_code: publicCode
       })
-      .select('id, order_number, status')
+      .select()
       .single();
-
+    
     if (orderError) {
-      console.error('Error creating order:', orderError);
-      throw new Error('Failed to create order');
+      throw new Error(`Failed to create order: ${orderError.message}`);
     }
 
     // Reserve inventory and create order products
@@ -275,7 +285,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
         .single();
 
       await sendOrderConfirmationEmail({
-        orderNumber: order.order_number,
+        orderNumber: order.public_code,
         customerName: metadata.customerName,
         customerEmail: metadata.customerEmail,
         pickupTime: metadata.pickupTime,
@@ -290,7 +300,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
 
       console.log(
         '✅ Order confirmation email sent for order:',
-        order.order_number
+        order.public_code
       );
     } catch (emailError) {
       console.error('Error sending confirmation email:', emailError);
@@ -299,7 +309,7 @@ async function handleSuccessfulPayment(paymentIntent: Stripe.PaymentIntent) {
 
     console.log('✅ Order created successfully:', {
       orderId: order.id,
-      orderNumber: order.order_number,
+      orderNumber: order.public_code,
       paymentIntentId: paymentIntent.id,
     });
   } catch (error) {

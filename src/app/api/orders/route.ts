@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 import { sendOrderConfirmationEmail } from '@/lib/email';
+import { createOrderWithCode } from '@/lib/order-codes';
 
 export async function POST(request: Request) {
   try {
@@ -71,46 +72,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate order number using database function with drop_id
-    const { data: orderNumber, error: orderNumberError } = await supabase.rpc(
-      'generate_order_number',
-      { p_drop_id: activeDrop.id }
-    );
-
-    if (orderNumberError) {
-      console.error('Error generating order number:', orderNumberError);
-      return NextResponse.json(
-        { error: 'Failed to generate order number' },
-        { status: 500 }
-      );
-    }
-
-    // Create order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        order_number: orderNumber,
-        drop_id: activeDrop.id,
-        client_id: clientId,
-        customer_name: customerName, // Store name at order level for delivery bag
-        pickup_time: pickupTime,
-        order_date: pickupDate,
-        total_amount: totalAmount,
-        special_instructions: specialInstructions,
-        payment_intent_id: paymentIntentId, // Link to Stripe payment
-        payment_method: paymentIntentId ? 'stripe' : null,
-        status: paymentIntentId ? 'confirmed' : 'pending', // Paid orders are confirmed
-      })
-      .select('id, order_number, status')
-      .single();
-
-    if (orderError) {
-      console.error('Error creating order:', orderError);
-      return NextResponse.json(
-        { error: 'Failed to create order' },
-        { status: 500 }
-      );
-    }
+    // Create order with generated code
+    const { order, publicCode } = await createOrderWithCode(activeDrop.id, {
+      client_id: clientId,
+      customer_name: customerName, // Store name at order level for delivery bag
+      pickup_time: pickupTime,
+      order_date: pickupDate,
+      total_amount: totalAmount,
+      special_instructions: specialInstructions,
+      payment_intent_id: paymentIntentId, // Link to Stripe payment
+      payment_method: paymentIntentId ? 'stripe' : null,
+      status: paymentIntentId ? 'confirmed' : 'pending', // Paid orders are confirmed
+    }, supabase);
 
     // Batch create order products and reserve inventory
     const orderProducts = items.map(
@@ -182,7 +155,7 @@ export async function POST(request: Request) {
         });
 
         await sendOrderConfirmationEmail({
-          orderNumber: order.order_number,
+          orderNumber: order.public_code,
           customerName: customerName,
           customerEmail: customerEmail,
           pickupTime: pickupTime,
@@ -196,7 +169,7 @@ export async function POST(request: Request) {
 
         console.log(
           '✅ Order confirmation email sent for order:',
-          order.order_number
+          order.public_code
         );
       } catch (emailError) {
         console.error('Error sending confirmation email:', emailError);
@@ -208,7 +181,7 @@ export async function POST(request: Request) {
       success: true,
       order: {
         id: order.id,
-        order_number: order.order_number,
+        public_code: order.public_code,
         status: order.status,
       },
       message: 'Order created successfully',

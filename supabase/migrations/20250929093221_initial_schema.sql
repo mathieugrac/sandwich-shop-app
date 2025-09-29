@@ -38,6 +38,7 @@ CREATE TABLE product_images (
 CREATE TABLE locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(100) NOT NULL,
+  code VARCHAR(10) UNIQUE NOT NULL, -- Short code for order IDs (e.g., "IH", "LX")
   district VARCHAR(100) NOT NULL,
   address TEXT NOT NULL,
   location_url TEXT, -- Google Maps or other location link
@@ -63,12 +64,14 @@ CREATE TABLE drops (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   date DATE NOT NULL,
   location_id UUID REFERENCES locations(id) ON DELETE RESTRICT,
+  drop_number INTEGER NOT NULL, -- Auto-incremented per location (01, 02, 03...)
   status VARCHAR(20) DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'active', 'completed', 'cancelled')),
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   last_modified_by UUID REFERENCES admin_users(id),
-  status_changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  status_changed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(location_id, drop_number) -- Ensure unique drop numbers per location
 );
 
 -- Drop products table (quantities of products available for a specific drop)
@@ -100,7 +103,8 @@ CREATE TABLE clients (
 -- Customer orders for a specific drop
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_number VARCHAR(20) UNIQUE NOT NULL,
+  public_code VARCHAR(20) UNIQUE NOT NULL, -- Human-friendly code (e.g., "IH01-001")
+  sequence_number INTEGER NOT NULL, -- Sequential number within drop (1, 2, 3...)
   drop_id UUID REFERENCES drops(id) ON DELETE CASCADE,
   client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
   customer_name VARCHAR(100) NOT NULL, -- Name for delivery bag (order-specific)
@@ -112,7 +116,8 @@ CREATE TABLE orders (
   payment_intent_id TEXT, -- Stripe payment intent ID
   payment_method TEXT, -- Payment method (stripe, cash, etc.)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(drop_id, sequence_number) -- Ensure unique sequence numbers per drop
 );
 
 -- Order products table (products ordered by customers)
@@ -124,15 +129,78 @@ CREATE TABLE order_products (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Drop counters table (for atomic sequence number allocation)
+CREATE TABLE drop_counters (
+  drop_id UUID PRIMARY KEY REFERENCES drops(id) ON DELETE CASCADE,
+  next_sequence INTEGER NOT NULL DEFAULT 1
+);
+
 -- ========================================
 -- FUNCTIONS
 -- ========================================
 
--- Function to generate unique order numbers
-CREATE OR REPLACE FUNCTION generate_order_number()
-RETURNS TEXT AS $$
+-- Function to get next drop number for a location
+CREATE OR REPLACE FUNCTION get_next_drop_number(p_location_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  next_num INTEGER;
 BEGIN
-  RETURN 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(FLOOR(RANDOM() * 9999)::TEXT, 4, '0');
+  SELECT COALESCE(MAX(drop_number), 0) + 1 INTO next_num
+  FROM drops 
+  WHERE location_id = p_location_id;
+  
+  RETURN next_num;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to generate order public code
+CREATE OR REPLACE FUNCTION generate_order_code(p_drop_id UUID, p_sequence_number INTEGER)
+RETURNS TEXT AS $$
+DECLARE
+  location_code TEXT;
+  drop_num INTEGER;
+  formatted_code TEXT;
+BEGIN
+  -- Get location code and drop number
+  SELECT l.code, d.drop_number INTO location_code, drop_num
+  FROM drops d
+  JOIN locations l ON d.location_id = l.id
+  WHERE d.id = p_drop_id;
+  
+  -- Format: LOCATIONCODE + DROPNUMBER + "-" + SEQUENCE
+  -- Example: IH01-001, IH02-015, LX01-001
+  formatted_code := location_code || LPAD(drop_num::TEXT, 2, '0') || '-' || LPAD(p_sequence_number::TEXT, 3, '0');
+  
+  RETURN formatted_code;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to allocate next sequence number for an order (atomic)
+CREATE OR REPLACE FUNCTION allocate_order_sequence(p_drop_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  sequence_num INTEGER;
+BEGIN
+  -- Lock the counter row and get next sequence
+  SELECT next_sequence INTO sequence_num
+  FROM drop_counters
+  WHERE drop_id = p_drop_id
+  FOR UPDATE;
+  
+  -- If no counter exists, create one
+  IF sequence_num IS NULL THEN
+    INSERT INTO drop_counters (drop_id, next_sequence)
+    VALUES (p_drop_id, 2)
+    ON CONFLICT (drop_id) DO UPDATE SET next_sequence = drop_counters.next_sequence;
+    sequence_num := 1;
+  ELSE
+    -- Increment the counter
+    UPDATE drop_counters
+    SET next_sequence = next_sequence + 1
+    WHERE drop_id = p_drop_id;
+  END IF;
+  
+  RETURN sequence_num;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -354,6 +422,7 @@ ALTER TABLE drop_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE drop_counters ENABLE ROW LEVEL SECURITY;
 
 -- Public read access for active products
 CREATE POLICY "Public can view active products" ON products
@@ -400,6 +469,9 @@ CREATE POLICY "Admin can manage orders" ON orders
 CREATE POLICY "Admin can manage order products" ON order_products
   FOR ALL USING (auth.role() = 'authenticated');
 
+CREATE POLICY "Admin can manage drop counters" ON drop_counters
+  FOR ALL USING (auth.role() = 'authenticated');
+
 -- Public can insert orders (customer orders)
 CREATE POLICY "Anyone can create orders" ON orders
   FOR INSERT WITH CHECK (true);
@@ -407,6 +479,13 @@ CREATE POLICY "Anyone can create orders" ON orders
 -- Public can insert order products
 CREATE POLICY "Anyone can create order products" ON order_products
   FOR INSERT WITH CHECK (true);
+
+-- Public can insert and update drop counters (for sequence allocation)
+CREATE POLICY "Anyone can insert drop counters" ON drop_counters
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can update drop counters" ON drop_counters
+  FOR UPDATE WITH CHECK (true);
 
 -- ========================================
 -- CONSTRAINTS & VALIDATIONS
@@ -423,16 +502,20 @@ CHECK (pickup_hour_end > pickup_hour_start);
 -- Indexes for frequently queried fields
 CREATE INDEX idx_drops_date_status ON drops(date, status);
 CREATE INDEX idx_drops_location_id ON drops(location_id);
+CREATE INDEX idx_drops_location_drop_number ON drops(location_id, drop_number);
 CREATE INDEX idx_drop_products_drop_id ON drop_products(drop_id);
 CREATE INDEX idx_drop_products_product_id ON drop_products(product_id);
 CREATE INDEX idx_orders_drop_id ON orders(drop_id);
 CREATE INDEX idx_orders_status ON orders(status);
 CREATE INDEX idx_orders_client_id ON orders(client_id);
+CREATE INDEX idx_orders_public_code ON orders(public_code);
+CREATE INDEX idx_orders_drop_sequence ON orders(drop_id, sequence_number);
 CREATE INDEX idx_order_products_order_id ON order_products(order_id);
 CREATE INDEX idx_order_products_drop_product_id ON order_products(drop_product_id);
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(active);
 CREATE INDEX idx_locations_active ON locations(active);
+CREATE INDEX idx_locations_code ON locations(code);
 
 -- ========================================
 -- SCHEMA COMPLETE

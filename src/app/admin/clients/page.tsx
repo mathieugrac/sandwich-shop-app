@@ -237,7 +237,7 @@ export default function ClientsPage() {
         .select(
           `
           id,
-          order_number,
+          public_code,
           order_date,
           status,
           total_amount,
@@ -263,7 +263,7 @@ export default function ClientsPage() {
         const transformedOrders: ClientOrder[] = (ordersData || []).map(
           (order: {
             id: string;
-            order_number: string;
+            public_code: string;
             order_date: string;
             status: string;
             total_amount: number;
@@ -276,7 +276,7 @@ export default function ClientsPage() {
             drops: { date: string }[] | null;
           }) => ({
             id: order.id,
-            order_number: order.order_number,
+            order_number: order.public_code,
             order_date: order.order_date,
             status: order.status,
             total_amount: order.total_amount,

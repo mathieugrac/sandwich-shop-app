@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
+import { getNextDropNumber } from '@/lib/order-codes';
 
 export async function GET() {
   try {
@@ -88,11 +89,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get next drop number for this location
+    const dropNumber = await getNextDropNumber(location_id, supabase);
+
     const { data: drop, error } = await supabase
       .from('drops')
       .insert({
         date,
         location_id,
+        drop_number: dropNumber,
         status: status || 'upcoming',
         notes,
       })

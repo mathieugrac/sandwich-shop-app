@@ -10,7 +10,7 @@ export async function GET(
 
     const { data: order, error } = await supabase
       .from('orders')
-      .select('id, order_number, status')
+      .select('id, public_code, status')
       .eq('payment_intent_id', paymentIntentId)
       .single();
 
@@ -20,7 +20,7 @@ export async function GET(
 
     return NextResponse.json({
       orderId: order.id,
-      orderNumber: order.order_number,
+      orderNumber: order.public_code, // Return public_code as orderNumber for compatibility
       status: order.status,
     });
   } catch (error) {

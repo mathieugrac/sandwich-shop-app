@@ -9,7 +9,7 @@ import { CheckCircle } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
 
 interface ParsedOrder {
-  orderNumber: string;
+  orderNumber: string; // This will now contain the public_code (e.g., "#IH01-001")
   customerName: string;
   customerEmail: string;
   customerPhone: string | null;
@@ -104,7 +104,7 @@ function ConfirmationContent() {
           console.log('Processing API order:', apiOrder);
 
           const transformedOrder: ParsedOrder = {
-            orderNumber: apiOrder.order_number || '',
+            orderNumber: apiOrder.public_code || apiOrder.order_number || '',
             customerName: apiOrder.customer_name || '',
             customerEmail: apiOrder.customer_email || '',
             customerPhone: apiOrder.customer_phone || null,

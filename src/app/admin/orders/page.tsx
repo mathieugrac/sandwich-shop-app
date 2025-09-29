@@ -68,7 +68,7 @@ export default function OrdersPage() {
           )
         `
         )
-        .order('order_number', { ascending: false });
+        .order('public_code', { ascending: false });
 
       if (error) {
         console.error('Error loading orders:', error);
@@ -168,7 +168,7 @@ export default function OrdersPage() {
                     <AdminTableCell className="align-top">
                       <div className="py-1">
                         <span className="text-sm font-medium text-blue-600">
-                          #{order.order_number}
+                          #{order.public_code}
                         </span>
                       </div>
                     </AdminTableCell>
@@ -182,7 +182,7 @@ export default function OrdersPage() {
                     <AdminTableCell className="align-top">
                       <div className="py-1">
                         <p className="text-sm" style={{ color: '#111' }}>
-                          {order.clients?.email || order.customer_email}
+                          {order.clients?.email}
                         </p>
                       </div>
                     </AdminTableCell>

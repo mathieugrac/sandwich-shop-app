@@ -82,6 +82,29 @@ export type Database = {
         }
         Relationships: []
       }
+      drop_counters: {
+        Row: {
+          drop_id: string
+          next_sequence: number
+        }
+        Insert: {
+          drop_id: string
+          next_sequence?: number
+        }
+        Update: {
+          drop_id?: string
+          next_sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drop_counters_drop_id_fkey"
+            columns: ["drop_id"]
+            isOneToOne: true
+            referencedRelation: "drops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drop_products: {
         Row: {
           available_quantity: number | null
@@ -101,7 +124,7 @@ export type Database = {
           id?: string
           product_id?: string | null
           reserved_quantity?: number | null
-          selling_price?: number
+          selling_price: number
           stock_quantity: number
           updated_at?: string | null
         }
@@ -137,6 +160,7 @@ export type Database = {
         Row: {
           created_at: string | null
           date: string
+          drop_number: number
           id: string
           last_modified_by: string | null
           location_id: string | null
@@ -148,6 +172,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           date: string
+          drop_number: number
           id?: string
           last_modified_by?: string | null
           location_id?: string | null
@@ -159,6 +184,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           date?: string
+          drop_number?: number
           id?: string
           last_modified_by?: string | null
           location_id?: string | null
@@ -188,6 +214,7 @@ export type Database = {
         Row: {
           active: boolean | null
           address: string
+          code: string
           created_at: string | null
           district: string
           id: string
@@ -200,6 +227,7 @@ export type Database = {
         Insert: {
           active?: boolean | null
           address: string
+          code: string
           created_at?: string | null
           district: string
           id?: string
@@ -212,6 +240,7 @@ export type Database = {
         Update: {
           active?: boolean | null
           address?: string
+          code?: string
           created_at?: string | null
           district?: string
           id?: string
@@ -222,48 +251,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      order_items: {
-        Row: {
-          created_at: string | null
-          id: string
-          order_id: string | null
-          product_id: string | null
-          quantity: number
-          unit_price: number
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          order_id?: string | null
-          product_id?: string | null
-          quantity: number
-          unit_price: number
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          order_id?: string | null
-          product_id?: string | null
-          quantity?: number
-          unit_price?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       order_products: {
         Row: {
@@ -308,60 +295,51 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
-          customer_email: string
           customer_name: string
-          customer_phone: string
           drop_id: string | null
           id: string
           order_date: string
-          order_number: string
           payment_intent_id: string | null
           payment_method: string | null
           pickup_time: string
+          public_code: string
+          sequence_number: number
           special_instructions: string | null
-          special_requests: string | null
           status: string | null
-          stripe_payment_intent_id: string | null
           total_amount: number
           updated_at: string | null
         }
         Insert: {
           client_id?: string | null
           created_at?: string | null
-          customer_email: string
           customer_name: string
-          customer_phone: string
           drop_id?: string | null
           id?: string
-          order_date?: string
-          order_number: string
+          order_date: string
           payment_intent_id?: string | null
           payment_method?: string | null
           pickup_time: string
+          public_code: string
+          sequence_number: number
           special_instructions?: string | null
-          special_requests?: string | null
           status?: string | null
-          stripe_payment_intent_id?: string | null
           total_amount: number
           updated_at?: string | null
         }
         Update: {
           client_id?: string | null
           created_at?: string | null
-          customer_email?: string
           customer_name?: string
-          customer_phone?: string
           drop_id?: string | null
           id?: string
           order_date?: string
-          order_number?: string
           payment_intent_id?: string | null
           payment_method?: string | null
           pickup_time?: string
+          public_code?: string
+          sequence_number?: number
           special_instructions?: string | null
-          special_requests?: string | null
           status?: string | null
-          stripe_payment_intent_id?: string | null
           total_amount?: number
           updated_at?: string | null
         }
@@ -429,6 +407,7 @@ export type Database = {
           production_cost: number
           sell_price: number
           sort_order: number | null
+          tags: string[] | null
           updated_at: string | null
         }
         Insert: {
@@ -442,6 +421,7 @@ export type Database = {
           production_cost: number
           sell_price: number
           sort_order?: number | null
+          tags?: string[] | null
           updated_at?: string | null
         }
         Update: {
@@ -455,6 +435,7 @@ export type Database = {
           production_cost?: number
           sell_price?: number
           sort_order?: number | null
+          tags?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -464,20 +445,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      check_inventory_availability: {
-        Args: {
-          p_drop_id: string
-          p_product_id: string
-          p_requested_quantity: number
-        }
-        Returns: boolean
+      allocate_order_sequence: {
+        Args: { p_drop_id: string }
+        Returns: number
       }
       check_multiple_drop_products_availability: {
         Args: { p_order_items: Json }
         Returns: boolean
       }
-      generate_order_number: {
-        Args: Record<PropertyKey, never>
+      generate_order_code: {
+        Args: { p_drop_id: string; p_sequence_number: number }
         Returns: string
       }
       get_admin_past_drops: {
@@ -487,8 +464,13 @@ export type Database = {
           id: string
           location_id: string
           location_name: string
+          loss_percentage: number
           status: string
+          status_changed_at: string
           total_available: number
+          total_inventory: number
+          total_loss: number
+          total_orders: number
         }[]
       }
       get_admin_upcoming_drops: {
@@ -498,24 +480,25 @@ export type Database = {
           id: string
           location_id: string
           location_name: string
+          loss_percentage: number
           status: string
+          status_changed_at: string
           total_available: number
+          total_inventory: number
+          total_loss: number
+          total_orders: number
         }[]
+      }
+      get_next_drop_number: {
+        Args: { p_location_id: string }
+        Returns: number
       }
       get_or_create_client: {
         Args: { p_email: string; p_phone: string }
         Returns: string
       }
-      release_inventory: {
-        Args: { p_drop_id: string; p_product_id: string; p_quantity: number }
-        Returns: boolean
-      }
       release_multiple_drop_products: {
         Args: { p_order_items: Json }
-        Returns: boolean
-      }
-      reserve_inventory: {
-        Args: { p_drop_id: string; p_product_id: string; p_quantity: number }
         Returns: boolean
       }
       reserve_multiple_drop_products: {

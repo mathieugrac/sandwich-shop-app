@@ -499,7 +499,7 @@ export default function DropManagementPage() {
         .select(
           `
           id, 
-          order_number, 
+          public_code, 
           customer_name, 
           total_amount,
           clients (
@@ -530,7 +530,7 @@ export default function DropManagementPage() {
       // Transform orders to extract email from clients relationship
       const transformedOrders = (orders || []).map(order => ({
         id: order.id,
-        order_number: order.order_number,
+        order_number: order.public_code,
         customer_email:
           (order.clients as any)?.email || order.customer_name || 'No email',
         total_amount: order.total_amount,
