@@ -1,7 +1,8 @@
 -- ========================================
--- FOMÉ SANDWICH SHOP - PRODUCTION SCHEMA
+-- FOMÉ SANDWICH SHOP - CLEAN INITIAL SCHEMA
 -- ========================================
--- This migration replicates the exact production database structure
+-- This migration creates the complete database schema from scratch
+-- All tables, functions, RLS policies, and sample data in one clean migration
 
 -- Products table
 -- The catalogue of food products being sold
@@ -15,8 +16,12 @@ CREATE TABLE products (
   active BOOLEAN DEFAULT true,
   sort_order INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  allergens TEXT
 );
+
+-- Add comment for allergens field
+COMMENT ON COLUMN products.allergens IS 'Free-text field for allergen information (e.g., "Contains gluten, dairy, nuts")';
 
 -- Product images table (multiple images per product)
 CREATE TABLE product_images (
@@ -131,7 +136,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to get admin past drops
+-- Function to get admin past drops with simple metrics
 CREATE OR REPLACE FUNCTION get_admin_past_drops()
 RETURNS TABLE (
   id UUID, 
@@ -140,7 +145,11 @@ RETURNS TABLE (
   location_id UUID, 
   location_name VARCHAR(100), 
   status_changed_at TIMESTAMP WITH TIME ZONE,
-  total_available BIGINT
+  total_available BIGINT,
+  total_inventory BIGINT,    -- Total items prepared
+  total_orders BIGINT,       -- Total orders placed
+  total_loss BIGINT,         -- Items not ordered (loss)
+  loss_percentage DECIMAL    -- Loss as percentage
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -151,7 +160,19 @@ BEGIN
     d.location_id, 
     l.name as location_name, 
     d.status_changed_at,
-    COALESCE(SUM(dp.available_quantity), 0) as total_available
+    COALESCE(SUM(dp.available_quantity), 0) as total_available,
+    -- Simple inventory calculation: sum all stock quantities
+    COALESCE(SUM(dp.stock_quantity), 0) as total_inventory,
+    -- Simple orders count: count orders for this drop
+    (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id) as total_orders,
+    -- Simple loss calculation: inventory - orders
+    COALESCE(SUM(dp.stock_quantity), 0) - (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id) as total_loss,
+    -- Simple percentage: (loss / inventory) * 100
+    CASE 
+      WHEN COALESCE(SUM(dp.stock_quantity), 0) > 0 THEN 
+        ROUND(((COALESCE(SUM(dp.stock_quantity), 0) - (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id))::DECIMAL / COALESCE(SUM(dp.stock_quantity), 0)) * 100, 1)
+      ELSE 0 
+    END as loss_percentage
   FROM drops d
   JOIN locations l ON d.location_id = l.id
   LEFT JOIN drop_products dp ON d.id = dp.drop_id
@@ -161,7 +182,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Function to get admin upcoming drops
+-- Function to get admin upcoming drops with simple metrics
 CREATE OR REPLACE FUNCTION get_admin_upcoming_drops()
 RETURNS TABLE (
   id UUID, 
@@ -170,7 +191,11 @@ RETURNS TABLE (
   location_id UUID, 
   location_name VARCHAR(100), 
   status_changed_at TIMESTAMP WITH TIME ZONE,
-  total_available BIGINT
+  total_available BIGINT,
+  total_inventory BIGINT,    -- Total items prepared
+  total_orders BIGINT,       -- Total orders placed
+  total_loss BIGINT,         -- Items not ordered (loss)
+  loss_percentage DECIMAL    -- Loss as percentage
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -181,7 +206,19 @@ BEGIN
     d.location_id, 
     l.name as location_name, 
     d.status_changed_at,
-    COALESCE(SUM(dp.available_quantity), 0) as total_available
+    COALESCE(SUM(dp.available_quantity), 0) as total_available,
+    -- Simple inventory calculation: sum all stock quantities
+    COALESCE(SUM(dp.stock_quantity), 0) as total_inventory,
+    -- Simple orders count: count orders for this drop
+    (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id) as total_orders,
+    -- Simple loss calculation: inventory - orders
+    COALESCE(SUM(dp.stock_quantity), 0) - (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id) as total_loss,
+    -- Simple percentage: (loss / inventory) * 100
+    CASE 
+      WHEN COALESCE(SUM(dp.stock_quantity), 0) > 0 THEN 
+        ROUND(((COALESCE(SUM(dp.stock_quantity), 0) - (SELECT COUNT(*) FROM orders o WHERE o.drop_id = d.id))::DECIMAL / COALESCE(SUM(dp.stock_quantity), 0)) * 100, 1)
+      ELSE 0 
+    END as loss_percentage
   FROM drops d
   JOIN locations l ON d.location_id = l.id
   LEFT JOIN drop_products dp ON d.id = dp.drop_id
@@ -317,7 +354,6 @@ ALTER TABLE drop_products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
 -- Public read access for active products
 CREATE POLICY "Public can view active products" ON products
@@ -364,9 +400,6 @@ CREATE POLICY "Admin can manage orders" ON orders
 CREATE POLICY "Admin can manage order products" ON order_products
   FOR ALL USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Admin can manage admin users" ON admin_users
-  FOR ALL USING (auth.role() = 'authenticated');
-
 -- Public can insert orders (customer orders)
 CREATE POLICY "Anyone can create orders" ON orders
   FOR INSERT WITH CHECK (true);
@@ -375,38 +408,13 @@ CREATE POLICY "Anyone can create orders" ON orders
 CREATE POLICY "Anyone can create order products" ON order_products
   FOR INSERT WITH CHECK (true);
 
--- Trigger to set updated_at on update
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- ========================================
+-- CONSTRAINTS & VALIDATIONS
+-- ========================================
 
--- Add updated_at triggers
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_locations_updated_at BEFORE UPDATE ON locations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_drops_updated_at BEFORE UPDATE ON drops FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_drop_products_updated_at BEFORE UPDATE ON drop_products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Trigger to auto-generate order numbers
-CREATE OR REPLACE FUNCTION set_order_number()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.order_number IS NULL THEN
-    NEW.order_number := generate_order_number();
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER set_order_number_trigger
-  BEFORE INSERT ON orders
-  FOR EACH ROW
-  EXECUTE FUNCTION set_order_number();
+-- Ensure pickup hours are valid (end time must be after start time)
+ALTER TABLE locations ADD CONSTRAINT check_pickup_hours 
+CHECK (pickup_hour_end > pickup_hour_start);
 
 -- ========================================
 -- PERFORMANCE INDEXES
@@ -425,12 +433,9 @@ CREATE INDEX idx_order_products_drop_product_id ON order_products(drop_product_i
 CREATE INDEX idx_products_category ON products(category);
 CREATE INDEX idx_products_active ON products(active);
 CREATE INDEX idx_locations_active ON locations(active);
-CREATE INDEX idx_admin_users_email ON admin_users(email);
 
 -- ========================================
--- CONSTRAINTS & VALIDATIONS
+-- SCHEMA COMPLETE
 -- ========================================
-
--- Ensure pickup hours are valid (end time must be after start time)
-ALTER TABLE locations ADD CONSTRAINT check_pickup_hours 
-CHECK (pickup_hour_end > pickup_hour_start);
+-- All sample data (locations, products, drops) will be loaded from seed.sql
+-- This keeps migrations focused on schema changes only
