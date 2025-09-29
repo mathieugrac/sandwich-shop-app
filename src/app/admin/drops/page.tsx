@@ -38,7 +38,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
   Calendar,
   Package,
   MoreHorizontal,
@@ -137,6 +136,7 @@ export default function DropManagementPage() {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadData = async () => {
@@ -207,15 +207,28 @@ export default function DropManagementPage() {
     updateState({ creating: true, message: null });
 
     try {
+      // First, get the next drop number for this location
+      const { data: dropNumberData, error: dropNumberError } =
+        await supabase.rpc('get_next_drop_number', {
+          p_location_id: state.newDrop.location,
+        });
+
+      if (dropNumberError) {
+        throw new Error(
+          `Failed to get drop number: ${dropNumberError.message}`
+        );
+      }
+
+      // Now create the drop with the generated drop number
       const { error } = await supabase.from('drops').insert({
         date: state.newDrop.date,
         location_id: state.newDrop.location,
+        drop_number: dropNumberData,
         status: state.newDrop.status,
       });
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        throw new Error(`Failed to create drop: ${error.message}`);
       }
 
       updateState({
@@ -230,11 +243,12 @@ export default function DropManagementPage() {
       // Reload data to show the new drop
       await loadData();
     } catch (error) {
-      console.error('Error creating drop:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       updateState({
         message: {
           type: 'error',
-          text: 'Failed to create drop. Please try again.',
+          text: errorMessage,
         },
       });
     } finally {
@@ -304,7 +318,7 @@ export default function DropManagementPage() {
     try {
       // Get products with quantities > 0
       const productsToInclude = Object.entries(state.inventory)
-        .filter(([_, quantity]) => quantity > 0)
+        .filter(([, quantity]) => quantity > 0)
         .map(([productId, quantity]) => {
           const product = state.products.find(p => p.id === productId);
           if (!product) {
@@ -528,13 +542,24 @@ export default function DropManagementPage() {
       console.log('Orders found:', orders);
 
       // Transform orders to extract email from clients relationship
-      const transformedOrders = (orders || []).map(order => ({
-        id: order.id,
-        order_number: order.public_code,
-        customer_email:
-          (order.clients as any)?.email || order.customer_name || 'No email',
-        total_amount: order.total_amount,
-      }));
+      const transformedOrders = (orders || []).map(order => {
+        // Type assertion for the clients relationship from Supabase join
+        // Supabase returns related data as an array even for single relations
+        const clientData = order.clients as
+          | { email: string }
+          | { email: string }[]
+          | null;
+        const email = Array.isArray(clientData)
+          ? clientData[0]?.email
+          : clientData?.email;
+
+        return {
+          id: order.id,
+          order_number: order.public_code,
+          customer_email: email || order.customer_name || 'No email',
+          total_amount: order.total_amount,
+        };
+      });
 
       // Set the drop and orders, then show modal
       updateState({
