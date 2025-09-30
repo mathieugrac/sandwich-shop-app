@@ -105,8 +105,8 @@ const AdminSidebar = forwardRef<HTMLDivElement, AdminSidebarProps>(
         {/* Logo/Brand */}
         <div className="flex items-center justify-between pt-6 pr-7 pb-3 pl-7">
           <Image
-            src="/logo-kusack.svg"
-            alt="Kusack Logo"
+            src="/logo-moonlight-3.svg"
+            alt="Fomé"
             width={120}
             height={47}
             className="h-10 w-auto"
