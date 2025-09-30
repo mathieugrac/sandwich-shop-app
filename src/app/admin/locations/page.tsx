@@ -54,6 +54,7 @@ export default function LocationsPage() {
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [formData, setFormData] = useState({
     name: '',
+    code: '',
     district: '',
     address: '',
     location_url: '',
@@ -61,6 +62,8 @@ export default function LocationsPage() {
     pickup_hour_end: '',
     active: true,
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   useRequireAuth();
@@ -88,6 +91,7 @@ export default function LocationsPage() {
   const resetForm = () => {
     setFormData({
       name: '',
+      code: '',
       district: '',
       address: '',
       location_url: '',
@@ -95,6 +99,8 @@ export default function LocationsPage() {
       pickup_hour_end: '',
       active: true,
     });
+    setFormErrors({});
+    setIsSubmitting(false);
   };
 
   const openCreateModal = () => {
@@ -105,6 +111,7 @@ export default function LocationsPage() {
   const openEditModal = (location: Location) => {
     setFormData({
       name: location.name,
+      code: location.code,
       district: location.district,
       address: location.address,
       location_url: location.location_url || '',
@@ -121,22 +128,61 @@ export default function LocationsPage() {
     resetForm();
   };
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      errors.name = 'Location name is required';
+    }
+
+    if (!formData.code.trim()) {
+      errors.code = 'Location code is required';
+    } else if (formData.code.length < 2) {
+      errors.code = 'Location code must be at least 2 characters';
+    } else if (formData.code.length > 10) {
+      errors.code = 'Location code must be 10 characters or less';
+    }
+
+    if (!formData.district.trim()) {
+      errors.district = 'District is required';
+    }
+
+    if (!formData.address.trim()) {
+      errors.address = 'Address is required';
+    }
+
+    if (!formData.pickup_hour_start) {
+      errors.pickup_hour_start = 'Pickup start time is required';
+    }
+
+    if (!formData.pickup_hour_end) {
+      errors.pickup_hour_end = 'Pickup end time is required';
+    }
+
+    if (formData.pickup_hour_start && formData.pickup_hour_end) {
+      if (formData.pickup_hour_start >= formData.pickup_hour_end) {
+        errors.pickup_hour_end = 'End time must be after start time';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const saveLocation = async () => {
-    if (
-      !formData.name ||
-      !formData.district ||
-      !formData.address ||
-      !formData.pickup_hour_start ||
-      !formData.pickup_hour_end
-    )
+    if (!validateForm()) {
       return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const locationData = {
-        name: formData.name,
-        district: formData.district,
-        address: formData.address,
-        location_url: formData.location_url || null,
+        name: formData.name.trim(),
+        code: formData.code.trim(),
+        district: formData.district.trim(),
+        address: formData.address.trim(),
+        location_url: formData.location_url.trim() || null,
         pickup_hour_start: formData.pickup_hour_start,
         pickup_hour_end: formData.pickup_hour_end,
         active: formData.active,
@@ -159,8 +205,19 @@ export default function LocationsPage() {
 
       closeModal();
       await loadLocations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving location:', error);
+
+      // Handle specific database errors
+      if (error?.code === '23505' && error?.details?.includes('code')) {
+        setFormErrors({ code: 'This location code is already in use' });
+      } else {
+        setFormErrors({
+          general: 'Failed to save location. Please try again.',
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -208,6 +265,7 @@ export default function LocationsPage() {
             <AdminTableHeader>
               <AdminTableRow>
                 <AdminTableHead>Name</AdminTableHead>
+                <AdminTableHead>Code</AdminTableHead>
                 <AdminTableHead>District</AdminTableHead>
                 <AdminTableHead>Address</AdminTableHead>
                 <AdminTableHead>Pickup Hours</AdminTableHead>
@@ -222,6 +280,9 @@ export default function LocationsPage() {
                 <AdminTableRow key={location.id}>
                   <AdminTableCell className="font-medium">
                     {location.name}
+                  </AdminTableCell>
+                  <AdminTableCell className="font-mono text-sm">
+                    {location.code}
                   </AdminTableCell>
                   <AdminTableCell>{location.district}</AdminTableCell>
                   <AdminTableCell className="max-w-xs truncate">
@@ -300,16 +361,56 @@ export default function LocationsPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            {formErrors.general && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {formErrors.general}
+              </div>
+            )}
+
             <div>
               <AdminLabel htmlFor="name">Location Name</AdminLabel>
               <AdminInput
                 id="name"
                 value={formData.name}
-                onChange={e =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={e => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (formErrors.name) {
+                    setFormErrors({ ...formErrors, name: '' });
+                  }
+                }}
                 placeholder="e.g., Impact Hub"
+                className={formErrors.name ? 'border-red-500' : ''}
               />
+              {formErrors.name && (
+                <p className="text-sm text-red-600 mt-1">{formErrors.name}</p>
+              )}
+            </div>
+
+            <div>
+              <AdminLabel htmlFor="code">Location Code</AdminLabel>
+              <AdminInput
+                id="code"
+                value={formData.code}
+                onChange={e => {
+                  setFormData({
+                    ...formData,
+                    code: e.target.value.toUpperCase(),
+                  });
+                  if (formErrors.code) {
+                    setFormErrors({ ...formErrors, code: '' });
+                  }
+                }}
+                placeholder="e.g., IH"
+                maxLength={10}
+                className={`font-mono ${formErrors.code ? 'border-red-500' : ''}`}
+              />
+              {formErrors.code ? (
+                <p className="text-sm text-red-600 mt-1">{formErrors.code}</p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">
+                  Short unique code used in order IDs (2-10 characters)
+                </p>
+              )}
             </div>
 
             <div>
@@ -317,11 +418,20 @@ export default function LocationsPage() {
               <AdminInput
                 id="district"
                 value={formData.district}
-                onChange={e =>
-                  setFormData({ ...formData, district: e.target.value })
-                }
+                onChange={e => {
+                  setFormData({ ...formData, district: e.target.value });
+                  if (formErrors.district) {
+                    setFormErrors({ ...formErrors, district: '' });
+                  }
+                }}
                 placeholder="e.g., Penha da França"
+                className={formErrors.district ? 'border-red-500' : ''}
               />
+              {formErrors.district && (
+                <p className="text-sm text-red-600 mt-1">
+                  {formErrors.district}
+                </p>
+              )}
             </div>
 
             <div>
@@ -329,12 +439,21 @@ export default function LocationsPage() {
               <Textarea
                 id="address"
                 value={formData.address}
-                onChange={e =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
+                onChange={e => {
+                  setFormData({ ...formData, address: e.target.value });
+                  if (formErrors.address) {
+                    setFormErrors({ ...formErrors, address: '' });
+                  }
+                }}
                 placeholder="Full address"
                 rows={2}
+                className={formErrors.address ? 'border-red-500' : ''}
               />
+              {formErrors.address && (
+                <p className="text-sm text-red-600 mt-1">
+                  {formErrors.address}
+                </p>
+              )}
             </div>
 
             <div>
@@ -363,13 +482,24 @@ export default function LocationsPage() {
                   id="pickup_hour_start"
                   type="time"
                   value={formData.pickup_hour_start}
-                  onChange={e =>
+                  onChange={e => {
                     setFormData({
                       ...formData,
                       pickup_hour_start: e.target.value,
-                    })
+                    });
+                    if (formErrors.pickup_hour_start) {
+                      setFormErrors({ ...formErrors, pickup_hour_start: '' });
+                    }
+                  }}
+                  className={
+                    formErrors.pickup_hour_start ? 'border-red-500' : ''
                   }
                 />
+                {formErrors.pickup_hour_start && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {formErrors.pickup_hour_start}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -380,13 +510,22 @@ export default function LocationsPage() {
                   id="pickup_hour_end"
                   type="time"
                   value={formData.pickup_hour_end}
-                  onChange={e =>
+                  onChange={e => {
                     setFormData({
                       ...formData,
                       pickup_hour_end: e.target.value,
-                    })
-                  }
+                    });
+                    if (formErrors.pickup_hour_end) {
+                      setFormErrors({ ...formErrors, pickup_hour_end: '' });
+                    }
+                  }}
+                  className={formErrors.pickup_hour_end ? 'border-red-500' : ''}
                 />
+                {formErrors.pickup_hour_end && (
+                  <p className="text-sm text-red-600 mt-1">
+                    {formErrors.pickup_hour_end}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -405,13 +544,30 @@ export default function LocationsPage() {
           </div>
 
           <div className="flex justify-end space-x-2 pt-4">
-            <AdminButton onClick={closeModal} variant="outline">
+            <AdminButton
+              onClick={closeModal}
+              variant="outline"
+              disabled={isSubmitting}
+            >
               <X className="w-4 h-4 mr-2" />
               Cancel
             </AdminButton>
-            <AdminButton onClick={saveLocation} variant="admin-primary">
-              <Save className="w-4 h-4 mr-2" />
-              {editingLocation ? 'Update' : 'Create'}
+            <AdminButton
+              onClick={saveLocation}
+              variant="admin-primary"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {editingLocation ? 'Updating...' : 'Creating...'}
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  {editingLocation ? 'Update' : 'Create'}
+                </>
+              )}
             </AdminButton>
           </div>
         </DialogContent>
