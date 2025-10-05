@@ -93,13 +93,13 @@ export function SandwichItem({
     >
       {/* Image Section */}
       <div className="relative">
-        <div className="w-full h-56 bg-gray-200 flex items-center justify-center">
+        <div className="w-full aspect-square max-h-[320px] bg-gray-200 flex items-center justify-center">
           {firstImage ? (
             <Image
               src={firstImage.image_url}
               alt={firstImage.alt_text || name}
-              width={400}
-              height={192}
+              width={320}
+              height={320}
               className="w-full h-full object-cover"
               priority
             />
