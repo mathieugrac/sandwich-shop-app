@@ -285,11 +285,9 @@ export default function PaymentPage() {
               <div className="text-center">
                 <LoadingSpinner />
                 <h3 className="text-lg font-semibold mt-4 mb-2">
-                  Payment successful! Creating your order...
+                  Payment successful!
                 </h3>
-                <p className="text-gray-600">
-                  This usually takes just a few seconds.
-                </p>
+                <p className="text-gray-600">We are creating your order...</p>
               </div>
             </Card>
           )}

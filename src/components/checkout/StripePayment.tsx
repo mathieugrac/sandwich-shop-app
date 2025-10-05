@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useStripe,
@@ -79,7 +79,6 @@ function StripePaymentForm({
         console.error('Payment confirmation error:', error);
         setFormError(error.message || 'Payment failed. Please try again.');
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('✅ Payment succeeded:', paymentIntent.id);
         // Clear saved payment intent on success
         localStorage.removeItem('currentPaymentIntent');
         onSuccess(paymentIntent.id);
@@ -198,9 +197,15 @@ export function StripePayment({
   const [clientSecret, setClientSecret] = useState<string>('');
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [error, setError] = useState<string>('');
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    console.log('🔵 StripePayment useEffect triggered');
+    // Prevent double execution in React Strict Mode
+    if (hasInitialized.current) {
+      return;
+    }
+    hasInitialized.current = true;
+
     // Check if we can reuse existing payment intent
     const savedPaymentIntent = localStorage.getItem('currentPaymentIntent');
 
@@ -216,7 +221,6 @@ export function StripePayment({
           cartHash === currentCartHash &&
           customerHash === currentCustomerHash
         ) {
-          console.log('♻️ Reusing existing payment intent:', paymentIntentId);
           validateAndReusePaymentIntent(paymentIntentId);
           return;
         }
@@ -226,7 +230,6 @@ export function StripePayment({
     }
 
     // Create new payment intent if no valid existing one
-    console.log('🔵 Calling createPaymentIntent');
     createPaymentIntent();
   }, []);
 
@@ -263,9 +266,7 @@ export function StripePayment({
       if (response.ok) {
         const { clientSecret } = await response.json();
         setClientSecret(clientSecret);
-        console.log('✅ Payment intent reused successfully');
       } else {
-        console.log('⚠️ Payment intent invalid, creating new one');
         createPaymentIntent();
       }
     } catch (error) {
@@ -275,7 +276,6 @@ export function StripePayment({
   };
 
   const createPaymentIntent = async () => {
-    console.log('🔵 createPaymentIntent START');
     setIsCreatingIntent(true);
     setError('');
 
@@ -308,7 +308,6 @@ export function StripePayment({
         const errorData = await response.json();
         const errorMessage =
           errorData.error || 'Failed to create payment intent';
-        console.log('🔴 Payment intent creation failed:', errorMessage);
         setError(errorMessage);
         onError(errorMessage);
         setIsCreatingIntent(false);
@@ -329,19 +328,15 @@ export function StripePayment({
         'currentPaymentIntent',
         JSON.stringify(paymentIntentData)
       );
-
-      console.log('✅ New payment intent created and saved:', paymentIntentId);
     } catch (err) {
       const errorMessage =
         err instanceof Error
           ? err.message
           : ERROR_MESSAGES.ITEMS_NO_LONGER_AVAILABLE;
       console.error('❌ Payment intent creation failed:', err);
-      console.log('🔴 Setting error state to:', errorMessage);
       setError(errorMessage);
       onError(errorMessage);
     } finally {
-      console.log('🔵 createPaymentIntent END, isCreatingIntent -> false');
       setIsCreatingIntent(false);
     }
   };
@@ -381,15 +376,6 @@ export function StripePayment({
       },
     },
   };
-
-  console.log(
-    '🔵 Render - isCreatingIntent:',
-    isCreatingIntent,
-    'error:',
-    error,
-    'clientSecret:',
-    !!clientSecret
-  );
 
   if (isCreatingIntent) {
     return (
