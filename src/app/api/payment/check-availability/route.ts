@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/server';
 import { supabase } from '@/lib/supabase/server';
+import { ERROR_MESSAGES } from '@/lib/constants/messages';
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
 
     if (availabilityError || !availabilityCheck) {
       return NextResponse.json(
-        { error: 'Some items are no longer available' },
+        { error: ERROR_MESSAGES.ITEMS_NO_LONGER_AVAILABLE },
         { status: 400 }
       );
     }

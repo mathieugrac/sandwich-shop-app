@@ -9,6 +9,7 @@ import {
   validateCustomerInfo,
   validateCartItems,
 } from '@/lib/payments';
+import { ERROR_MESSAGES } from '@/lib/constants/messages';
 
 export async function POST(request: Request) {
   try {
@@ -97,7 +98,7 @@ export async function POST(request: Request) {
         orderProducts: orderProducts,
       });
       return NextResponse.json(
-        { error: 'Some items are no longer available' },
+        { error: ERROR_MESSAGES.ITEMS_NO_LONGER_AVAILABLE },
         { status: 400 }
       );
     }

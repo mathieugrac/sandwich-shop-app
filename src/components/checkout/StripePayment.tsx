@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useStripe,
   useElements,
@@ -8,10 +9,12 @@ import {
   Elements,
 } from '@stripe/react-stripe-js';
 import { stripePromise } from '@/lib/stripe/client';
+import { useCart } from '@/lib/cart-context';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CartItem, CustomerInfo } from '@/lib/payments';
+import { ERROR_MESSAGES } from '@/lib/constants/messages';
 
 interface StripePaymentFormProps {
   clientSecret: string;
@@ -56,8 +59,7 @@ function StripePaymentForm({
       if (!availabilityResponse.ok) {
         const errorData = await availabilityResponse.json();
         setFormError(
-          errorData.error ||
-            'Some items are no longer available. Please refresh and try again.'
+          errorData.error || ERROR_MESSAGES.ITEMS_NO_LONGER_AVAILABLE
         );
         return;
       }
@@ -159,11 +161,14 @@ export function StripePayment({
   onSuccess,
   onError,
 }: StripePaymentProps) {
+  const router = useRouter();
+  const { clearCart } = useCart();
   const [clientSecret, setClientSecret] = useState<string>('');
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    console.log('🔵 StripePayment useEffect triggered');
     // Check if we can reuse existing payment intent
     const savedPaymentIntent = localStorage.getItem('currentPaymentIntent');
 
@@ -189,6 +194,7 @@ export function StripePayment({
     }
 
     // Create new payment intent if no valid existing one
+    console.log('🔵 Calling createPaymentIntent');
     createPaymentIntent();
   }, []);
 
@@ -237,6 +243,7 @@ export function StripePayment({
   };
 
   const createPaymentIntent = async () => {
+    console.log('🔵 createPaymentIntent START');
     setIsCreatingIntent(true);
     setError('');
 
@@ -267,7 +274,13 @@ export function StripePayment({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create payment intent');
+        const errorMessage =
+          errorData.error || 'Failed to create payment intent';
+        console.log('🔴 Payment intent creation failed:', errorMessage);
+        setError(errorMessage);
+        onError(errorMessage);
+        setIsCreatingIntent(false);
+        return;
       }
 
       const { clientSecret, paymentIntentId } = await response.json();
@@ -288,11 +301,15 @@ export function StripePayment({
       console.log('✅ New payment intent created and saved:', paymentIntentId);
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : 'Failed to initialize payment';
-      console.error('Payment intent creation failed:', err);
+        err instanceof Error
+          ? err.message
+          : ERROR_MESSAGES.ITEMS_NO_LONGER_AVAILABLE;
+      console.error('❌ Payment intent creation failed:', err);
+      console.log('🔴 Setting error state to:', errorMessage);
       setError(errorMessage);
       onError(errorMessage);
     } finally {
+      console.log('🔵 createPaymentIntent END, isCreatingIntent -> false');
       setIsCreatingIntent(false);
     }
   };
@@ -333,12 +350,59 @@ export function StripePayment({
     },
   };
 
+  console.log(
+    '🔵 Render - isCreatingIntent:',
+    isCreatingIntent,
+    'error:',
+    error,
+    'clientSecret:',
+    !!clientSecret
+  );
+
   if (isCreatingIntent) {
     return (
       <Card className="p-8 shadow-none">
         <div className="flex flex-col items-center space-y-4">
           <LoadingSpinner />
           <p className="text-gray-600">Preparing payment...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    const handleBackToMenu = () => {
+      // Clear the cart
+      clearCart();
+
+      // Get drop ID from localStorage
+      try {
+        const savedDrop = localStorage.getItem('currentDrop');
+        if (savedDrop) {
+          const parsedDrop = JSON.parse(savedDrop);
+          router.push(`/drop/${parsedDrop.id}`);
+        } else {
+          // Fallback to home if no drop info
+          router.push('/');
+        }
+      } catch (error) {
+        console.error('Error parsing drop info:', error);
+        router.push('/');
+      }
+    };
+
+    return (
+      <Card className="p-8 shadow-none">
+        <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+          <p className="text-red-700 text-sm">{error}</p>
+          <Button
+            onClick={handleBackToMenu}
+            variant="outline"
+            size="sm"
+            className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
+          >
+            Back to Menu
+          </Button>
         </div>
       </Card>
     );
@@ -361,24 +425,6 @@ export function StripePayment({
         <div>
           <h2 className="text-xl font-semibold">Payment Details</h2>
         </div>
-
-        {/* Error message display */}
-        {error && (
-          <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
-            <p className="text-red-700 text-sm">{error}</p>
-            <Button
-              onClick={() => {
-                setError('');
-                createPaymentIntent();
-              }}
-              variant="outline"
-              size="sm"
-              className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
 
         <Elements stripe={stripePromise} options={stripeOptions}>
           <StripePaymentForm
