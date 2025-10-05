@@ -29,6 +29,8 @@ function StripePaymentForm({
   onError,
   isLoading = false,
 }: StripePaymentFormProps) {
+  const router = useRouter();
+  const { clearCart } = useCart();
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -92,15 +94,45 @@ function StripePaymentForm({
     }
   };
 
+  const handleBackToMenu = () => {
+    // Clear the cart
+    clearCart();
+
+    // Get drop ID from localStorage
+    try {
+      const savedDrop = localStorage.getItem('currentDrop');
+      if (savedDrop) {
+        const parsedDrop = JSON.parse(savedDrop);
+        router.push(`/drop/${parsedDrop.id}`);
+      } else {
+        // Fallback to home if no drop info
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Error parsing drop info:', error);
+      router.push('/');
+    }
+  };
+
+  // If there's an error, show only the error with Back to Menu button
+  if (formError) {
+    return (
+      <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
+        <p className="text-red-700 text-sm">{formError}</p>
+        <Button
+          onClick={handleBackToMenu}
+          variant="outline"
+          size="sm"
+          className="mt-2 border-red-300 text-red-700 hover:bg-red-100"
+        >
+          Back to Menu
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Error message display within form */}
-      {formError && (
-        <div className="p-3 border border-red-200 bg-red-50 rounded-lg">
-          <p className="text-red-700 text-sm">{formError}</p>
-        </div>
-      )}
-
       <div className="p-4 border rounded-lg bg-gray-50">
         <CardElement
           options={{
