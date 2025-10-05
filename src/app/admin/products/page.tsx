@@ -287,10 +287,34 @@ export default function ProductsPage() {
       if (selectedImage) {
         const imageUrl = await uploadImage(productId);
         if (imageUrl) {
-          // Save image record to database
+          // Delete existing images for this product first
+          const { data: existingImages } = await supabase
+            .from('product_images')
+            .select('image_url')
+            .eq('product_id', productId);
+
+          // Delete old images from storage
+          if (existingImages && existingImages.length > 0) {
+            for (const image of existingImages) {
+              const fileName = image.image_url.split('/').pop();
+              if (fileName) {
+                await supabase.storage
+                  .from('product-images')
+                  .remove([fileName]);
+              }
+            }
+          }
+
+          // Delete old image records from database
+          await supabase
+            .from('product_images')
+            .delete()
+            .eq('product_id', productId);
+
+          // Insert new image record
           const { error: imageError } = await supabase
             .from('product_images')
-            .upsert({
+            .insert({
               product_id: productId,
               image_url: imageUrl,
               alt_text: formData.name,
