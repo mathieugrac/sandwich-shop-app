@@ -73,7 +73,7 @@ export function getShopInfo() {
   
   return {
     shopName: process.env.NEXT_PUBLIC_SHOP_NAME || 'Fomé',
-    shopEmail: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome-sandes.pt',
+    shopEmail: process.env.NEXT_PUBLIC_SHOP_EMAIL || 'orders@fome.club',
     shopPhone: process.env.NEXT_PUBLIC_SHOP_PHONE || '+33652413901',
     baseUrl: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   };
