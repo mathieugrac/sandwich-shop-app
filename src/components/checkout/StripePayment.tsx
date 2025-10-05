@@ -247,7 +247,6 @@ export function StripePayment({
       JSON.stringify({
         name: customerInfo.name,
         email: customerInfo.email,
-        phone: customerInfo.phone,
         pickupTime: customerInfo.pickupTime,
         pickupDate: customerInfo.pickupDate,
       })

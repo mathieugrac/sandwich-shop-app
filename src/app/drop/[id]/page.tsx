@@ -237,7 +237,7 @@ export default function DropPage() {
         backTarget="/"
       />
 
-      <main className="px-5">
+      <main className="px-5 pb-10">
         <div className="space-y-6 py-5">
           {/* Order Status Banner - Only show for active drops */}
           {!isDropCompleted && <OrderBanner dropId={id as string} />}
